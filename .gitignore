@@ -1,0 +1,10 @@
+node_modules/
+venv/
+.venv/
+env/
+pwncat-env/
+auth_info_baileys/
+__pycache__/
+.DS_Store
+*.session
+*.db
