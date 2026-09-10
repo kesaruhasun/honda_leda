@@ -1,0 +1,16 @@
+{
+  "name": "pulseos-e2e-tests",
+  "version": "1.0.0",
+  "description": "PulseOS Hospital Management System End-to-End Test Suite (SLIIT SE2030 Group 60)",
+  "main": "runner.mjs",
+  "type": "module",
+  "scripts": {
+    "test": "node runner.mjs",
+    "test:e2e": "bash run_tests.sh",
+    "test:mock": "bash run_tests.sh --mock",
+    "test:live": "bash run_tests.sh --live"
+  },
+  "keywords": ["pulseos", "e2e", "opaque-box", "sliit", "se2030"],
+  "author": "PulseOS Team (Group 60)",
+  "license": "MIT"
+}

@@ -1,0 +1,271 @@
+Sri Lanka Institute of Information Technology
+PulseOS
+Web-Based Hospital Management System
+Proposal Report
+Year 2 Semester 1
+BATCH 02 | Group 60 | 2026-Y2-S1-KU-60
+Submission Date: 7ᵗʰ August 2026
+Software Engineering | SE2030
+B.Sc. (Hons) in Information Technology
+TABLE OF CONTENTS
+1.  Introduction
+1.1  Project Background
+1.2  Project Objectives
+1.3  Target Users
+1.4  Scope
+2.  System Overview Diagram
+3.  Functional Requirements
+4.  Non-Functional Requirements
+5.  Major Stakeholders / Users
+6.  Six Major Functions
+6.1  Patient Management
+6.2  Doctor Management
+6.3  Appointment Management
+6.4  Inventory & Pharmacy Management
+6.5  Billing & Payment Management
+6.6  Laboratory & Test Management
+7.  Minor Functions
+7.1  User Authentication
+7.2  Password Recovery
+7.3  Role-Based Access Control
+7.4  Audit Logs
+7.5  Reporting
+8.  System Limitations and Constraints
+9.  Simple Project Timeline
+10.  Conclusion
+10.1  Importance
+10.2  Feasibility
+10.3  Value
+10.4  Execution Strategy
+10.5  Closing Remarks
+1. Introduction
+1.1 Project Background
+Hospitals manage large volumes of patient information, appointments, prescriptions, laboratory tests, medicine inventories, and financial transactions every day. Many healthcare institutions still rely on manual record-keeping systems or disconnected software applications, which often result in delays, errors, duplicate data entry, and communication difficulties between departments.
+These challenges can negatively affect patient care, staff productivity, and overall hospital efficiency. Long waiting times, misplaced records, inventory shortages, and billing inaccuracies are common issues that can arise from inefficient hospital management practices.
+PulseOS is proposed as a web-based Hospital Management System that centralizes key hospital operations into a single platform. The system aims to streamline processes, improve communication, reduce paperwork, and provide secure access to healthcare information.
+1.2 Project Objectives
+The main objectives of PulseOS are:
+To digitize hospital administrative and operational activities.
+To maintain accurate and centralized patient records.
+To improve doctor and staff management.
+To streamline appointment scheduling processes.
+To manage pharmacy inventory efficiently.
+To automate billing and payment operations.
+To simplify laboratory test management.
+To improve communication among hospital departments.
+To enhance data security and confidentiality.
+1.3 Target Users
+PulseOS is designed for multiple hospital stakeholders, including System Administrators, Doctors, Nurses, Receptionists, Pharmacists, Laboratory Technicians, and Patients. Each user is provided with role-based access permissions to ensure secure and efficient use of the system. A detailed description of each user role is provided in Section 5 (Major Stakeholders / Users).
+1.4 Scope
+PulseOS covers major hospital operations including patient management, doctor management, appointment scheduling, pharmacy and inventory management, billing and payment processing, laboratory test management, and secure user authentication. The system provides a centralized platform that allows different hospital departments to access and share information efficiently.
+For a complete list of system limitations and constraints, refer to Section 8.
+2. System Overview Diagram
+PulseOS follows a three-layer architecture consisting of the User Layer, Application Layer, and Database Layer with six integrated modules connected through a centralized database.
+3. Functional Requirements
+4. Non-Functional Requirements
+5. Major Stakeholders / Users
+System Administrator
+Manages user accounts, access permissions, security settings, and the overall operation of the PulseOS system.
+Doctor
+Provides patient diagnosis and treatment by reviewing medical records, prescribing medication, and requesting laboratory tests.
+Nurse
+Supports patient care by monitoring patient conditions, updating medical records, and following doctors' treatment instructions.
+Receptionist
+Handles patient registration, appointment scheduling, admissions, and basic billing-related activities.
+Pharmacist
+Manages medicine inventory, dispenses prescribed medications, and maintains accurate pharmacy records.
+Laboratory Technician
+Performs laboratory tests, records test results, and ensures reports are available to doctors promptly.
+Patient
+Uses the system to manage appointments, view medical reports, track payments, and access personal health information.
+6. Six Major Functions
+6.1 Patient Management
+Module Owner: Somarathna P.C.D.S – IT25103819
+Description
+The Patient Management module serves as the central repository for storing and managing patient information throughout the patient’s interaction with the hospital.
+Who Will Use It?
+Receptionist, Doctor, Nurse, Patient, System Administrator
+What It Does
+This module registers patients, maintains medical records, stores health-related information, and provides authorized users with access to patient data.
+CRUD Operations
+Create: Creates new patient profiles and medical records for newly registered patients.
+Read: Retrieves patient personal information, medical histories, diagnoses, and treatment records.
+Update: Updates patient details, contact information, medical histories, and treatment information.
+Delete: Archives or removes inactive, duplicate, or invalid patient records when required.
+Expected Outcome
+Provides accurate and centralized patient information, reducing paperwork and improving the quality of patient care.
+6.2 Doctor Management
+Module Owner: Rathnayaka R.M.K.L.B – IT25103999
+Description
+The Doctor Management module manages information related to doctors, including professional details, specializations, qualifications, and consultation schedules.
+Who Will Use It?
+System Administrator, Doctor, Receptionist
+What It Does
+This module maintains doctor records and schedules to support effective staff management and appointment coordination.
+CRUD Operations
+Create: Creates doctor profiles, consultation schedules, and specialization records.
+Read: Retrieves doctor information, schedules, qualifications, and availability details.
+Update: Updates doctor profiles, schedules, qualifications, and availability status.
+Delete: Archives or removes inactive, retired, or duplicate doctor records.
+Expected Outcome
+Improves doctor scheduling, staff administration, and efficient allocation of medical resources.
+6.3 Appointment Management
+Module Owner: Malwatta M.W.C.S – IT25101620
+Description
+The Appointment Management module handles all activities related to scheduling and managing patient appointments.
+Who Will Use It?
+Patient, Receptionist, Doctor, Nurse
+What It Does
+This module allows appointments to be booked, viewed, updated, rescheduled, and cancelled while maintaining an organized consultation schedule.
+CRUD Operations
+Create: Creates new appointment bookings between patients and doctors.
+Read: Retrieves appointment details, schedules, statuses, and appointment history records.
+Update: Updates appointment times, dates, statuses, and consultation schedules.
+Delete: Cancels or removes appointments that are no longer required.
+Expected Outcome
+Reduces appointment conflicts, improves scheduling efficiency, and minimizes patient waiting times.
+6.4 Inventory & Pharmacy Management
+Module Owner: Udumullage S.H.U – IT25100826
+Description
+The Inventory & Pharmacy Management module manages medicine inventory, stock records, prescriptions, suppliers, and medicine dispensing activities.
+Who Will Use It?
+Pharmacist, Doctor, System Administrator
+What It Does
+This module monitors medicine availability, manages stock levels, processes prescriptions, and records medicine dispensing activities.
+CRUD Operations
+Create: Creates medicine records, inventory entries, supplier records, and stock transactions.
+Read: Retrieves medicine information, inventory records, prescription details, and stock levels.
+Update: Updates stock quantities, medicine details, supplier information, and inventory balances.
+Delete: Archives or removes expired, damaged, discontinued, or duplicate medicine records.
+Expected Outcome
+Improves inventory control, reduces medicine shortages, and ensures the availability of medications when required.
+6.5 Billing & Payment Management
+Module Owner: Dhanasinghe K.A.K.H – IT25103992
+Description
+The Billing & Payment Management module manages financial transactions, patient invoices, payments, and hospital billing records.
+Who Will Use It?
+Receptionist, Patient, System Administrator, Pharmacist
+What It Does
+This module generates bills, records payments, manages invoices, and maintains financial information related to hospital services.
+CRUD Operations
+Create: Creates invoices, payment records, billing transactions, and payment receipts.
+Read: Retrieves billing details, transaction histories, payment records, and financial reports.
+Update: Updates payment statuses, invoice information, and billing records.
+Delete: Cancels or removes incorrect, duplicate, or invalid billing records.
+Expected Outcome
+Provides accurate billing, improves payment processing, and supports efficient financial management.
+6.6 Laboratory & Test Management
+Module Owner: Thilakarathne H.S.K.P.N – IT25103363
+Description
+The Laboratory & Test Management module manages laboratory test requests, sample information, result recording, and report generation.
+Who Will Use It?
+Laboratory Technician, Doctor, Nurse, Patient
+What It Does
+This module supports the complete laboratory testing process by managing test requests, processing results, and providing reports to authorized users.
+CRUD Operations
+Create: Creates laboratory test requests, sample records, and laboratory testing entries.
+Read: Retrieves test requests, result records, laboratory reports, and patient test histories.
+Update: Updates laboratory results, test statuses, verification records, and report information.
+Delete: Cancels or removes invalid, duplicate, or obsolete laboratory test records.
+Expected Outcome
+Improves laboratory efficiency, reduces delays in diagnosis, and ensures timely access to accurate test results.
+7. Minor Functions
+7.1 User Authentication
+Provides secure login and logout functionality for authorized users.
+Features
+Login
+Logout
+Session Management
+7.2 Password Recovery
+Allows users to securely recover and reset forgotten passwords.
+Features
+Forgot Password
+Email Verification
+Password Reset
+7.3 Role-Based Access Control
+Controls access permissions according to user roles and responsibilities.
+Features
+Role Management
+Permission Assignment
+Access Restrictions
+7.4 Audit Logs
+Records important system activities for monitoring and accountability purposes.
+Features
+Login Tracking
+Activity Monitoring
+Record Modification Logs
+Transaction Logs
+7.5 Reporting
+Generates reports that support hospital monitoring and decision-making.
+Features
+Patient Reports
+Appointment Reports
+Billing Reports
+Pharmacy Reports
+Laboratory Reports
+8. System Limitations and Constraints
+Although PulseOS is designed to improve hospital operations significantly, several limitations and constraints must be considered.
+Internet Dependency
+Since PulseOS is a web-based application, users must have a stable internet connection to access system functionalities. Network failures may temporarily interrupt access to hospital information.
+User Training Requirement
+Hospital staff may require training to understand the system features, workflows, and security practices. Improper usage may reduce the effectiveness of the system.
+Data Accuracy
+The accuracy of reports and records generated by the system depends on the quality of data entered by users. Incorrect or incomplete information may affect decision-making and patient care.
+Infrastructure Requirement
+The hospital must maintain suitable servers, computer systems, and network resources to ensure smooth operation and acceptable performance.
+Integration Constraints
+The initial version of PulseOS will not support integration with external healthcare systems, insurance services, or government medical databases.
+Security Risks
+Although security controls will be implemented, regular system updates, monitoring, and maintenance are required to protect against cybersecurity threats.
+Maintenance Requirement
+The system requires regular software updates, database backups, and technical support to maintain reliability and prevent data loss.
+Browser-Based Operation
+The system is designed primarily for web browser access and does not include dedicated mobile or desktop applications in the first version.
+9. Simple Project Timeline
+10. Conclusion
+10.1 Importance
+PulseOS addresses common hospital management challenges by integrating major hospital operations into a centralized digital platform, improving efficiency and reducing manual work.
+10.2 Feasibility
+The project is technically feasible using modern web development technologies, database systems, and standard computing infrastructure available in healthcare institutions.
+10.3 Value
+The proposed system improves operational efficiency, enhances patient care, strengthens data management, and supports better decision-making through accurate information and reporting.
+10.4 Execution Strategy
+To ensure the successful and timely completion of PulseOS, the team will adopt an Agile/Scrum development methodology. The project will be executed through a series of weekly sprints, each with clearly defined goals aligned to the project timeline presented in Section 9. At the beginning of each sprint, the team will conduct a sprint planning session to prioritize tasks, assign responsibilities, and set deliverables for the week.
+Each of the six team members is assigned ownership of one major functional module, ensuring equitable workload distribution and individual accountability. Daily stand-up meetings (or a minimum of three per week) will be held to discuss progress, address blockers, and coordinate cross-module dependencies. Sprint review and retrospective meetings will be conducted at the end of each sprint to evaluate completed work and identify areas for improvement.
+Progress will be tracked using a shared task management tool, and version control (Git) will be used for collaborative code management. Continuous integration and testing practices will be implemented from Week 7 onward to detect issues early and maintain code quality throughout the development lifecycle.
+10.5 Closing Remarks
+PulseOS is expected to provide a practical and reliable solution for modernizing hospital operations. By integrating patient management, appointment scheduling, pharmacy services, billing functions, and laboratory operations into one platform, the system will support better healthcare delivery and improved hospital performance.
+STUDENT ID | STUDENT NAME
+IT25103819 | Somarathna P.C.D.S
+IT25103999 | Rathnayaka R.M.K.L.B
+IT25101620 | Malwatta M.W.C.S
+IT25100826 | Udumullage S.H.U
+IT25103992 | Dhanasinghe K.A.K.H
+IT25103363 | Thilakarathne H.S.K.P.N
+Function | Description
+Patient Management | Manages patient registration, personal information, medical history, and treatment records.
+Doctor Management | Manages doctor profiles, qualifications, specializations, and schedules.
+Appointment Management | Handles appointment booking, scheduling, rescheduling, and cancellation.
+Inventory & Pharmacy Management | Maintains medicine inventory, prescriptions, and dispensing activities.
+Billing & Payment Management | Handles invoices, payments, receipts, and financial records.
+Laboratory & Test Management | Manages laboratory test requests, test results, and laboratory reports.
+Requirement | Description
+Security | The system must ensure secure access to data through authentication, authorization, and data protection mechanisms.
+Performance | The system should provide fast response times and support multiple users simultaneously without performance degradation.
+Reliability | The system should maintain continuous availability and protect data through backup and recovery procedures.
+Usability | The system should be easy to learn, user-friendly, and accessible to users with basic computer knowledge.
+Scalability | The system should support future expansion in terms of users, departments, and functionalities.
+Maintainability | The system should be designed in a way that makes future updates, bug fixes, and enhancements easier to implement.
+Week | Planned Activities
+Week 3 | Identify the project scope, define the six major functions, gather initial requirements, and prepare the system proposal.
+Week 4 | Conduct stakeholder interviews, analyze requirements, document functional and non-functional requirements, and identify system constraints.
+Week 5 | Create the system architecture, use case diagram, and define user roles, permissions, and major system workflows.
+Week 6 | Design the database structure (ER Diagram), define entities and relationships, and prepare UI wireframes for all modules.
+Week 7 | Set up the development environment, configure the database, implement user authentication, and begin developing the Patient Management module.
+Week 8 | Develop the Doctor Management and Appointment Management modules including CRUD operations and input validations.
+Week 9 | Develop the Inventory & Pharmacy Management and Laboratory & Test Management modules and establish database connectivity.
+Week 10 | Develop the Billing & Payment Management module and integrate completed modules with the centralized database.
+Week 11 | Implement Role-Based Access Control (RBAC), Reporting, Audit Logs, and complete the remaining system functionalities.
+Week 12 | Perform module integration testing, verify data flow between modules, fix identified bugs, and improve system stability.
+Week 13 | Conduct system testing, validate all CRUD operations, improve user interface consistency, and optimize performance.
+Week 14 | Complete final refinements, perform user acceptance testing, finalize documentation, and prepare the system for deployment.
