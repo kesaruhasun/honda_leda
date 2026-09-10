@@ -1,0 +1,86 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /
+
+spring:
+  application:
+    name: pulseos-backend
+  profiles:
+    active: demo # Default profile for zero-configuration viva evaluation
+  main:
+    banner-mode: console
+  jpa:
+    open-in-view: false
+
+pulseos:
+  payhere:
+    merchant-id: "1220000"
+    merchant-secret: "sandbox_secret_sliit_pulseos_2026"
+    checkout-url: "https://sandbox.payhere.lk/pay/checkout"
+    notify-url: "http://localhost:8080/api/v1/payments/payhere/notify"
+    return-url: "http://localhost:5173/billing/payment-success"
+    cancel-url: "http://localhost:5173/billing/payment-cancel"
+    currency: "LKR"
+    sandbox: true
+
+---
+# -------------------------------------------------------------
+# DEMO PROFILE (Default): Embedded H2 with Live Web Console
+# -------------------------------------------------------------
+spring:
+  config:
+    activate:
+      on-profile: demo
+
+  datasource:
+    url: jdbc:h2:mem:pulseos_db;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+      settings:
+        web-allow-others: true
+        trace: false
+
+  jpa:
+    hibernate:
+      ddl-auto: update # Automatically maps JPA entities
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+
+  sql:
+    init:
+      mode: never
+
+---
+# -------------------------------------------------------------
+# MYSQL PROFILE: Production Relational Database
+# -------------------------------------------------------------
+spring:
+  config:
+    activate:
+      on-profile: mysql
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/pulseos_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Colombo
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: ${MYSQL_USER:root}
+    password: ${MYSQL_PASSWORD:root}
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema.sql
+      continue-on-error: true
