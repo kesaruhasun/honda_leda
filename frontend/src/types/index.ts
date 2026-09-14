@@ -1,41 +1,28 @@
-// Roles matching the 5 hospital user profiles & SLIIT Team identities
-export type UserRole =
-  | 'DOCTOR'
-  | 'RECEPTIONIST'
-  | 'PHARMACIST'
-  | 'LAB_TECHNICIAN'
-  | 'CASHIER_ADMIN';
+// PulseOS Core Domain Types & DTOs
+
+export type UserRole = 'DOCTOR' | 'RECEPTIONIST' | 'PHARMACIST' | 'LAB_TECHNICIAN' | 'CASHIER_ADMIN';
+
+export type AppViewMode = 'landing' | 'patient_portal' | 'clinical_dashboard';
 
 export interface UserProfile {
   id: string;
   name: string;
-  studentName: string;
-  studentId: string;
   role: UserRole;
   roleTitle: string;
   department: string;
   email: string;
-  avatarUrl?: string;
-  featureBranch: string;
 }
 
-// Module IDs for navigation
-export type ModuleId =
-  | 'patients'
-  | 'doctors'
-  | 'appointments'
-  | 'pharmacy'
-  | 'billing'
-  | 'laboratory';
+export type ModuleId = 'patients' | 'doctors' | 'appointments' | 'pharmacy' | 'billing' | 'laboratory';
 
 // M1: Patient Entity & DTO
-export type TriagePriority = 'EMERGENCY' | 'URGENT' | 'ROUTINE';
 export type BloodGroup = 'A+' | 'A-' | 'B+' | 'B-' | 'AB+' | 'AB-' | 'O+' | 'O-';
+export type TriagePriority = 'EMERGENCY' | 'URGENT' | 'ROUTINE';
 export type Gender = 'MALE' | 'FEMALE' | 'OTHER';
 
 export interface Patient {
   id: number;
-  patientId: string; // e.g. PAT-0001
+  patientId: string; // e.g. PAT-2026-001
   nicPassportNo: string;
   firstName: string;
   lastName: string;
@@ -44,14 +31,12 @@ export interface Patient {
   gender: Gender;
   bloodGroup: BloodGroup;
   contactNumber: string;
-  email?: string;
-  address: string;
   emergencyContactName: string;
   emergencyContactRelationship: string;
   emergencyContactPhone: string;
-  registrationDate: string;
   triagePriority: TriagePriority;
   allergies?: string;
+  registrationDate: string;
   isArchived: boolean;
 }
 
@@ -64,12 +49,12 @@ export interface Doctor {
   lastName: string;
   fullName?: string;
   specialization: string;
-  departmentName: string;
+  departmentName?: string;
   consultationFee: number;
   roomNumber: string;
   isAvailable: boolean;
-  contactNumber: string;
-  email: string;
+  contactNumber?: string;
+  email?: string;
   weeklySchedule?: string;
 }
 
@@ -78,7 +63,8 @@ export type AppointmentStatus = 'SCHEDULED' | 'CONFIRMED' | 'COMPLETED' | 'CANCE
 
 export interface Appointment {
   id: number;
-  appointmentId: string; // e.g. APT-2026-001
+  appointmentId?: string; // e.g. APT-2026-001
+  appointmentNumber?: string;
   patientId: number;
   patientName: string;
   patientNic: string;
@@ -90,7 +76,7 @@ export interface Appointment {
   status: AppointmentStatus;
   reasonForVisit: string;
   roomNumber: string;
-  createdAt: string;
+  createdAt?: string;
 }
 
 // M4: Pharmacy & Inventory
@@ -106,42 +92,68 @@ export type DrugCategory =
 
 export interface Drug {
   id: number;
-  drugId: string; // e.g. DRG-1001
-  drugName: string;
-  genericName: string;
-  category: DrugCategory;
-  dosageForm?: string; // Tablet, Syrup, Injection
+  drugId?: string | number;
+  itemCode?: string;
+  drugCode?: string;
+  drugName?: string;
+  brandName?: string;
+  genericName?: string;
+  category?: DrugCategory | string;
+  dosageForm?: string;
+  strength?: string;
   unitPrice: number;
-  stockQuantity: number;
+  stockQuantity?: number;
+  currentStock?: number;
   reorderLevel: number;
-  batchNumber: string;
-  expiryDate: string;
+  batchNumber?: string;
+  expiryDate?: string;
   supplierName?: string;
+  manufacturer?: string;
+  isLowStock?: boolean;
+  isExpired?: boolean;
 }
 
 export interface PrescriptionItem {
   id?: number;
-  drugId: number;
-  drugName: string;
-  dosageFrequency: string; // e.g., "1 tab TDS after meals"
-  durationDays: number;
-  prescribedQty: number;
-  dispensedQty: number;
-  unitPrice: number;
+  drugId?: number;
+  drugName?: string;
+  dosage?: string;
+  frequency?: string;
+  dosageFrequency?: string;
+  durationDays?: number;
+  prescribedQuantity?: number;
+  prescribedQty?: number;
+  dispensedQuantity?: number;
+  dispensedQty?: number;
+  isDispensed?: boolean;
+  unitPrice?: number;
+  instructions?: string;
 }
 
 export interface Prescription {
   id: number;
-  prescriptionId: string; // e.g. RX-2026-001
-  appointmentId: number;
+  prescriptionId?: string | number;
+  prescriptionNumber?: string;
+  appointmentId?: number;
   patientId: number;
   patientName: string;
   doctorId: number;
-  doctorName: string;
-  prescriptionDate: string;
-  doctorInstructions: string;
-  status: 'PENDING' | 'DISPENSED' | 'CANCELLED';
-  items: PrescriptionItem[];
+  doctorName?: string;
+  prescribedDoctorName?: string;
+  prescriptionDate?: string;
+  issuedDate?: string;
+  doctorInstructions?: string;
+  notes?: string;
+  status?: 'PENDING' | 'DISPENSED' | 'CANCELLED' | string;
+  dispensed?: boolean;
+  dispensedDate?: string;
+  drugName?: string;
+  dosage?: string;
+  frequency?: string;
+  durationDays?: number;
+  quantity?: number;
+  instructions?: string;
+  items?: PrescriptionItem[];
 }
 
 // M5: Billing & Payments
@@ -149,31 +161,42 @@ export type InvoiceStatus = 'PENDING' | 'PAID' | 'CANCELLED';
 export type PaymentMethod = 'CASH' | 'CARD' | 'PAYHERE';
 
 export interface InvoiceItem {
-  description: string;
-  category: 'CONSULTATION' | 'PHARMACY' | 'LAB_TEST';
-  unitPrice: number;
-  quantity: number;
-  totalPrice: number;
+  type?: string;
+  description?: string;
+  category?: 'CONSULTATION' | 'PHARMACY' | 'LAB_TEST' | string;
+  unitPrice?: number;
+  quantity?: number;
+  subtotal?: number;
+  totalPrice?: number;
 }
 
 export interface Invoice {
   id: number;
-  invoiceId: string; // e.g. INV-2026-001
+  invoiceId?: string | number;
+  invoiceNumber: string;
   patientId: number;
   patientName: string;
   patientNic: string;
   appointmentId?: number;
-  billingDate: string;
-  doctorFee: number;
-  pharmacyFee: number;
-  labFee: number;
-  taxAmount: number;
+  billingDate?: string;
+  createdAt?: string;
+  doctorFee?: number;
+  consultationFee?: number;
+  doctorName?: string;
+  pharmacyFee?: number;
+  pharmacyTotal?: number;
+  labFee?: number;
+  labTotal?: number;
+  taxAmount?: number;
+  discountAmount?: number;
   totalAmount: number;
-  status: InvoiceStatus;
-  paymentMethod?: PaymentMethod;
+  netAmount?: number;
+  status: InvoiceStatus | string;
+  paymentStatus?: string;
+  paymentMethod?: PaymentMethod | string;
   transactionRef?: string;
   paidAt?: string;
-  items: InvoiceItem[];
+  items?: InvoiceItem[];
 }
 
 export interface PayHereParams {
@@ -196,24 +219,33 @@ export interface PayHereParams {
 }
 
 // M6: Laboratory & Tests
-export type LabTestStatus = 'REQUESTED' | 'SAMPLE_COLLECTED' | 'PROCESSING' | 'COMPLETED';
+export type LabTestStatus = 'REQUESTED' | 'SAMPLE_COLLECTED' | 'PROCESSING' | 'COMPLETED' | 'COLLECTED';
 
 export interface LabTest {
   id: number;
-  testId: string; // e.g. LAB-2026-001
-  appointmentId: number;
+  testId?: string | number;
+  requestNumber?: string;
+  testCode?: string;
+  appointmentId?: number;
   patientId: number;
   patientName: string;
   doctorId: number;
   doctorName: string;
+  labTestId?: number;
   testName: string;
-  category: string; // Hematology, Biochemistry, Immunology
-  sampleType?: string; // Blood, Urine, Plasma
-  standardFee: number;
-  testDate: string;
-  status: LabTestStatus;
+  category?: string;
+  urgency?: string;
+  sampleType?: string;
+  specimenType?: string;
+  standardFee?: number;
+  testDate?: string;
+  status: LabTestStatus | string;
+  resultValue?: number;
   resultData?: string;
+  flag?: string;
   referenceRange?: string;
+  unit?: string;
+  remarks?: string;
   isAbnormal?: boolean;
   technicianNotes?: string;
   verifiedBy?: string;

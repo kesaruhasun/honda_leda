@@ -1,42 +1,64 @@
-import React from "react";
-import { RoleProvider, useRole } from "./context/RoleContext";
-import { ToastProvider } from "./context/ToastContext";
-import { Layout } from "./components/layout/Layout";
-import { PatientView } from "./views/PatientView";
-import { DoctorView } from "./views/DoctorView";
-import { AppointmentView } from "./views/AppointmentView";
-import { PharmacyView } from "./views/PharmacyView";
-import { BillingView } from "./views/BillingView";
-import { LaboratoryView } from "./views/LaboratoryView";
+import React from 'react';
+import { RoleProvider, useRole } from './context/RoleContext';
+import { ToastProvider } from './context/ToastContext';
+import { Layout } from './components/layout/Layout';
+import { LandingView } from './views/LandingView';
+import { PatientPortalView } from './views/PatientPortalView';
+import { PatientView } from './views/PatientView';
+import { DoctorView } from './views/DoctorView';
+import { AppointmentView } from './views/AppointmentView';
+import { PharmacyView } from './views/PharmacyView';
+import { BillingView } from './views/BillingView';
+import { LaboratoryView } from './views/LaboratoryView';
+import { PatientLoginModal } from './components/auth/PatientLoginModal';
+import { StaffLoginModal } from './components/auth/StaffLoginModal';
 
 const ModuleRouter: React.FC = () => {
   const { activeModule } = useRole();
 
   switch (activeModule) {
-    case "patients":
+    case 'patients':
       return <PatientView />;
-    case "doctors":
+    case 'doctors':
       return <DoctorView />;
-    case "appointments":
+    case 'appointments':
       return <AppointmentView />;
-    case "pharmacy":
+    case 'pharmacy':
       return <PharmacyView />;
-    case "billing":
+    case 'billing':
       return <BillingView />;
-    case "laboratory":
+    case 'laboratory':
       return <LaboratoryView />;
     default:
       return <PatientView />;
   }
 };
 
+const MainAppView: React.FC = () => {
+  const { currentView } = useRole();
+
+  if (currentView === 'landing') {
+    return <LandingView />;
+  }
+
+  if (currentView === 'patient_portal') {
+    return <PatientPortalView />;
+  }
+
+  return (
+    <Layout>
+      <ModuleRouter />
+      <PatientLoginModal />
+      <StaffLoginModal />
+    </Layout>
+  );
+};
+
 export const App: React.FC = () => {
   return (
     <ToastProvider>
       <RoleProvider>
-        <Layout>
-          <ModuleRouter />
-        </Layout>
+        <MainAppView />
       </RoleProvider>
     </ToastProvider>
   );

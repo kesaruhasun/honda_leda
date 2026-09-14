@@ -1,77 +1,77 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { UserRole, UserProfile, ModuleId } from '../types';
+import { UserRole, UserProfile, ModuleId, AppViewMode, Patient } from '../types';
 
-export const TEAM_MEMBERS: Record<UserRole, UserProfile> = {
+export const CLINICAL_STAFF: Record<UserRole, UserProfile> = {
   DOCTOR: {
-    id: 'DOC-101',
+    id: 'STF-DOC-101',
     name: 'Dr. Kavinda Rathnayaka',
-    studentName: 'Rathnayaka R. M. K. L. B.',
-    studentId: 'IT25103999',
     role: 'DOCTOR',
-    roleTitle: 'Chief Consultant Cardiologist',
-    department: 'Cardiology',
-    email: 'it25103999@my.sliit.lk',
-    featureBranch: 'feature/doctor-management',
+    roleTitle: 'Consultant Cardiologist',
+    department: 'Cardiology & Cardiovascular Care',
+    email: 'k.rathnayaka@pulseos.health',
   },
   RECEPTIONIST: {
-    id: 'REC-201',
-    name: 'Dila Somarathna',
-    studentName: 'Somarathna P. G. D. S.',
-    studentId: 'IT25103819',
+    id: 'STF-REG-201',
+    name: 'D. Somarathna',
     role: 'RECEPTIONIST',
-    roleTitle: 'Head Patient Registrar',
-    department: 'Outpatient Triage & Admissions',
-    email: 'it25103819@my.sliit.lk',
-    featureBranch: 'feature/patient-management',
+    roleTitle: 'Outpatient Triage Officer',
+    department: 'Patient Admissions & Emergency Triage',
+    email: 'admissions@pulseos.health',
   },
   PHARMACIST: {
-    id: 'PHM-301',
-    name: 'Harshika Udumullage',
-    studentName: 'Udumullage S.H.U.',
-    studentId: 'IT25100826',
+    id: 'STF-PHM-301',
+    name: 'H. Udumullage, BPharm',
     role: 'PHARMACIST',
-    roleTitle: 'Chief Clinical Pharmacist',
-    department: 'Hospital Central Pharmacy',
-    email: 'it25100826@my.sliit.lk',
-    featureBranch: 'feature/inventory-pharmacy',
+    roleTitle: 'Head Pharmacist',
+    department: 'Hospital Central Pharmacy & Therapeutics',
+    email: 'pharmacy@pulseos.health',
   },
   LAB_TECHNICIAN: {
-    id: 'LAB-401',
-    name: 'Nethuli Thilakarathne',
-    studentName: 'Thilakarathne H.S.K.P.N',
-    studentId: 'IT25103363',
+    id: 'STF-LAB-401',
+    name: 'N. Thilakarathne, MLT',
     role: 'LAB_TECHNICIAN',
     roleTitle: 'Senior Pathology Technologist',
     department: 'Clinical Pathology & Diagnostics',
-    email: 'it25103363@my.sliit.lk',
-    featureBranch: 'feature/laboratory-tests',
+    email: 'diagnostics@pulseos.health',
   },
   CASHIER_ADMIN: {
-    id: 'ADM-501',
-    name: 'Kesaru Dhanasinghe',
-    studentName: 'Dhanasinghe K. A. K. H.',
-    studentId: 'IT25103992',
+    id: 'STF-ADM-501',
+    name: 'K. Dhanasinghe',
     role: 'CASHIER_ADMIN',
-    roleTitle: 'Hospital Comptroller & System Admin',
-    department: 'Finance & Hospital Administration',
-    email: 'it25103992@my.sliit.lk',
-    featureBranch: 'feature/billing-payment',
+    roleTitle: 'Hospital Administrator',
+    department: 'Financial Operations & Billing',
+    email: 'administration@pulseos.health',
   },
 };
 
 interface RoleContextType {
+  currentView: AppViewMode;
+  setCurrentView: (view: AppViewMode) => void;
   currentRole: UserRole;
   currentUser: UserProfile;
   setRole: (role: UserRole) => void;
   activeModule: ModuleId;
   setActiveModule: (module: ModuleId) => void;
+  patientSession: Patient | null;
+  setPatientSession: (patient: Patient | null) => void;
+  isStaffLoginModalOpen: boolean;
+  setIsStaffLoginModalOpen: (open: boolean) => void;
+  isPatientLoginModalOpen: boolean;
+  setIsPatientLoginModalOpen: (open: boolean) => void;
+  loginPatient: (patient: Patient) => void;
+  logoutPatient: () => void;
+  logoutStaff: () => void;
 }
 
 const RoleContext = createContext<RoleContextType | undefined>(undefined);
 
 export const RoleProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [currentView, setCurrentView] = useState<AppViewMode>('landing');
   const [currentRole, setCurrentRole] = useState<UserRole>('RECEPTIONIST');
   const [activeModule, setActiveModule] = useState<ModuleId>('patients');
+  const [patientSession, setPatientSession] = useState<Patient | null>(null);
+  const [isStaffLoginModalOpen, setIsStaffLoginModalOpen] = useState(false);
+  const [isPatientLoginModalOpen, setIsPatientLoginModalOpen] = useState(false);
 
   const handleSetRole = (role: UserRole) => {
     setCurrentRole(role);
@@ -94,14 +94,40 @@ export const RoleProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const loginPatient = (patient: Patient) => {
+    setPatientSession(patient);
+    setCurrentView('patient_portal');
+    setIsPatientLoginModalOpen(false);
+  };
+
+  const logoutPatient = () => {
+    setPatientSession(null);
+    setCurrentView('landing');
+  };
+
+  const logoutStaff = () => {
+    setCurrentView('landing');
+  };
+
   return (
     <RoleContext.Provider
       value={{
+        currentView,
+        setCurrentView,
         currentRole,
-        currentUser: TEAM_MEMBERS[currentRole],
+        currentUser: CLINICAL_STAFF[currentRole],
         setRole: handleSetRole,
         activeModule,
         setActiveModule,
+        patientSession,
+        setPatientSession,
+        isStaffLoginModalOpen,
+        setIsStaffLoginModalOpen,
+        isPatientLoginModalOpen,
+        setIsPatientLoginModalOpen,
+        loginPatient,
+        logoutPatient,
+        logoutStaff,
       }}
     >
       {children}
@@ -116,3 +142,6 @@ export const useRole = () => {
   }
   return context;
 };
+
+// Keep backwards-compatible export if needed
+export const TEAM_MEMBERS = CLINICAL_STAFF;

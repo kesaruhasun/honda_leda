@@ -97,7 +97,7 @@ export const PatientView: React.FC = () => {
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold text-clinical-ink tracking-tight">Patient Registry & Triage</h1>
             <span className="text-xs font-mono font-medium px-2 py-0.5 rounded bg-clinical-teal-50 text-clinical-teal-700 border border-clinical-teal-200">
-              M1: Somarathna P.G.D.S. (IT25103819)
+              Inpatient & Outpatient Records
             </span>
           </div>
           <p className="text-xs text-clinical-ink-muted mt-1">
@@ -240,7 +240,7 @@ export const PatientView: React.FC = () => {
         isOpen={isRegisterModalOpen}
         onClose={() => setIsRegisterModalOpen(false)}
         title="Register New Patient Encounter"
-        subtitle="SLIIT PulseOS Outpatient Intake Form"
+        subtitle="PulseOS Hospital Outpatient Intake Form"
         maxWidth="lg"
       >
         <form onSubmit={handleRegister} className="space-y-4">

@@ -40,7 +40,9 @@ Before the evaluators call your group, run this single command in your terminal:
 > "Good morning/afternoon, lecturers and evaluators. We are Group 60 from Batch 02 presenting **PulseOS**, our web-based Hospital Management System developed for SE2030. 
 > 
 > Our architecture follows enterprise multi-tier principles:
-> 1. **Frontend**: React 19 with TypeScript and Tailwind CSS, engineered following Apple Human Interface Guidelines and clinical ergonomics with zero generic templates.
+> 1. **Frontend**: React 19 with TypeScript and Tailwind CSS, engineered following Apple Human Interface Guidelines and clinical ergonomics with zero generic templates. It features dual user experiences:
+>    - **Public Hospital Portal & Patient Self-Service Hub**: where patients can view hospital services, consultant directories, personal medical history, lab test findings with abnormal flags, and settle bills online via PayHere.
+>    - **Clinician & Administrative OS**: delivering focused workstations for Doctors, Registrars, Pharmacists, Lab Technologists, and Cashiers with zero UI clutter.
 > 2. **Backend**: Spring Boot 3.2 on Java 17, implementing clean architectural layering across Entities, JPA Repositories, Services, and REST Controllers.
 > 3. **Database Architecture**: Implements a 27-entity relational schema mirroring our official SE2030 EER diagram with Table-Per-Type inheritance, foreign key cascading, and dual-database compatibility. For this live evaluation, we run on an in-memory MySQL-compatible H2 engine pre-seeded with realistic clinical records, while also providing full MySQL production DDL in `schema.sql`.
 >
