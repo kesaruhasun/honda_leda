@@ -2,6 +2,7 @@ import axios, { AxiosError } from 'axios';
 import {
   Patient,
   Doctor,
+  DoctorSchedule,
   Appointment,
   Drug,
   Prescription,
@@ -12,7 +13,7 @@ import {
 
 const api = axios.create({
   baseURL: '/api/v1',
-  timeout: 10000,
+  timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
     Accept: 'application/json',
@@ -22,9 +23,16 @@ const api = axios.create({
 // Response interceptor for clean error extraction
 api.interceptors.response.use(
   (response) => response,
-  (error: AxiosError<{ message?: string }>) => {
-    const errorMsg = error.response?.data?.message || error.message || 'An unexpected error occurred';
-    return Promise.reject(new Error(errorMsg));
+  (error: AxiosError<{ message?: string; error?: string }>) => {
+    const errorMsg =
+      error.response?.data?.message ||
+      error.response?.data?.error ||
+      error.message ||
+      'An unexpected error occurred';
+    const customError: any = new Error(errorMsg);
+    customError.response = error.response;
+    customError.status = error.response?.status;
+    return Promise.reject(customError);
   }
 );
 
@@ -32,6 +40,7 @@ api.interceptors.response.use(
 export const patientApi = {
   getAll: () => api.get<Patient[]>('/patients'),
   getById: (id: number) => api.get<Patient>(`/patients/${id}`),
+  getByNic: (nic: string) => api.get<Patient>(`/patients/nic/${encodeURIComponent(nic)}`),
   search: (query: string) => api.get<Patient[]>(`/patients/search?q=${encodeURIComponent(query)}`),
   create: (patient: Partial<Patient>) => api.post<Patient>('/patients', patient),
   update: (id: number, patient: Partial<Patient>) => api.put<Patient>(`/patients/${id}`, patient),
@@ -40,8 +49,10 @@ export const patientApi = {
 
 // M2: Doctors API
 export const doctorApi = {
+  create: (data: Partial<Doctor>) => api.post<Doctor>("/doctors", data),
   getAll: () => api.get<Doctor[]>('/doctors'),
   getById: (id: number) => api.get<Doctor>(`/doctors/${id}`),
+  getSchedules: (doctorId: number) => api.get<DoctorSchedule[]>(`/doctors/${doctorId}/schedules`),
   toggleAvailability: (id: number, isAvailable: boolean) =>
     api.patch<Doctor>(`/doctors/${id}/availability`, { isAvailable }),
   updateFee: (id: number, consultationFee: number) =>
@@ -72,6 +83,7 @@ export const pharmacyApi = {
   getDrugs: () => api.get<Drug[]>('/pharmacy/drugs'),
   getLowStock: () => api.get<Drug[]>('/pharmacy/drugs/low-stock'),
   getPrescriptions: () => api.get<Prescription[]>('/pharmacy/prescriptions'),
+  createPrescription: (data: any) => api.post<Prescription>('/pharmacy/prescriptions', data),
   dispensePrescription: (prescriptionId: number) =>
     api.post<Prescription>(`/pharmacy/prescriptions/${prescriptionId}/dispense`),
   addShipment: (drug: Partial<Drug>) => api.post<Drug>('/pharmacy/drugs', drug),
@@ -95,10 +107,29 @@ export const billingApi = {
 // M6: Laboratory API
 export const labApi = {
   getTests: () => api.get<LabTest[]>('/laboratory/tests'),
+  getCatalog: () => api.get<any[]>('/laboratory/catalog'),
+  orderTest: (payload: {
+    patientId: number;
+    doctorId?: number;
+    appointmentId?: number;
+    labTestId?: number;
+    testCatalogId?: number;
+    urgency?: string;
+    clinicalIndication?: string;
+  }) => api.post<LabTest>('/laboratory/tests', payload),
   updateStatus: (testId: number, status: string) =>
     api.patch<LabTest>(`/laboratory/tests/${testId}/status`, { status }),
-  submitResults: (testId: number, payload: { resultData: string; isAbnormal: boolean; technicianNotes?: string }) =>
-    api.post<LabTest>(`/laboratory/tests/${testId}/results`, payload),
+  submitResults: (
+    testId: number,
+    payload: {
+      resultValue?: number;
+      resultData: string;
+      isAbnormal: boolean;
+      clinicalRemarks?: string;
+      technicianNotes?: string;
+    }
+  ) => api.post<LabTest>(`/laboratory/tests/${testId}/results`, payload),
+  deleteTest: (testId: number) => api.delete<void>(`/laboratory/tests/${testId}`),
 };
 
 export default api;

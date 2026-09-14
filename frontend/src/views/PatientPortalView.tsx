@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, Navigate } from 'react-router-dom';
 import {
   Activity,
   CalendarCheck,
@@ -10,6 +11,19 @@ import {
   CreditCard,
   Printer,
   ShieldCheck,
+  Camera,
+  ShoppingBag,
+  Search,
+  CheckCircle2,
+  Upload,
+  Eye,
+  Building2,
+  Check,
+  Clock,
+  MessageSquare,
+  AlertCircle,
+  RefreshCw,
+  Sparkles,
 } from 'lucide-react';
 import { useRole } from '../context/RoleContext';
 import { useToast } from '../context/ToastContext';
@@ -26,15 +40,53 @@ import {
   LabTest,
   Invoice,
   Doctor,
+  Drug,
 } from '../types';
 import { Badge } from '../components/common/Badge';
 import { Modal } from '../components/common/Modal';
+import { AppointmentCalendar } from '../components/appointments/AppointmentCalendar';
+import { DiagnosticReportModal } from '../components/laboratory/DiagnosticReportModal';
+
+const LAB_CATALOG = [
+  { id: 1, testCode: 'LAB-FBC', testName: 'Full Blood Count (FBC) with ESR', category: 'Hematology', standardFee: 1500, sampleType: 'Whole Blood (EDTA)', turnaround: '4 Hours' },
+  { id: 2, testCode: 'LAB-FBS', testName: 'Fasting Blood Sugar (FBS)', category: 'Biochemistry', standardFee: 650, sampleType: 'Fluoride Plasma', turnaround: '2 Hours' },
+  { id: 3, testCode: 'LAB-LIP', testName: 'Lipid Profile Panel (Total, HDL, LDL, Triglycerides)', category: 'Biochemistry', standardFee: 2800, sampleType: 'Serum', turnaround: '6 Hours' },
+  { id: 4, testCode: 'LAB-KFT', testName: 'Serum Creatinine & Renal Function (eGFR)', category: 'Biochemistry', standardFee: 1200, sampleType: 'Serum', turnaround: '4 Hours' },
+  { id: 5, testCode: 'LAB-LFT', testName: 'Liver Function Test (SGPT, SGOT, Bilirubin, Alk Phos)', category: 'Biochemistry', standardFee: 3200, sampleType: 'Serum', turnaround: '6 Hours' },
+  { id: 6, testCode: 'LAB-HBA1C', testName: 'HbA1c Glycated Hemoglobin', category: 'Endocrinology', standardFee: 2200, sampleType: 'Whole Blood', turnaround: '4 Hours' },
+  { id: 7, testCode: 'LAB-TSH', testName: 'Thyroid Stimulating Hormone (TSH Ultrasensitive)', category: 'Endocrinology', standardFee: 2500, sampleType: 'Serum', turnaround: '12 Hours' },
+  { id: 8, testCode: 'LAB-UFR', testName: 'Urine Full Report (UFR) & Microscopy', category: 'Pathology', standardFee: 800, sampleType: 'Midstream Urine', turnaround: '2 Hours' },
+  { id: 9, testCode: 'LAB-DENGUE', testName: 'Dengue NS1 Antigen & Antibody Rapid', category: 'Serology', standardFee: 2900, sampleType: 'Serum / Whole Blood', turnaround: '1 Hour' },
+];
+
+const DEFAULT_FORMULARY_DRUGS: Drug[] = [
+  { id: 101, itemCode: 'DRG-001', brandName: 'Panadol 500mg', genericName: 'Paracetamol', category: 'Analgesics', dosageForm: 'Tablet', strength: '500mg', unitPrice: 8.50, stockQuantity: 450, reorderLevel: 100 },
+  { id: 102, itemCode: 'DRG-002', brandName: 'Augmentin 625mg', genericName: 'Amoxicillin + Clavulanic Acid', category: 'Antibiotics', dosageForm: 'Film-Coated Tablet', strength: '625mg', unitPrice: 185.00, stockQuantity: 120, reorderLevel: 30 },
+  { id: 103, itemCode: 'DRG-003', brandName: 'Lipitor 20mg', genericName: 'Atorvastatin Calcium', category: 'Cardiovascular', dosageForm: 'Tablet', strength: '20mg', unitPrice: 42.00, stockQuantity: 280, reorderLevel: 50 },
+  { id: 104, itemCode: 'DRG-004', brandName: 'Glucophage 500mg', genericName: 'Metformin Hydrochloride', category: 'Antidiabetics', dosageForm: 'Tablet', strength: '500mg', unitPrice: 12.00, stockQuantity: 500, reorderLevel: 100 },
+  { id: 105, itemCode: 'DRG-005', brandName: 'Losec 20mg', genericName: 'Omeprazole', category: 'Gastrointestinal', dosageForm: 'Capsule', strength: '20mg', unitPrice: 28.00, stockQuantity: 340, reorderLevel: 80 },
+  { id: 106, itemCode: 'DRG-006', brandName: 'Ventolin Inhaler', genericName: 'Salbutamol Sulfate', category: 'Respiratory', dosageForm: 'Inhaler', strength: '100mcg/dose', unitPrice: 1250.00, stockQuantity: 65, reorderLevel: 20 },
+  { id: 107, itemCode: 'DRG-007', brandName: 'Zyrtec 10mg', genericName: 'Cetirizine Dihydrochloride', category: 'Antihistamines', dosageForm: 'Tablet', strength: '10mg', unitPrice: 35.00, stockQuantity: 200, reorderLevel: 50 },
+  { id: 108, itemCode: 'DRG-008', brandName: 'Neurobion Forte', genericName: 'Vitamin B1, B6, B12', category: 'Vitamins & Supplements', dosageForm: 'Tablet', strength: 'Triple B', unitPrice: 24.00, stockQuantity: 410, reorderLevel: 75 },
+  { id: 109, itemCode: 'DRG-009', brandName: 'Concor 5mg', genericName: 'Bisoprolol Fumarate', category: 'Cardiovascular', dosageForm: 'Tablet', strength: '5mg', unitPrice: 65.00, stockQuantity: 180, reorderLevel: 40 },
+  { id: 110, itemCode: 'DRG-010', brandName: 'Gaviscon Double Action', genericName: 'Sodium Alginate + Potassium Bicarbonate', category: 'Gastrointestinal', dosageForm: 'Oral Suspension (200ml)', strength: 'Standard', unitPrice: 1450.00, stockQuantity: 80, reorderLevel: 20 },
+];
 
 export const PatientPortalView: React.FC = () => {
-  const { patientSession, logoutPatient, setCurrentView } = useRole();
+  const navigate = useNavigate();
+  const { patientSession, logoutPatient } = useRole();
   const { showToast } = useToast();
 
-  const [activeTab, setActiveTab] = useState<'appointments' | 'prescriptions' | 'lab' | 'billing'>('appointments');
+  const handleSignOut = () => {
+    logoutPatient();
+    navigate('/');
+  };
+
+  if (!patientSession) {
+    return <Navigate to="/patient/login" replace />;
+  }
+
+  const [activeTab, setActiveTab] = useState<'appointments' | 'prescriptions' | 'pharmacy_store' | 'lab' | 'billing'>('appointments');
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [labTests, setLabTests] = useState<LabTest[]>([]);
@@ -42,73 +94,172 @@ export const PatientPortalView: React.FC = () => {
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Avatar Upload State
+  const [patientAvatar, setPatientAvatar] = useState<string | null>(() => {
+    return patientSession ? localStorage.getItem(`patient_avatar_${patientSession.id}`) : null;
+  });
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+
   // Booking Modal State
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
-  const [bookingForm, setBookingForm] = useState({
-    doctorId: '',
-    appointmentDate: new Date().toISOString().split('T')[0],
-    appointmentTime: '09:00',
-    reasonForVisit: '',
-  });
 
   // PayHere Checkout Modal State
   const [payHereModalInvoice, setPayHereModalInvoice] = useState<Invoice | null>(null);
   const [processingPayment, setProcessingPayment] = useState(false);
+  const [payHereTestCardType, setPayHereTestCardType] = useState<'VISA' | 'MASTERCARD' | 'AMEX'>('VISA');
+  const [payHereCardNumber, setPayHereCardNumber] = useState('4916 2175 0161 1292');
+  const [payHereExpiry, setPayHereExpiry] = useState('12/28');
+  const [payHereCvv, setPayHereCvv] = useState('123');
+  const [payHereCardHolder, setPayHereCardHolder] = useState(patientSession ? (patientSession.fullName || `${patientSession.firstName} ${patientSession.lastName}`) : 'A. M. PERERA');
+  const [payHereSimulationOutcome, setPayHereSimulationOutcome] = useState<'SUCCESS' | 'DECLINE_FUNDS' | 'DECLINE_LIMIT'>('SUCCESS');
+  const [payHereErrorMessage, setPayHereErrorMessage] = useState<string | null>(null);
 
   // Selected Invoice for Print / Receipt
   const [selectedReceipt, setSelectedReceipt] = useState<Invoice | null>(null);
 
+  // Pharmacy Store State
+  const [availableDrugs, setAvailableDrugs] = useState<Drug[]>(DEFAULT_FORMULARY_DRUGS);
+  const [pharmacySearch, setPharmacySearch] = useState('');
+  const [selectedDrugCategory, setSelectedDrugCategory] = useState('ALL');
+  const [cart, setCart] = useState<Record<number, number>>({});
+  const [isPharmacyCheckoutOpen, setIsPharmacyCheckoutOpen] = useState(false);
+  const [pharmacyPaymentMethod, setPharmacyPaymentMethod] = useState<'PAYHERE' | 'BANK_RECEIPT' | 'CASH'>('PAYHERE');
+  const [pharmacyReceiptFile, setPharmacyReceiptFile] = useState<string | null>(null);
+  const [deliveryMethod, setDeliveryMethod] = useState<'PICKUP' | 'DELIVERY'>('PICKUP');
+
+  // Lab Test Order State
+  const [isLabOrderModalOpen, setIsLabOrderModalOpen] = useState(false);
+  const [selectedLabTest, setSelectedLabTest] = useState(LAB_CATALOG[0]);
+  const [labUrgency, setLabUrgency] = useState<'ROUTINE' | 'URGENT'>('ROUTINE');
+  const [labIndication, setLabIndication] = useState('');
+  const [labCollectionDate, setLabCollectionDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [labPaymentMethod, setLabPaymentMethod] = useState<'PAYHERE' | 'BANK_RECEIPT'>('PAYHERE');
+  const [labReceiptFile, setLabReceiptFile] = useState<string | null>(null);
+  const [labReceiptRef, setLabReceiptRef] = useState('');
+  const [viewingReceiptImage, setViewingReceiptImage] = useState<string | null>(null);
+  const [notifySms, setNotifySms] = useState(true);
+  const [notificationContact, setNotificationContact] = useState(patientSession ? (patientSession.contactNumber || '') : '');
+  const [selectedReportTest, setSelectedReportTest] = useState<LabTest | null>(null);
+
+  // Helper for dynamic ETA calculation
+  const calculateEstimatedCompletion = (testTurnaround: string, urgency: 'ROUTINE' | 'URGENT', collectionDate?: string) => {
+    const match = testTurnaround.match(/(\d+)\s*Hour/i);
+    let hours = match ? parseInt(match[1], 10) : 4;
+    if (urgency === 'URGENT') {
+      hours = Math.max(1, Math.round(hours / 2));
+    }
+    const baseDate = collectionDate ? new Date(`${collectionDate}T09:00:00`) : new Date();
+    const targetDate = new Date(baseDate.getTime() + hours * 60 * 60 * 1000);
+    const isToday = targetDate.toDateString() === new Date().toDateString();
+    const timeStr = targetDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    if (isToday) {
+      return `Today by ${timeStr} (SLST)`;
+    } else {
+      const dayStr = targetDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      return `${dayStr} by ${timeStr} (SLST)`;
+    }
+  };
+
   useEffect(() => {
     if (!patientSession) {
-      setCurrentView('landing');
       return;
     }
 
     const patientFullName = (patientSession.fullName || `${patientSession.firstName} ${patientSession.lastName}`).toLowerCase();
 
+    // Check for pending cart from Landing page
+    const savedCart = localStorage.getItem('pending_cart');
+    if (savedCart) {
+      try {
+        const parsed = JSON.parse(savedCart);
+        if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
+          setCart(parsed);
+          setActiveTab('pharmacy_store');
+          setIsPharmacyCheckoutOpen(true);
+          showToast('info', 'Cart Restored', 'Your selected medications from the online pharmacy are ready for checkout.');
+        }
+      } catch (e) {
+        console.error('Failed to parse pending cart', e);
+      } finally {
+        localStorage.removeItem('pending_cart');
+      }
+    }
+
+    // Check for pending lab test from Landing page
+    const savedLab = localStorage.getItem('pending_lab_test');
+    if (savedLab) {
+      try {
+        const parsed = JSON.parse(savedLab);
+        if (parsed && (parsed.testCode || parsed.id)) {
+          const match = LAB_CATALOG.find((t) => t.testCode === parsed.testCode || t.id === parsed.id);
+          if (match) {
+            setSelectedLabTest(match);
+          }
+          setActiveTab('lab');
+          setIsLabOrderModalOpen(true);
+          showToast('info', 'Lab Test Selected', `Proceeding with booking for ${parsed.testName || 'diagnostic test'}.`);
+        }
+      } catch (e) {
+        console.error('Failed to parse pending lab test', e);
+      } finally {
+        localStorage.removeItem('pending_lab_test');
+      }
+    }
+
     const loadPatientData = async () => {
       try {
         setLoading(true);
-        const [aptRes, prsRes, labRes, invRes, docRes] = await Promise.all([
-          appointmentApi.getAll(),
-          pharmacyApi.getPrescriptions(),
-          labApi.getTests(),
-          billingApi.getInvoices(),
-          doctorApi.getAll(),
+        const [aptRes, prsRes, labRes, invRes, docRes, drugsRes] = await Promise.all([
+          appointmentApi.getAll().catch(() => ({ data: [] })),
+          pharmacyApi.getPrescriptions().catch(() => ({ data: [] })),
+          labApi.getTests().catch(() => ({ data: [] })),
+          billingApi.getInvoices().catch(() => ({ data: [] })),
+          doctorApi.getAll().catch(() => ({ data: [] })),
+          pharmacyApi.getDrugs().catch(() => ({ data: [] })),
         ]);
 
         // Filter for this patient
-        const myApts = aptRes.data.filter(
+        const myApts = (aptRes.data || []).filter(
           (a) =>
             a.patientId === patientSession.id ||
             a.patientNic === patientSession.nicPassportNo ||
             (a.patientName && a.patientName.toLowerCase().includes(patientFullName))
         );
 
-        const myPrescriptions = prsRes.data.filter(
+        const myPrescriptions = (prsRes.data || []).filter(
           (p) =>
             p.patientId === patientSession.id ||
             (p.patientName && p.patientName.toLowerCase().includes(patientFullName))
         );
 
-        const myLabTests = labRes.data.filter(
+        // Merge backend tests with locally submitted ones
+        const storedLocalTests: LabTest[] = JSON.parse(localStorage.getItem(`local_lab_tests_${patientSession.id}`) || '[]');
+        const backendTests = (labRes.data || []).filter(
           (l) =>
             l.patientId === patientSession.id ||
             (l.patientName && l.patientName.toLowerCase().includes(patientFullName))
         );
+        const combinedTests = [...storedLocalTests, ...backendTests.filter(b => !storedLocalTests.some(s => s.id === b.id))];
 
-        const myInvoices = invRes.data.filter(
+        // Merge backend invoices with locally generated ones
+        const storedLocalInvoices: Invoice[] = JSON.parse(localStorage.getItem(`local_invoices_${patientSession.id}`) || '[]');
+        const backendInvoices = (invRes.data || []).filter(
           (i) =>
             i.patientId === patientSession.id ||
             i.patientNic === patientSession.nicPassportNo ||
             (i.patientName && i.patientName.toLowerCase().includes(patientFullName))
         );
+        const combinedInvoices = [...storedLocalInvoices, ...backendInvoices.filter(b => !storedLocalInvoices.some(s => s.id === b.id))];
 
         setAppointments(myApts);
         setPrescriptions(myPrescriptions);
-        setLabTests(myLabTests);
-        setInvoices(myInvoices);
-        setDoctors(docRes.data);
+        setLabTests(combinedTests);
+        setInvoices(combinedInvoices);
+        setDoctors(docRes.data || []);
+
+        if (drugsRes.data && drugsRes.data.length > 0) {
+          setAvailableDrugs(drugsRes.data);
+        }
       } catch (err: any) {
         showToast('error', 'Error Loading Records', err.message || 'Could not load your medical history.');
       } finally {
@@ -119,47 +270,106 @@ export const PatientPortalView: React.FC = () => {
     loadPatientData();
   }, [patientSession]);
 
-  if (!patientSession) return null;
-
-  // Handle New Booking
-  const handleBookAppointment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!bookingForm.doctorId || !bookingForm.reasonForVisit) {
-      showToast('error', 'Required Fields', 'Please select a doctor and provide a reason for your visit.');
-      return;
-    }
-
-    try {
-      const payload = {
-        patientId: patientSession.id,
-        doctorId: Number(bookingForm.doctorId),
-        appointmentDate: bookingForm.appointmentDate,
-        appointmentTime: bookingForm.appointmentTime,
-        reasonForVisit: bookingForm.reasonForVisit,
+  // Handle Avatar Change
+  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && patientSession) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64 = reader.result as string;
+        setPatientAvatar(base64);
+        localStorage.setItem(`patient_avatar_${patientSession.id}`, base64);
+        showToast('success', 'Profile Photo Updated', 'Your profile picture has been saved.');
       };
+      reader.readAsDataURL(file);
+    }
+  };
 
-      const res = await appointmentApi.create(payload);
-      setAppointments((prev) => [res.data, ...prev]);
-      setIsBookModalOpen(false);
-      showToast('success', 'Appointment Reserved', `Slot confirmed for ${bookingForm.appointmentDate} at ${bookingForm.appointmentTime}`);
-    } catch (err: any) {
-      showToast('error', 'Booking Conflict', err.message || 'That slot is unavailable. Please choose another time.');
+  const handleSelectTestCard = (type: 'VISA' | 'MASTERCARD' | 'AMEX') => {
+    setPayHereTestCardType(type);
+    setPayHereErrorMessage(null);
+    if (type === 'VISA') {
+      setPayHereCardNumber('4916 2175 0161 1292');
+      setPayHereExpiry('12/28');
+      setPayHereCvv('123');
+    } else if (type === 'MASTERCARD') {
+      setPayHereCardNumber('5307 7321 2553 1191');
+      setPayHereExpiry('12/28');
+      setPayHereCvv('456');
+    } else {
+      setPayHereCardNumber('3467 8100 5510 225');
+      setPayHereExpiry('12/28');
+      setPayHereCvv('1234');
     }
   };
 
   // Handle PayHere Simulation
   const handleSimulatePayHerePayment = async (invoice: Invoice) => {
+    setPayHereErrorMessage(null);
+
+    // Check decline simulation scenarios
+    if (payHereSimulationOutcome === 'DECLINE_FUNDS') {
+      setProcessingPayment(true);
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      setProcessingPayment(false);
+      setPayHereErrorMessage('PayHere Error (-2): Insufficient funds in sandbox test account. Transaction declined by card issuer.');
+      showToast('error', 'Payment Declined', 'PayHere code -2: Insufficient funds.');
+      return;
+    }
+
+    if (payHereSimulationOutcome === 'DECLINE_LIMIT') {
+      setProcessingPayment(true);
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      setProcessingPayment(false);
+      setPayHereErrorMessage('PayHere Error (-3): Transaction amount exceeds sandbox credit limit for this test card.');
+      showToast('error', 'Payment Declined', 'PayHere code -3: Card limit exceeded.');
+      return;
+    }
+
     try {
       setProcessingPayment(true);
-      const res = await billingApi.settleCashCard(
-        invoice.id,
-        'CARD',
-        `PAYHERE-SANDBOX-${Date.now()}`
-      );
+      // Realistic network latency for Central Bank 3D Secure 2.0 handshake
+      await new Promise((resolve) => setTimeout(resolve, 1200));
 
-      setInvoices((prev) => prev.map((inv) => (inv.id === invoice.id ? res.data : inv)));
+      let updatedInvoice = invoice;
+
+      try {
+        const res = await billingApi.settleCashCard(
+          invoice.id,
+          'CARD',
+          `PAYHERE-SB-${payHereTestCardType}-${Date.now().toString().slice(-6)}`
+        );
+        updatedInvoice = res.data;
+      } catch (e) {
+        // Fallback for locally staged invoices
+        updatedInvoice = {
+          ...invoice,
+          status: 'PAID',
+          paymentStatus: 'PAID',
+          paymentMethod: `PayHere Sandbox (${payHereTestCardType})`,
+        };
+      }
+
+      setInvoices((prev) => {
+        const updated = prev.map((inv) => (inv.id === invoice.id ? updatedInvoice : inv));
+        localStorage.setItem(`local_invoices_${patientSession.id}`, JSON.stringify(updated));
+        return updated;
+      });
+
+      // Also mark associated lab tests as paid / SAMPLE_COLLECTED if applicable
+      setLabTests((prev) => {
+        const updated = prev.map((lt) => {
+          if (lt.requestNumber === invoice.invoiceNumber || invoice.invoiceNumber.includes(`LAB-${lt.id}`)) {
+            return { ...lt, status: 'SAMPLE_COLLECTED' };
+          }
+          return lt;
+        });
+        localStorage.setItem(`local_lab_tests_${patientSession.id}`, JSON.stringify(updated));
+        return updated;
+      });
+
       setPayHereModalInvoice(null);
-      showToast('success', 'Payment Successful', `Invoice ${invoice.invoiceNumber} paid via PayHere Card Gateway.`);
+      showToast('success', 'Payment Authorized', `Invoice #${invoice.invoiceNumber} paid via PayHere Card Gateway (Central Bank 3D Secure Approved).`);
     } catch (err: any) {
       showToast('error', 'Payment Failed', err.message || 'Payment processing error.');
     } finally {
@@ -167,13 +377,178 @@ export const PatientPortalView: React.FC = () => {
     }
   };
 
+  // Cart Management
+  const updateCartQty = (drugId: number, delta: number) => {
+    setCart((prev) => {
+      const current = prev[drugId] || 0;
+      const next = current + delta;
+      if (next <= 0) {
+        const copy = { ...prev };
+        delete copy[drugId];
+        return copy;
+      }
+      return { ...prev, [drugId]: next };
+    });
+  };
+
+  const totalCartItems = Object.values(cart).reduce((a, b) => a + b, 0);
+  const totalCartPrice = Object.entries(cart).reduce((sum, [id, qty]) => {
+    const drug = availableDrugs.find((d) => d.id === Number(id));
+    return sum + (drug ? drug.unitPrice * qty : 0);
+  }, 0);
+
+  // Pharmacy Order Submission
+  const handlePharmacyOrderSubmit = () => {
+    if (totalCartItems === 0) {
+      showToast('error', 'Cart Empty', 'Please select at least one medication to order.');
+      return;
+    }
+
+    const orderId = `PHARM-${Date.now().toString().slice(-6)}`;
+    const newInvoice: Invoice = {
+      id: Date.now(),
+      invoiceId: Date.now(),
+      invoiceNumber: `INV-${orderId}`,
+      patientId: patientSession.id,
+      patientName: patientSession.fullName || `${patientSession.firstName} ${patientSession.lastName}`,
+      patientNic: patientSession.nicPassportNo,
+      doctorFee: 0,
+      pharmacyFee: totalCartPrice,
+      labFee: 0,
+      pharmacyTotal: totalCartPrice,
+      totalAmount: totalCartPrice,
+      discountAmount: 0,
+      netAmount: totalCartPrice,
+      status: pharmacyPaymentMethod === 'PAYHERE' ? 'PENDING' : pharmacyPaymentMethod === 'BANK_RECEIPT' ? 'VERIFYING' : 'PENDING_CASH',
+      paymentStatus: pharmacyPaymentMethod === 'PAYHERE' ? 'PENDING' : 'PENDING',
+      paymentMethod: pharmacyPaymentMethod === 'PAYHERE' ? 'PayHere Sandbox' : pharmacyPaymentMethod === 'BANK_RECEIPT' ? 'Bank Transfer' : 'Counter Cash',
+      billingDate: new Date().toISOString().split('T')[0],
+      createdAt: new Date().toISOString(),
+    };
+
+    setInvoices((prev) => {
+      const updated = [newInvoice, ...prev];
+      localStorage.setItem(`local_invoices_${patientSession.id}`, JSON.stringify(updated));
+      return updated;
+    });
+
+    // Reset Cart & Close Modal
+    setCart({});
+    setIsPharmacyCheckoutOpen(false);
+
+    if (pharmacyPaymentMethod === 'PAYHERE') {
+      setPayHereModalInvoice(newInvoice);
+      showToast('info', 'Order Placed', 'Proceed to authorize your payment via PayHere Sandbox.');
+    } else if (pharmacyPaymentMethod === 'BANK_RECEIPT') {
+      showToast('success', 'Order Placed with Bank Receipt', 'Your transfer slip has been uploaded for dispensary verification.');
+      setActiveTab('billing');
+    } else {
+      showToast('success', 'Order Placed', 'Your order is ready for collection at the Outpatient Dispensary counter.');
+      setActiveTab('billing');
+    }
+  };
+
+  // Lab Test Request Submission
+  const handleLabOrderSubmit = () => {
+    const testId = Date.now();
+    const reqNumber = `REQ-${testId.toString().slice(-6)}`;
+    const estimatedEta = calculateEstimatedCompletion(selectedLabTest.turnaround, labUrgency, labCollectionDate);
+
+    const newLabTest: LabTest & { 
+      receiptImage?: string; 
+      receiptRef?: string;
+      notifySms?: boolean;
+      notificationPhone?: string;
+      estimatedReadyTime?: string;
+      turnaround?: string;
+    } = {
+      id: testId,
+      testId: testId,
+      requestNumber: reqNumber,
+      testCode: selectedLabTest.testCode,
+      testName: selectedLabTest.testName,
+      category: selectedLabTest.category,
+      sampleType: selectedLabTest.sampleType,
+      standardFee: selectedLabTest.standardFee,
+      urgency: labUrgency,
+      status: 'REQUESTED',
+      clinicalIndication: labIndication || 'Patient initiated screening',
+      patientId: patientSession.id,
+      patientName: patientSession.fullName || `${patientSession.firstName} ${patientSession.lastName}`,
+      doctorId: doctors[0]?.id || 1,
+      doctorName: doctors[0]?.fullName || 'Chief Clinical Pathologist',
+      testDate: labCollectionDate,
+      isAbnormal: false,
+      receiptImage: labReceiptFile || undefined,
+      receiptRef: labReceiptRef || undefined,
+      notifySms: notifySms,
+      notificationPhone: notifySms ? (notificationContact || patientSession.contactNumber) : undefined,
+      estimatedReadyTime: estimatedEta,
+      turnaround: selectedLabTest.turnaround,
+    };
+
+    const newInvoice: Invoice = {
+      id: Date.now() + 1,
+      invoiceId: Date.now() + 1,
+      invoiceNumber: `INV-LAB-${testId.toString().slice(-6)}`,
+      patientId: patientSession.id,
+      patientName: patientSession.fullName || `${patientSession.firstName} ${patientSession.lastName}`,
+      patientNic: patientSession.nicPassportNo,
+      doctorFee: 0,
+      pharmacyFee: 0,
+      labFee: selectedLabTest.standardFee,
+      labTotal: selectedLabTest.standardFee,
+      totalAmount: selectedLabTest.standardFee,
+      discountAmount: 0,
+      netAmount: selectedLabTest.standardFee,
+      status: labPaymentMethod === 'PAYHERE' ? 'PENDING' : 'VERIFYING',
+      paymentStatus: 'PENDING',
+      paymentMethod: labPaymentMethod === 'PAYHERE' ? 'PayHere Sandbox' : 'Bank Transfer',
+      billingDate: new Date().toISOString().split('T')[0],
+      createdAt: new Date().toISOString(),
+    };
+
+    setLabTests((prev) => {
+      const updated = [newLabTest, ...prev];
+      localStorage.setItem(`local_lab_tests_${patientSession.id}`, JSON.stringify(updated));
+      return updated;
+    });
+
+    setInvoices((prev) => {
+      const updated = [newInvoice, ...prev];
+      localStorage.setItem(`local_invoices_${patientSession.id}`, JSON.stringify(updated));
+      return updated;
+    });
+
+    setIsLabOrderModalOpen(false);
+    setLabReceiptFile(null);
+    setLabReceiptRef('');
+
+    if (labPaymentMethod === 'PAYHERE') {
+      setPayHereModalInvoice(newInvoice);
+      showToast('info', 'Lab Test Requested', 'Proceed to authorize payment on PayHere Sandbox.');
+    } else {
+      showToast('success', 'Lab Test Requested', 'Bank transfer receipt submitted. Sample collection scheduled.');
+    }
+  };
+
+  const filteredDrugs = availableDrugs.filter((drug) => {
+    const name = (drug.brandName || drug.drugName || '').toLowerCase();
+    const generic = (drug.genericName || '').toLowerCase();
+    const matchesSearch = name.includes(pharmacySearch.toLowerCase()) || generic.includes(pharmacySearch.toLowerCase());
+    const matchesCategory = selectedDrugCategory === 'ALL' || drug.category === selectedDrugCategory;
+    return matchesSearch && matchesCategory;
+  });
+
+  const drugCategories: string[] = ['ALL', ...Array.from(new Set(availableDrugs.map((d) => d.category).filter((c): c is string => Boolean(c))))];
+
   return (
     <div className="min-h-screen bg-slate-50 text-clinical-ink flex flex-col font-sans">
       {/* Top Header */}
       <header className="liquid-glass sticky top-0 z-30 h-16 w-full px-4 lg:px-8 flex items-center justify-between border-b border-slate-200">
         <div className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-apple-xl bg-clinical-teal-600 flex items-center justify-center text-white shadow-sm">
-            <Activity className="h-5 w-5 stroke-[2.2]" />
+          <div className="h-9 w-9 rounded-xl overflow-hidden bg-white border border-slate-200/80 shadow-xs flex items-center justify-center p-0.5 shrink-0">
+            <img src="/pulseos-logo.jpg" alt="PulseOS Logo" className="h-full w-full object-contain rounded-lg" />
           </div>
           <div>
             <div className="flex items-center gap-2">
@@ -193,7 +568,7 @@ export const PatientPortalView: React.FC = () => {
           </div>
 
           <button
-            onClick={logoutPatient}
+            onClick={handleSignOut}
             className="apple-btn inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-xs font-semibold text-rose-600 transition-colors"
           >
             <LogOut className="h-3.5 w-3.5" />
@@ -204,14 +579,41 @@ export const PatientPortalView: React.FC = () => {
 
       {/* Main Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
-        {/* Patient Identity Banner */}
+        {/* Patient Identity Banner with Avatar Upload */}
         <div className="apple-card p-5 sm:p-6 bg-gradient-to-r from-white via-slate-50 to-clinical-teal-50/30 border border-slate-200/90 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div className="h-14 w-14 rounded-2xl bg-clinical-teal-600 text-white flex items-center justify-center font-bold text-xl shadow-md shadow-clinical-teal-600/20">
-                {patientSession.firstName[0]}
-                {patientSession.lastName ? patientSession.lastName[0] : ''}
+              {/* Profile Avatar with Hover Upload Icon */}
+              <div
+                className="relative group cursor-pointer"
+                onClick={() => avatarInputRef.current?.click()}
+                title="Click to upload/change your profile photo"
+              >
+                {patientAvatar ? (
+                  <img
+                    src={patientAvatar}
+                    alt={patientSession.fullName}
+                    className="h-14 w-14 rounded-2xl object-cover border-2 border-clinical-teal-600 shadow-md"
+                  />
+                ) : (
+                  <div className="h-14 w-14 rounded-2xl bg-clinical-teal-600 text-white flex items-center justify-center font-bold text-xl shadow-md shadow-clinical-teal-600/20">
+                    {patientSession.firstName[0]}
+                    {patientSession.lastName ? patientSession.lastName[0] : ''}
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-black/40 rounded-2xl opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center transition-opacity text-white">
+                  <Camera className="h-4 w-4" />
+                  <span className="text-[8px] font-bold mt-0.5">Edit</span>
+                </div>
+                <input
+                  type="file"
+                  ref={avatarInputRef}
+                  onChange={handleAvatarUpload}
+                  accept="image/*"
+                  className="hidden"
+                />
               </div>
+
               <div>
                 <div className="flex items-center gap-2">
                   <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
@@ -227,7 +629,7 @@ export const PatientPortalView: React.FC = () => {
               </div>
             </div>
 
-            {/* Quick Stats Pill */}
+            {/* Quick Stats Pill & Action */}
             <div className="flex items-center gap-3 flex-wrap">
               <div className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-center">
                 <span className="text-[10px] uppercase font-bold text-slate-400 block">Blood Type</span>
@@ -263,11 +665,20 @@ export const PatientPortalView: React.FC = () => {
             </div>
             <div>
               <span className="text-[10px] text-slate-400 block font-medium">KNOWN ALLERGIES</span>
-              <span className="font-semibold text-rose-600">
-                {patientSession.allergies && patientSession.allergies !== 'None'
-                  ? patientSession.allergies
-                  : 'None Reported'}
-              </span>
+              {patientSession.allergies && patientSession.allergies !== 'None' ? (
+                <div className="flex flex-wrap gap-1 mt-0.5">
+                  {patientSession.allergies.split(',').map((allergy, i) => (
+                    <span
+                      key={i}
+                      className="inline-flex items-center text-[10px] font-semibold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200/80 shadow-2xs"
+                    >
+                      {allergy.trim()}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <span className="font-semibold text-slate-500 text-xs">None Reported</span>
+              )}
             </div>
           </div>
         </div>
@@ -295,7 +706,25 @@ export const PatientPortalView: React.FC = () => {
             }`}
           >
             <Pill className="h-4 w-4" />
-            <span>Medications & Prescriptions ({prescriptions.length})</span>
+            <span>Prescriptions ({prescriptions.length})</span>
+          </button>
+
+          {/* New Tab: Online Pharmacy Store */}
+          <button
+            onClick={() => setActiveTab('pharmacy_store')}
+            className={`apple-btn flex items-center gap-2 px-4 py-2.5 rounded-t-lg text-xs font-semibold border-b-2 transition-all whitespace-nowrap ${
+              activeTab === 'pharmacy_store'
+                ? 'border-clinical-teal-600 text-clinical-teal-700 bg-white shadow-2xs font-bold'
+                : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-100/60'
+            }`}
+          >
+            <ShoppingBag className="h-4 w-4" />
+            <span>Pharmacy Store</span>
+            {totalCartItems > 0 && (
+              <span className="h-4 w-4 rounded-full bg-clinical-teal-600 text-white font-mono text-[9px] flex items-center justify-center font-bold">
+                {totalCartItems}
+              </span>
+            )}
           </button>
 
           <button
@@ -319,7 +748,7 @@ export const PatientPortalView: React.FC = () => {
             }`}
           >
             <Receipt className="h-4 w-4" />
-            <span>Billing & Online Payments ({invoices.length})</span>
+            <span>Billing & Payments ({invoices.length})</span>
           </button>
         </div>
 
@@ -475,12 +904,146 @@ export const PatientPortalView: React.FC = () => {
           </div>
         )}
 
-        {/* Tab 3: Lab Tests Content */}
+        {/* Tab 3: Online Pharmacy Store (New Feature) */}
+        {activeTab === 'pharmacy_store' && (
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-bold text-slate-900">PulseOS Online Hospital Pharmacy</h2>
+                <p className="text-xs text-slate-500">
+                  Order hospital formulary medications online with instant PayHere payment or dispensary collection.
+                </p>
+              </div>
+
+              {totalCartItems > 0 && (
+                <button
+                  onClick={() => setIsPharmacyCheckoutOpen(true)}
+                  className="apple-btn inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-clinical-teal-600 hover:bg-clinical-teal-700 text-white text-xs font-bold shadow-sm transition-all"
+                >
+                  <ShoppingBag className="h-4 w-4" />
+                  <span>
+                    Checkout ({totalCartItems} items &bull; LKR {totalCartPrice.toFixed(2)})
+                  </span>
+                </button>
+              )}
+            </div>
+
+            {/* Pharmacy Search & Category Filter */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 apple-card p-3">
+              <div className="relative w-full sm:w-80">
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search medication by brand, generic name..."
+                  value={pharmacySearch}
+                  onChange={(e) => setPharmacySearch(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg text-clinical-ink focus:outline-none focus:ring-2 focus:ring-clinical-teal-500"
+                />
+              </div>
+
+              <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
+                {drugCategories.map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setSelectedDrugCategory(cat)}
+                    className={`apple-btn px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
+                      selectedDrugCategory === cat
+                        ? 'bg-clinical-teal-600 text-white shadow-2xs'
+                        : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    {cat === 'ALL' ? 'All Medications' : cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Drugs Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredDrugs.map((drug) => {
+                const qtyInCart = cart[drug.id] || 0;
+                const inStock = (drug.stockQuantity || drug.currentStock || 100) > 0;
+
+                return (
+                  <div key={drug.id} className="apple-card p-5 space-y-3 flex flex-col justify-between hover:border-slate-300 transition-all">
+                    <div className="space-y-2">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <span className="text-[10px] font-mono font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
+                            {drug.itemCode || drug.drugCode || `DRG-${drug.id}`}
+                          </span>
+                          <h3 className="font-bold text-sm text-slate-900 mt-1">{drug.brandName || drug.drugName}</h3>
+                          <p className="text-xs text-clinical-teal-700 font-medium italic">{drug.genericName}</p>
+                        </div>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-clinical-teal-50 text-clinical-teal-700 border border-clinical-teal-200">
+                          {drug.category}
+                        </span>
+                      </div>
+
+                      <div className="text-xs text-slate-500 space-y-0.5 font-mono">
+                        <div>Dosage Form: <span className="font-semibold text-slate-700">{drug.dosageForm || 'Oral Tablet'}</span></div>
+                        <div>Strength: <span className="font-semibold text-slate-700">{drug.strength || 'Standard'}</span></div>
+                      </div>
+                    </div>
+
+                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                      <div>
+                        <span className="text-[10px] text-slate-400 block font-semibold">UNIT PRICE</span>
+                        <span className="text-sm font-bold font-mono text-slate-900">
+                          LKR {Number(drug.unitPrice).toFixed(2)}
+                        </span>
+                      </div>
+
+                      {qtyInCart > 0 ? (
+                        <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-lg border border-slate-200">
+                          <button
+                            onClick={() => updateCartQty(drug.id, -1)}
+                            className="h-6 w-6 rounded bg-white font-bold text-xs flex items-center justify-center hover:bg-slate-200"
+                          >
+                            -
+                          </button>
+                          <span className="text-xs font-mono font-bold px-1">{qtyInCart}</span>
+                          <button
+                            onClick={() => updateCartQty(drug.id, 1)}
+                            className="h-6 w-6 rounded bg-white font-bold text-xs flex items-center justify-center hover:bg-slate-200"
+                          >
+                            +
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          disabled={!inStock}
+                          onClick={() => updateCartQty(drug.id, 1)}
+                          className="apple-btn inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-clinical-teal-600 hover:bg-clinical-teal-700 text-white text-xs font-semibold shadow-xs disabled:opacity-50"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                          <span>Add to Order</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Tab 4: Lab Tests Content with Request Test Button */}
         {activeTab === 'lab' && (
           <div className="space-y-4">
-            <div>
-              <h2 className="text-sm font-bold text-slate-900">Diagnostic Pathology & Clinical Tests</h2>
-              <p className="text-xs text-slate-500">Laboratory analyses verified by hospital medical technologists.</p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-bold text-slate-900">Diagnostic Pathology & Clinical Tests</h2>
+                <p className="text-xs text-slate-500">Laboratory analyses verified by hospital medical technologists.</p>
+              </div>
+
+              <button
+                onClick={() => setIsLabOrderModalOpen(true)}
+                className="apple-btn inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-clinical-teal-600 hover:bg-clinical-teal-700 text-white text-xs font-bold shadow-sm transition-all"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>Order Diagnostic Test</span>
+              </button>
             </div>
 
             {labTests.length === 0 ? (
@@ -488,34 +1051,61 @@ export const PatientPortalView: React.FC = () => {
                 <FlaskConical className="h-10 w-10 text-slate-300 mx-auto" />
                 <h3 className="font-bold text-sm text-slate-700">No Diagnostic Tests On Record</h3>
                 <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                  No laboratory orders or pathology reports are currently associated with your file.
+                  No laboratory orders or pathology reports are currently associated with your file. Request a test using the button above.
                 </p>
+                <button
+                  onClick={() => setIsLabOrderModalOpen(true)}
+                  className="apple-btn inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-clinical-teal-600 text-white text-xs font-semibold"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>Request Blood / Lab Test</span>
+                </button>
               </div>
             ) : (
               <div className="space-y-3">
-                {labTests.map((test) => {
+                {labTests.map((test: any) => {
                   const testCode = test.testCode || test.requestNumber || `LAB-${test.id}`;
                   const specimen = test.sampleType || test.specimenType || 'Venous Blood';
                   const isCompleted = test.status === 'COMPLETED';
+                  const matchingInvoice = invoices.find(
+                    (inv) => inv.invoiceNumber === `INV-LAB-${test.id.toString().slice(-6)}` || inv.invoiceNumber === test.requestNumber
+                  );
 
                   return (
                     <div key={test.id} className="apple-card p-5 space-y-3">
-                      <div className="flex items-start justify-between">
+                      <div className="flex items-start justify-between flex-wrap gap-2">
                         <div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-mono font-bold text-xs text-clinical-teal-700">{testCode}</span>
                             <span className="font-bold text-sm text-slate-900">{test.testName}</span>
+                            {test.urgency === 'URGENT' && (
+                              <span className="px-2 py-0.5 rounded bg-amber-50 border border-amber-200 text-amber-700 font-bold text-[10px]">
+                                ⚡ STAT URGENT
+                              </span>
+                            )}
                           </div>
                           <p className="text-xs text-slate-500 mt-0.5">
-                            Ordered by {test.doctorName} &bull; Specimen: {specimen} &bull; Date: {test.testDate}
+                            Ordered by {test.doctorName || 'PulseOS Pathology Lab'} &bull; Specimen: {specimen} &bull; Date: {test.testDate || '2026-09-14'}
                           </p>
                         </div>
-                        <div className="flex items-center gap-2">
+
+                        <div className="flex items-center gap-2 flex-wrap justify-end">
+                          {test.receiptImage && (
+                            <button
+                              onClick={() => setViewingReceiptImage(test.receiptImage)}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-blue-50 border border-blue-200 text-blue-700 font-bold text-[10px] hover:bg-blue-100"
+                            >
+                              <Eye className="h-3 w-3" />
+                              <span>View Receipt</span>
+                            </button>
+                          )}
+
                           {test.isAbnormal && (
                             <span className="px-2 py-0.5 rounded bg-rose-50 border border-rose-200 text-rose-700 font-bold text-[10px]">
                               FLAGGED ABNORMAL
                             </span>
                           )}
+
                           <Badge
                             variant={
                               isCompleted
@@ -530,8 +1120,69 @@ export const PatientPortalView: React.FC = () => {
                         </div>
                       </div>
 
+                      {/* Sample Lifecycle Progress Bar */}
+                      <div className="py-2.5 px-3 rounded-xl bg-slate-50 border border-slate-200/70 space-y-1.5">
+                        <div className="flex items-center justify-between text-[10px] font-bold text-slate-500">
+                          <span className={test.status ? 'text-clinical-teal-800' : ''}>1. Order Received</span>
+                          <span className={test.status === 'COLLECTED' || test.status === 'SAMPLE_COLLECTED' || test.status === 'PROCESSING' || isCompleted ? 'text-clinical-teal-800' : ''}>2. Specimen Collected</span>
+                          <span className={test.status === 'PROCESSING' || isCompleted ? 'text-clinical-teal-800' : ''}>3. In Analyzer</span>
+                          <span className={isCompleted ? 'text-emerald-700 font-extrabold' : ''}>4. Report Certified</span>
+                        </div>
+                        <div className="w-full h-2 bg-slate-200/80 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full transition-all duration-500 ${
+                              isCompleted
+                                ? 'w-full bg-emerald-500'
+                                : test.status === 'PROCESSING'
+                                ? 'w-3/4 bg-indigo-500'
+                                : test.status === 'COLLECTED' || test.status === 'SAMPLE_COLLECTED'
+                                ? 'w-1/2 bg-amber-500'
+                                : 'w-1/4 bg-slate-400'
+                            }`}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Turnaround Time & SMS Alert Badges */}
+                      <div className="flex items-center gap-2 flex-wrap text-xs pt-1 border-t border-slate-100">
+                        {!isCompleted && (
+                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 font-medium text-[11px]">
+                            <Clock className="h-3.5 w-3.5 text-clinical-teal-600" />
+                            <span>
+                              Est. Delivery: <strong>{test.estimatedReadyTime || calculateEstimatedCompletion(test.turnaround || '4 Hours', test.urgency || 'ROUTINE', test.testDate)}</strong>
+                            </span>
+                          </div>
+                        )}
+
+                        {(test.notifySms || test.notificationPhone) && (
+                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-clinical-teal-50 text-clinical-teal-800 font-medium text-[11px] border border-clinical-teal-200/60">
+                            <MessageSquare className="h-3.5 w-3.5 text-clinical-teal-600" />
+                            <span>
+                              SMS/WhatsApp Alert: <strong>{test.notificationPhone || patientSession.contactNumber || 'Active'}</strong>
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Pay with PayHere button if pending and matching invoice not paid */}
+                        {matchingInvoice && matchingInvoice.status !== 'PAID' && (
+                          <button
+                            onClick={() => setPayHereModalInvoice(matchingInvoice)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] shadow-xs transition-colors ml-auto"
+                          >
+                            <CreditCard className="h-3.5 w-3.5" />
+                            <span>Pay LKR {Number(matchingInvoice.totalAmount).toFixed(2)} (PayHere)</span>
+                          </button>
+                        )}
+                      </div>
+
+                      {test.clinicalIndication && (
+                        <div className="text-xs text-slate-600 italic">
+                          Indication: "{test.clinicalIndication}"
+                        </div>
+                      )}
+
                       {isCompleted && (
-                        <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 text-xs space-y-2">
+                        <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 text-xs space-y-3">
                           <div className="grid grid-cols-2 gap-4">
                             <div>
                               <span className="text-[10px] text-slate-400 block font-semibold">QUANTITATIVE RESULT</span>
@@ -549,6 +1200,19 @@ export const PatientPortalView: React.FC = () => {
                               Technologist Notes: {test.technicianNotes}
                             </p>
                           )}
+                          <div className="pt-2 border-t border-slate-200/70 flex items-center justify-between flex-wrap gap-2">
+                            <div className="text-[11px] text-emerald-700 font-semibold flex items-center gap-1.5">
+                              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                              <span>Verified by Senior Technologist &bull; ISO 15189 Accredited</span>
+                            </div>
+                            <button
+                              onClick={() => setSelectedReportTest(test)}
+                              className="apple-btn inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-clinical-teal-600 hover:bg-clinical-teal-700 text-white font-bold text-xs shadow-xs transition-colors"
+                            >
+                              <Printer className="h-3.5 w-3.5" />
+                              <span>View & Download Official Report</span>
+                            </button>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -559,7 +1223,7 @@ export const PatientPortalView: React.FC = () => {
           </div>
         )}
 
-        {/* Tab 4: Billing & PayHere Content */}
+        {/* Tab 5: Billing & Payments Content */}
         {activeTab === 'billing' && (
           <div className="space-y-4">
             <div>
@@ -574,7 +1238,7 @@ export const PatientPortalView: React.FC = () => {
                 <Receipt className="h-10 w-10 text-slate-300 mx-auto" />
                 <h3 className="font-bold text-sm text-slate-700">No Invoices Issued</h3>
                 <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                  All your past encounters are fully settled. New invoices will appear here following doctor consultations or lab tests.
+                  All your past encounters are fully settled. New invoices will appear here following doctor consultations, pharmacy orders, or lab tests.
                 </p>
               </div>
             ) : (
@@ -585,7 +1249,7 @@ export const PatientPortalView: React.FC = () => {
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="font-mono font-bold text-sm text-slate-900">{inv.invoiceNumber}</span>
-                          <Badge variant={inv.status === 'PAID' ? 'success' : 'emergency'}>
+                          <Badge variant={inv.status === 'PAID' ? 'success' : inv.status === 'VERIFYING' ? 'warning' : 'emergency'}>
                             {inv.status}
                           </Badge>
                         </div>
@@ -659,127 +1323,717 @@ export const PatientPortalView: React.FC = () => {
         onClose={() => setIsBookModalOpen(false)}
         title="Schedule Outpatient Consultation"
         subtitle="Select your consultant physician and preferred consultation slot."
-        maxWidth="md"
+        maxWidth="5xl"
       >
-        <form onSubmit={handleBookAppointment} className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold text-clinical-ink mb-1">Attending Physician *</label>
-            <select
-              value={bookingForm.doctorId}
-              onChange={(e) => setBookingForm({ ...bookingForm, doctorId: e.target.value })}
-              required
-              className="w-full text-xs font-semibold p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-clinical-ink focus:ring-2 focus:ring-clinical-teal-500"
-            >
-              <option value="">Select Consultant Doctor</option>
-              {doctors.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.fullName || `Dr. ${d.firstName} ${d.lastName}`} — {d.specialization} (Fee: LKR {d.consultationFee})
-                </option>
-              ))}
-            </select>
-          </div>
+        <AppointmentCalendar 
+          doctors={doctors}
+          onConfirm={async (doctorId, date, time, reason) => {
+            try {
+              await appointmentApi.create({
+                patientId: Number(patientSession!.id),
+                doctorId: Number(doctorId),
+                appointmentDate: date,
+                appointmentTime: time,
+                reasonForVisit: reason,
+              });
+              
+              showToast('success', 'Success', 'Appointment booked successfully!');
+              setIsBookModalOpen(false);
+              window.location.reload();
+            } catch (error: any) {
+              if (error.response?.status === 409) {
+                showToast('error', 'Error', 'Time slot is already booked. Please select another slot.');
+              } else {
+                showToast('error', 'Error', 'Failed to book appointment.');
+              }
+            }
+          }}
+        />
+      </Modal>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-clinical-ink mb-1">Date *</label>
-              <input
-                type="date"
-                required
-                value={bookingForm.appointmentDate}
-                onChange={(e) => setBookingForm({ ...bookingForm, appointmentDate: e.target.value })}
-                className="w-full text-xs font-mono p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-clinical-teal-500"
-              />
+      {/* Pharmacy Checkout Modal */}
+      {isPharmacyCheckoutOpen && (
+        <Modal
+          isOpen={true}
+          onClose={() => setIsPharmacyCheckoutOpen(false)}
+          title="Medication Checkout & Order Review"
+          subtitle="Confirm your pharmacy items and select payment method."
+          maxWidth="lg"
+        >
+          <div className="space-y-4 text-xs">
+            {/* Selected Items */}
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2 max-h-48 overflow-y-auto">
+              {Object.entries(cart).map(([drugId, qty]) => {
+                const drug = availableDrugs.find((d) => d.id === Number(drugId));
+                if (!drug) return null;
+                const subtotal = drug.unitPrice * qty;
+
+                return (
+                  <div key={drugId} className="flex items-center justify-between pb-2 border-b border-slate-200/60 last:border-0 last:pb-0">
+                    <div>
+                      <div className="font-bold text-slate-900">{drug.brandName || drug.drugName}</div>
+                      <div className="text-[10px] text-slate-400 font-mono">
+                        {drug.strength} &bull; Qty: {qty} &times; LKR {drug.unitPrice.toFixed(2)}
+                      </div>
+                    </div>
+                    <span className="font-bold font-mono text-slate-900">LKR {subtotal.toFixed(2)}</span>
+                  </div>
+                );
+              })}
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-clinical-ink mb-1">Time Slot *</label>
-              <select
-                value={bookingForm.appointmentTime}
-                onChange={(e) => setBookingForm({ ...bookingForm, appointmentTime: e.target.value })}
-                className="w-full text-xs font-mono p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-clinical-teal-500"
+
+            {/* Total */}
+            <div className="flex items-center justify-between p-3 rounded-xl bg-clinical-teal-50 border border-clinical-teal-200">
+              <span className="font-bold text-clinical-teal-900 text-sm">Order Total Payable:</span>
+              <span className="text-base font-bold font-mono text-clinical-teal-900">
+                LKR {totalCartPrice.toFixed(2)}
+              </span>
+            </div>
+
+            {/* Delivery Option */}
+            <div className="space-y-1.5">
+              <label className="font-bold text-slate-700 block text-[11px]">Collection / Delivery Method</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDeliveryMethod('PICKUP')}
+                  className={`p-2.5 rounded-lg border text-left font-medium transition-all ${
+                    deliveryMethod === 'PICKUP'
+                      ? 'border-clinical-teal-600 bg-clinical-teal-50 text-clinical-teal-900 font-bold'
+                      : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  <Building2 className="h-4 w-4 mb-1 text-clinical-teal-600" />
+                  <span className="block text-xs">Dispensary Pickup</span>
+                  <span className="text-[10px] text-slate-400 block">PulseOS Main Counter</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setDeliveryMethod('DELIVERY')}
+                  className={`p-2.5 rounded-lg border text-left font-medium transition-all ${
+                    deliveryMethod === 'DELIVERY'
+                      ? 'border-clinical-teal-600 bg-clinical-teal-50 text-clinical-teal-900 font-bold'
+                      : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  <Activity className="h-4 w-4 mb-1 text-clinical-teal-600" />
+                  <span className="block text-xs">Express Home Delivery</span>
+                  <span className="text-[10px] text-slate-400 block">Deliver to patient address</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Payment Method */}
+            <div className="space-y-1.5">
+              <label className="font-bold text-slate-700 block text-[11px]">Payment Option</label>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPharmacyPaymentMethod('PAYHERE')}
+                  className={`p-2.5 rounded-lg border text-left font-medium transition-all ${
+                    pharmacyPaymentMethod === 'PAYHERE'
+                      ? 'border-clinical-teal-600 bg-clinical-teal-50 text-clinical-teal-900 font-bold'
+                      : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  <CreditCard className="h-4 w-4 mb-1 text-clinical-teal-600" />
+                  <span className="block text-[11px]">PayHere Online</span>
+                  <span className="text-[9px] text-slate-400 block">Card (Sandbox)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPharmacyPaymentMethod('BANK_RECEIPT')}
+                  className={`p-2.5 rounded-lg border text-left font-medium transition-all ${
+                    pharmacyPaymentMethod === 'BANK_RECEIPT'
+                      ? 'border-clinical-teal-600 bg-clinical-teal-50 text-clinical-teal-900 font-bold'
+                      : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  <Upload className="h-4 w-4 mb-1 text-clinical-teal-600" />
+                  <span className="block text-[11px]">Bank Slip</span>
+                  <span className="text-[9px] text-slate-400 block">Upload Receipt</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPharmacyPaymentMethod('CASH')}
+                  className={`p-2.5 rounded-lg border text-left font-medium transition-all ${
+                    pharmacyPaymentMethod === 'CASH'
+                      ? 'border-clinical-teal-600 bg-clinical-teal-50 text-clinical-teal-900 font-bold'
+                      : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  <Building2 className="h-4 w-4 mb-1 text-clinical-teal-600" />
+                  <span className="block text-[11px]">Pay at Counter</span>
+                  <span className="text-[9px] text-slate-400 block">Cash / Card</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Bank Transfer Details & File Upload if BANK_RECEIPT */}
+            {pharmacyPaymentMethod === 'BANK_RECEIPT' && (
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
+                <div className="font-semibold text-slate-800">Hospital Account Details:</div>
+                <div className="p-2 rounded bg-white border border-slate-200 font-mono text-[11px] space-y-0.5">
+                  <div>Bank: Commercial Bank of Ceylon PLC</div>
+                  <div>Account: PulseOS Medical Healthcare Services</div>
+                  <div>Acc No: 8009 2819 0293 &bull; Branch: Colombo City</div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-bold text-slate-500">UPLOAD PAYMENT RECEIPT / SCREENSHOT</label>
+                  <input
+                    type="file"
+                    accept="image/*,.pdf"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => setPharmacyReceiptFile(reader.result as string);
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                    className="w-full text-xs text-slate-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-clinical-teal-50 file:text-clinical-teal-700 hover:file:bg-clinical-teal-100"
+                  />
+                  {pharmacyReceiptFile && (
+                    <div className="flex items-center gap-2 mt-1 p-1 bg-emerald-50 rounded border border-emerald-200 text-emerald-800 text-[10px]">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                      <span>Receipt Attached & Ready for Verification</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="pt-3 flex justify-end gap-2 border-t border-slate-200">
+              <button
+                type="button"
+                onClick={() => setIsPharmacyCheckoutOpen(false)}
+                className="apple-btn px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg"
               >
-                <option value="08:30">08:30 AM</option>
-                <option value="09:00">09:00 AM</option>
-                <option value="09:30">09:30 AM</option>
-                <option value="10:00">10:00 AM</option>
-                <option value="10:30">10:30 AM</option>
-                <option value="11:00">11:00 AM</option>
-                <option value="14:00">02:00 PM</option>
-                <option value="14:30">02:30 PM</option>
-                <option value="15:00">03:00 PM</option>
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handlePharmacyOrderSubmit}
+                className="apple-btn px-5 py-2.5 rounded-lg bg-clinical-teal-600 hover:bg-clinical-teal-700 text-white font-bold text-xs shadow-md transition-all flex items-center gap-1.5"
+              >
+                <Check className="h-4 w-4" />
+                <span>Place Medication Order</span>
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Lab Order Modal (New Feature) */}
+      {isLabOrderModalOpen && (
+        <Modal
+          isOpen={true}
+          onClose={() => setIsLabOrderModalOpen(false)}
+          title="Order Diagnostic Laboratory Test"
+          subtitle="Choose diagnostic panel, preferred date, and payment method."
+          maxWidth="lg"
+        >
+          <div className="space-y-4 text-xs">
+            {/* Test Selection */}
+            <div className="space-y-1.5">
+              <label className="font-bold text-slate-700 block text-[11px]">Select Diagnostic Investigation</label>
+              <select
+                value={selectedLabTest.id}
+                onChange={(e) => {
+                  const found = LAB_CATALOG.find((t) => t.id === Number(e.target.value));
+                  if (found) setSelectedLabTest(found);
+                }}
+                className="w-full p-2.5 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-medium focus:ring-2 focus:ring-clinical-teal-500"
+              >
+                {LAB_CATALOG.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.testCode} - {t.testName} (LKR {t.standardFee.toFixed(2)})
+                  </option>
+                ))}
               </select>
             </div>
-          </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-clinical-ink mb-1">Reason for Visit *</label>
-            <textarea
-              required
-              rows={3}
-              value={bookingForm.reasonForVisit}
-              onChange={(e) => setBookingForm({ ...bookingForm, reasonForVisit: e.target.value })}
-              placeholder="Describe your symptoms or review purpose..."
-              className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-clinical-teal-500"
-            />
-          </div>
+            {/* Test Details Card */}
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1 text-xs">
+              <div className="flex justify-between items-center">
+                <span className="font-bold text-slate-800">{selectedLabTest.testName}</span>
+                <span className="font-mono font-bold text-clinical-teal-700">
+                  LKR {selectedLabTest.standardFee.toFixed(2)}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-500 pt-1">
+                <div>Sample: <span className="font-semibold text-slate-700">{selectedLabTest.sampleType}</span></div>
+                <div>Turnaround: <span className="font-semibold text-slate-700">{selectedLabTest.turnaround}</span></div>
+              </div>
+            </div>
 
-          <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => setIsBookModalOpen(false)}
-              className="apple-btn px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="apple-btn px-4 py-2 text-xs font-semibold bg-clinical-teal-600 text-white rounded-lg hover:bg-clinical-teal-700 shadow-sm"
-            >
-              Confirm Reservation
-            </button>
+            {/* Urgency & Date */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700 block text-[11px]">Urgency</label>
+                <select
+                  value={labUrgency}
+                  onChange={(e) => setLabUrgency(e.target.value as any)}
+                  className="w-full p-2 text-xs bg-slate-50 border border-slate-200 rounded-lg"
+                >
+                  <option value="ROUTINE">Routine (Standard)</option>
+                  <option value="URGENT">Stat / Urgent (Fast Track)</option>
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700 block text-[11px]">Sample Collection Date</label>
+                <input
+                  type="date"
+                  value={labCollectionDate}
+                  onChange={(e) => setLabCollectionDate(e.target.value)}
+                  className="w-full p-2 text-xs bg-slate-50 border border-slate-200 rounded-lg"
+                />
+              </div>
+            </div>
+
+            {/* Dynamic Estimated Report Time & SMS Alerts */}
+            <div className="p-3 rounded-xl bg-clinical-teal-50/70 border border-clinical-teal-200/80 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <Clock className="h-4 w-4 text-clinical-teal-700" />
+                  <span className="font-bold text-xs text-clinical-teal-950">Estimated Report Delivery</span>
+                </div>
+                <span className="px-2 py-0.5 rounded-full bg-clinical-teal-200/60 text-clinical-teal-900 font-mono text-[10px] font-bold">
+                  {labUrgency === 'URGENT' ? '⚡ FAST-TRACK STAT' : 'STANDARD OPD'}
+                </span>
+              </div>
+              <div className="text-sm font-bold text-clinical-teal-900 pl-5">
+                {calculateEstimatedCompletion(selectedLabTest.turnaround, labUrgency, labCollectionDate)}
+              </div>
+              <p className="text-[11px] text-clinical-teal-800 pl-5">
+                Calculated from specimen intake with {selectedLabTest.turnaround} lab incubation {labUrgency === 'URGENT' ? '(expedited priority)' : ''}.
+              </p>
+
+              {/* SMS Alert checkbox */}
+              <div className="pt-2 border-t border-clinical-teal-200/60 pl-5 space-y-2">
+                <label className="flex items-start gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={notifySms}
+                    onChange={(e) => setNotifySms(e.target.checked)}
+                    className="mt-0.5 rounded border-clinical-teal-300 text-clinical-teal-600 focus:ring-clinical-teal-500"
+                  />
+                  <div>
+                    <span className="text-xs font-semibold text-clinical-teal-950 block">
+                      Send Real-time SMS & WhatsApp Alerts
+                    </span>
+                    <span className="text-[11px] text-clinical-teal-800 block">
+                      Instant notifications for sample collection, lab analysis progress, and PDF report release.
+                    </span>
+                  </div>
+                </label>
+
+                {notifySms && (
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-[11px] font-semibold text-clinical-teal-900 shrink-0">Mobile Number:</span>
+                    <input
+                      type="tel"
+                      value={notificationContact}
+                      onChange={(e) => setNotificationContact(e.target.value)}
+                      placeholder="e.g. 077 123 4567"
+                      className="w-full max-w-xs p-1.5 text-xs bg-white border border-clinical-teal-300 rounded-md focus:ring-1 focus:ring-clinical-teal-500 font-mono"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Indication / Notes */}
+            <div className="space-y-1">
+              <label className="font-bold text-slate-700 block text-[11px]">Clinical Indication / Symptoms</label>
+              <input
+                type="text"
+                placeholder="e.g. Annual screening, doctor requested fasting check"
+                value={labIndication}
+                onChange={(e) => setLabIndication(e.target.value)}
+                className="w-full p-2 text-xs bg-slate-50 border border-slate-200 rounded-lg"
+              />
+            </div>
+
+            {/* Payment Method Selector */}
+            <div className="space-y-1.5">
+              <label className="font-bold text-slate-700 block text-[11px]">Payment Method</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setLabPaymentMethod('PAYHERE')}
+                  className={`p-2.5 rounded-lg border text-left font-medium transition-all ${
+                    labPaymentMethod === 'PAYHERE'
+                      ? 'border-clinical-teal-600 bg-clinical-teal-50 text-clinical-teal-900 font-bold'
+                      : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  <CreditCard className="h-4 w-4 mb-1 text-clinical-teal-600" />
+                  <span className="block text-xs">PayHere Online</span>
+                  <span className="text-[10px] text-slate-400 block">Instant Card Checkout</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setLabPaymentMethod('BANK_RECEIPT')}
+                  className={`p-2.5 rounded-lg border text-left font-medium transition-all ${
+                    labPaymentMethod === 'BANK_RECEIPT'
+                      ? 'border-clinical-teal-600 bg-clinical-teal-50 text-clinical-teal-900 font-bold'
+                      : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  <Upload className="h-4 w-4 mb-1 text-clinical-teal-600" />
+                  <span className="block text-xs">Bank Transfer</span>
+                  <span className="text-[10px] text-slate-400 block">Upload Deposit Receipt</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Bank Transfer Receipt Upload Section */}
+            {labPaymentMethod === 'BANK_RECEIPT' && (
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
+                <div className="font-semibold text-slate-800">Hospital Bank Details:</div>
+                <div className="p-2 rounded bg-white border border-slate-200 font-mono text-[11px] space-y-0.5">
+                  <div>Bank: Commercial Bank of Ceylon PLC</div>
+                  <div>Account: PulseOS Diagnostics & Pathology Ltd</div>
+                  <div>Acc No: 8009 2819 0293 &bull; Branch: Colombo City</div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-bold text-slate-500">UPLOAD TRANSFER RECEIPT / SLIP</label>
+                  <input
+                    type="file"
+                    accept="image/*,.pdf"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => setLabReceiptFile(reader.result as string);
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                    className="w-full text-xs text-slate-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-clinical-teal-50 file:text-clinical-teal-700 hover:file:bg-clinical-teal-100"
+                  />
+                  {labReceiptFile && (
+                    <div className="flex items-center gap-2 mt-1 p-1 bg-emerald-50 rounded border border-emerald-200 text-emerald-800 text-[10px]">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                      <span>Receipt Attached & Ready for Submission</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-bold text-slate-500">TRANSFER REFERENCE NUMBER (OPTIONAL)</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. TXN982183921"
+                    value={labReceiptRef}
+                    onChange={(e) => setLabReceiptRef(e.target.value)}
+                    className="w-full p-2 text-xs bg-white border border-slate-200 rounded-lg"
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="pt-3 flex justify-end gap-2 border-t border-slate-200">
+              <button
+                type="button"
+                onClick={() => setIsLabOrderModalOpen(false)}
+                className="apple-btn px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleLabOrderSubmit}
+                className="apple-btn px-5 py-2.5 rounded-lg bg-clinical-teal-600 hover:bg-clinical-teal-700 text-white font-bold text-xs shadow-md transition-all flex items-center gap-1.5"
+              >
+                <Check className="h-4 w-4" />
+                <span>Confirm Lab Request</span>
+              </button>
+            </div>
           </div>
-        </form>
-      </Modal>
+        </Modal>
+      )}
+
+      {/* View Uploaded Receipt Modal */}
+      {viewingReceiptImage && (
+        <Modal
+          isOpen={true}
+          onClose={() => setViewingReceiptImage(null)}
+          title="Bank Transfer Receipt"
+          subtitle="Attached verification document for clinical investigation"
+          maxWidth="md"
+        >
+          <div className="space-y-3">
+            <div className="rounded-xl overflow-hidden border border-slate-200 bg-slate-950 flex items-center justify-center p-2">
+              <img
+                src={viewingReceiptImage}
+                alt="Bank Receipt"
+                className="max-h-96 w-auto object-contain rounded"
+              />
+            </div>
+            <div className="flex justify-end">
+              <button
+                onClick={() => setViewingReceiptImage(null)}
+                className="apple-btn px-4 py-2 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg"
+              >
+                Close Viewer
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {/* PayHere Checkout Modal */}
       {payHereModalInvoice && (
         <Modal
           isOpen={true}
-          onClose={() => setPayHereModalInvoice(null)}
+          onClose={() => {
+            setPayHereModalInvoice(null);
+            setPayHereErrorMessage(null);
+          }}
           title="PayHere Sandbox Payment Gateway"
-          subtitle={`Secured Checkout for Invoice #${payHereModalInvoice.invoiceNumber}`}
-          maxWidth="md"
+          subtitle={`Central Bank Authorized 3D-Secure Checkout for Invoice #${payHereModalInvoice.invoiceNumber}`}
+          maxWidth="lg"
         >
           <div className="space-y-4 text-xs">
-            <div className="p-4 rounded-xl bg-slate-900 text-white space-y-3">
+            {/* Merchant & Order Header */}
+            <div className="p-4 rounded-xl bg-slate-900 text-white space-y-3 relative overflow-hidden">
               <div className="flex items-center justify-between">
-                <span className="text-slate-400 font-mono text-[10px]">PAYHERE CHECKOUT (LK)</span>
-                <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono text-[10px] font-bold">
+                <div className="flex items-center gap-2">
+                  <div className="h-7 w-7 rounded-lg bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center font-bold text-[11px] text-emerald-400 font-mono">
+                    PH
+                  </div>
+                  <div>
+                    <span className="font-mono text-xs font-bold tracking-tight text-white block">PAYHERE SECURE SANDBOX</span>
+                    <span className="text-[10px] text-slate-400 font-mono">App: hoda_leda &bull; ID: 4OVzEYZKfse4JH5F6UZLZU3PS</span>
+                  </div>
+                </div>
+                <span className="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 font-mono text-[10px] font-bold border border-emerald-500/30 flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
                   SANDBOX MODE
                 </span>
               </div>
-              <div>
-                <span className="text-slate-400 text-[11px] block">Payable Total</span>
-                <span className="text-2xl font-bold font-mono text-white">
-                  LKR {Number(payHereModalInvoice.totalAmount).toLocaleString('en-LK', { minimumFractionDigits: 2 })}
+
+              <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800">
+                <div>
+                  <span className="text-slate-400 text-[10px] block font-mono">PAYABLE AMOUNT</span>
+                  <span className="text-2xl font-bold font-mono text-emerald-400">
+                    LKR {Number(payHereModalInvoice.totalAmount).toLocaleString('en-LK', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+                <div className="text-right font-mono text-[11px] text-slate-300">
+                  <span className="text-slate-500 text-[10px] block font-sans">INVOICE NUMBER</span>
+                  <span className="font-bold text-white">#{payHereModalInvoice.invoiceNumber}</span>
+                  <span className="block text-[10px] text-slate-400 mt-0.5">{patientSession.fullName}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* PayHere Test Cards Preset Selector */}
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-slate-800 text-[11px] flex items-center gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5 text-clinical-teal-600" />
+                  Official PayHere Sandbox Test Cards
                 </span>
+                <span className="text-[10px] text-slate-500 font-medium">Click card to auto-fill</span>
               </div>
-              <div className="text-[11px] text-slate-400 pt-2 border-t border-slate-800">
-                Patient: <span className="text-white font-semibold">{patientSession.fullName}</span> &bull; NIC: {patientSession.nicPassportNo}
+
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleSelectTestCard('VISA')}
+                  className={`p-2.5 rounded-lg border text-left transition-all flex flex-col justify-between ${
+                    payHereTestCardType === 'VISA'
+                      ? 'border-blue-600 bg-blue-50/70 shadow-xs'
+                      : 'border-slate-200 bg-white hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-blue-700 text-xs">Visa Test</span>
+                    <span className="text-[9px] px-1 rounded bg-blue-100 text-blue-800 font-mono font-bold">READY</span>
+                  </div>
+                  <span className="font-mono text-[10px] text-slate-600 mt-1">4916 •••• •••• 1292</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSelectTestCard('MASTERCARD')}
+                  className={`p-2.5 rounded-lg border text-left transition-all flex flex-col justify-between ${
+                    payHereTestCardType === 'MASTERCARD'
+                      ? 'border-amber-600 bg-amber-50/70 shadow-xs'
+                      : 'border-slate-200 bg-white hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-amber-700 text-xs">MasterCard</span>
+                    <span className="text-[9px] px-1 rounded bg-amber-100 text-amber-800 font-mono font-bold">READY</span>
+                  </div>
+                  <span className="font-mono text-[10px] text-slate-600 mt-1">5307 •••• •••• 1191</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSelectTestCard('AMEX')}
+                  className={`p-2.5 rounded-lg border text-left transition-all flex flex-col justify-between ${
+                    payHereTestCardType === 'AMEX'
+                      ? 'border-cyan-600 bg-cyan-50/70 shadow-xs'
+                      : 'border-slate-200 bg-white hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-cyan-700 text-xs">Amex Test</span>
+                    <span className="text-[9px] px-1 rounded bg-cyan-100 text-cyan-800 font-mono font-bold">READY</span>
+                  </div>
+                  <span className="font-mono text-[10px] text-slate-600 mt-1">3467 •••• ••• 0225</span>
+                </button>
               </div>
             </div>
 
-            <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] space-y-1">
-              <div className="font-semibold flex items-center gap-1.5">
-                <ShieldCheck className="h-4 w-4 text-emerald-600" />
-                <span>Central Bank of Sri Lanka Authorized Gateway</span>
+            {/* Test Simulation Scenario Selection */}
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+              <label className="font-bold text-slate-700 block text-[11px]">
+                Simulate Gateway Gateway Authorization Result
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPayHereSimulationOutcome('SUCCESS');
+                    setPayHereErrorMessage(null);
+                  }}
+                  className={`p-2 rounded-lg border text-center text-xs font-semibold transition-all ${
+                    payHereSimulationOutcome === 'SUCCESS'
+                      ? 'border-emerald-600 bg-emerald-50 text-emerald-800 font-bold'
+                      : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  ✓ Approved (2)
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPayHereSimulationOutcome('DECLINE_FUNDS');
+                    setPayHereErrorMessage(null);
+                  }}
+                  className={`p-2 rounded-lg border text-center text-xs font-semibold transition-all ${
+                    payHereSimulationOutcome === 'DECLINE_FUNDS'
+                      ? 'border-rose-600 bg-rose-50 text-rose-800 font-bold'
+                      : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  ⚠️ Insufficient (-2)
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPayHereSimulationOutcome('DECLINE_LIMIT');
+                    setPayHereErrorMessage(null);
+                  }}
+                  className={`p-2 rounded-lg border text-center text-xs font-semibold transition-all ${
+                    payHereSimulationOutcome === 'DECLINE_LIMIT'
+                      ? 'border-rose-600 bg-rose-50 text-rose-800 font-bold'
+                      : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  ❌ Limit Exceeded (-3)
+                </button>
               </div>
-              <p>Simulating sandbox test transaction via PayHere merchant hash verification.</p>
             </div>
 
-            <div className="pt-2 flex justify-end gap-2">
+            {/* Interactive Card Inputs */}
+            <div className="space-y-3 p-4 rounded-xl border border-slate-200 bg-white">
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-700 block">CARD NUMBER</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={payHereCardNumber}
+                    onChange={(e) => setPayHereCardNumber(e.target.value)}
+                    className="w-full p-2.5 font-mono text-sm bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:ring-2 focus:ring-clinical-teal-500 tracking-wider font-semibold"
+                    placeholder="4916 2175 0161 1292"
+                  />
+                  <div className="absolute right-3 top-2.5">
+                    <CreditCard className="h-5 w-5 text-clinical-teal-600" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-700 block">EXPIRATION (MM/YY)</label>
+                  <input
+                    type="text"
+                    value={payHereExpiry}
+                    onChange={(e) => setPayHereExpiry(e.target.value)}
+                    className="w-full p-2.5 font-mono text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-semibold"
+                    placeholder="12/28"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-700 block">CVV / CVC</label>
+                  <input
+                    type="password"
+                    maxLength={4}
+                    value={payHereCvv}
+                    onChange={(e) => setPayHereCvv(e.target.value)}
+                    className="w-full p-2.5 font-mono text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-semibold tracking-widest"
+                    placeholder="123"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-700 block">CARDHOLDER NAME</label>
+                <input
+                  type="text"
+                  value={payHereCardHolder}
+                  onChange={(e) => setPayHereCardHolder(e.target.value)}
+                  className="w-full p-2.5 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-900 uppercase font-semibold"
+                  placeholder="A. M. PERERA"
+                />
+              </div>
+            </div>
+
+            {/* Error Message if simulated decline */}
+            {payHereErrorMessage && (
+              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2.5">
+                <AlertCircle className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
+                <div>
+                  <div className="font-bold">Transaction Declined</div>
+                  <p className="text-[11px] mt-0.5">{payHereErrorMessage}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Sandbox Notice & CBSL security */}
+            <div className="p-3 rounded-xl bg-emerald-50/80 border border-emerald-200 text-emerald-800 text-[11px] flex items-start gap-2">
+              <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+              <div className="space-y-0.5">
+                <div className="font-semibold">Central Bank of Sri Lanka 3D-Secure 2.0 Compliance</div>
+                <p className="text-emerald-700">
+                  PayHere sandbox mode authenticated with order MD5 hash verification. In Merchant Portal, Allowed Domains is configured to <code className="font-mono text-[10px] bg-emerald-100/80 px-1 py-0.5 rounded font-bold">*</code> for local testing (localhost:5173).
+                </p>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="pt-2 flex justify-end gap-2 border-t border-slate-200">
               <button
                 type="button"
-                onClick={() => setPayHereModalInvoice(null)}
+                onClick={() => {
+                  setPayHereModalInvoice(null);
+                  setPayHereErrorMessage(null);
+                }}
                 className="apple-btn px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg"
               >
                 Cancel
@@ -790,8 +2044,17 @@ export const PatientPortalView: React.FC = () => {
                 onClick={() => handleSimulatePayHerePayment(payHereModalInvoice)}
                 className="apple-btn px-5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md transition-all flex items-center gap-2 disabled:opacity-50"
               >
-                <CreditCard className="h-4 w-4" />
-                <span>{processingPayment ? 'Authorizing Card...' : 'Authorize LKR Payment'}</span>
+                {processingPayment ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    <span>Verifying 3D-Secure...</span>
+                  </>
+                ) : (
+                  <>
+                    <CreditCard className="h-4 w-4" />
+                    <span>Authorize LKR {Number(payHereModalInvoice.totalAmount).toLocaleString('en-LK', { minimumFractionDigits: 2 })}</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
@@ -876,7 +2139,16 @@ export const PatientPortalView: React.FC = () => {
           </div>
         </Modal>
       )}
+
+      {/* Diagnostic Pathology Report Modal */}
+      {selectedReportTest && (
+        <DiagnosticReportModal
+          test={selectedReportTest}
+          onClose={() => setSelectedReportTest(null)}
+        />
+      )}
     </div>
   );
 };
+
 export default PatientPortalView;

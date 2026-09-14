@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Activity, Database, Clock, ExternalLink, ShieldCheck, Globe, LogOut } from 'lucide-react';
+import { useNavigate } from "react-router-dom";
+import { Clock, ShieldCheck, Globe, LogOut } from 'lucide-react';
 import { useRole } from '../../context/RoleContext';
 
 export const Navbar: React.FC = () => {
-  const { currentUser, setCurrentView, logoutStaff } = useRole();
+  const navigate = useNavigate();
+  const { currentUser, logoutStaff } = useRole();
   const [currentTime, setCurrentTime] = useState<string>('');
 
   useEffect(() => {
@@ -33,12 +35,12 @@ export const Navbar: React.FC = () => {
       {/* Left: Brand & Facility Indicator */}
       <div className="flex items-center gap-3">
         <button
-          onClick={() => setCurrentView('landing')}
+          onClick={() => navigate("/")}
           className="flex items-center gap-3 text-left focus:outline-none group"
           title="Return to Public Hospital Site"
         >
-          <div className="h-10 w-10 rounded-apple-xl bg-clinical-teal-600 flex items-center justify-center text-white shadow-sm shadow-clinical-teal-600/20 group-hover:scale-105 transition-transform">
-            <Activity className="h-6 w-6 stroke-[2.2]" />
+          <div className="h-10 w-10 rounded-xl overflow-hidden bg-white border border-slate-200/80 shadow-xs flex items-center justify-center p-0.5 group-hover:scale-105 transition-transform">
+            <img src="/pulseos-logo.jpg" alt="PulseOS Logo" className="h-full w-full object-contain rounded-lg" />
           </div>
           <div>
             <div className="flex items-center gap-2">
@@ -62,30 +64,14 @@ export const Navbar: React.FC = () => {
       <div className="flex items-center gap-2.5 sm:gap-3">
         {/* Public Website Button */}
         <button
-          onClick={() => setCurrentView('landing')}
+          onClick={() => navigate("/")}
           className="apple-btn hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 hover:text-slate-900 text-xs font-semibold shadow-2xs"
           title="View Public Hospital Landing Page"
         >
           <Globe className="h-3.5 w-3.5 text-slate-500" />
-          <span>Public Portal</span>
-        </button>
 
-        {/* H2 Live Console Direct Link */}
-        <a
-          href="http://localhost:8080/h2-console"
-          target="_blank"
-          rel="noopener noreferrer"
-          title="Open Embedded H2 Live SQL Web Console"
-          className="apple-btn flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 text-xs font-semibold"
-        >
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-          </span>
-          <Database className="h-3.5 w-3.5 text-emerald-600" />
-          <span className="hidden lg:inline">Live SQL Console</span>
-          <ExternalLink className="h-3 w-3 opacity-60" />
-        </a>
+          <span className="hidden lg:inline">Public Portal</span>
+        </button>
 
         {/* Current Clinician Pill */}
         <div className="flex items-center gap-2.5 pl-2 border-l border-slate-200">
@@ -111,7 +97,7 @@ export const Navbar: React.FC = () => {
           </div>
 
           <button
-            onClick={logoutStaff}
+            onClick={() => { logoutStaff(); navigate("/", { replace: true }); }}
             className="apple-btn p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors ml-1"
             title="Sign Out to Public Portal"
           >

@@ -247,7 +247,12 @@ export interface LabTest {
   unit?: string;
   remarks?: string;
   isAbnormal?: boolean;
+  clinicalIndication?: string;
+  receiptImage?: string;
+  receiptRef?: string;
   technicianNotes?: string;
+  technicianName?: string;
+  conductionDate?: string;
   verifiedBy?: string;
   verifiedAt?: string;
 }
@@ -261,4 +266,38 @@ export interface ToastNotification {
   title: string;
   message: string;
   duration?: number;
+}
+
+// M7: Doctor Schedule & Rostering
+export interface DoctorSchedule {
+  id: number;
+  doctorId: number;
+  dayOfWeek: string;
+  startTime: string;
+  endTime: string;
+  maxPatients?: number;
+  slotDurationMinutes?: number;
+  isActive?: boolean;
+}
+
+// M8: Authentication & Security
+export interface AuthResponse {
+  token: string;
+  type: string;
+  id: number;
+  username: string;
+  role: string;
+  firstName: string;
+  lastName: string;
+  department?: string;
+}
+
+export interface CurrentUserResponse {
+  id: number;
+  username: string;
+  role: string;
+  firstName: string;
+  lastName: string;
+  doctorId?: number;
+  patientId?: number;
 }

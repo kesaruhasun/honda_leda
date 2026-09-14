@@ -211,13 +211,20 @@ export const PatientView: React.FC = () => {
                       <span>{patient.emergencyContactPhone} ({patient.emergencyContactRelationship})</span>
                     </div>
                   </td>
-                  <td className="py-3 px-4">
+                  <td className="py-3 px-4 max-w-[220px]">
                     {patient.allergies && patient.allergies !== 'None' ? (
-                      <span className="text-rose-600 font-semibold bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">
-                        {patient.allergies}
-                      </span>
+                      <div className="flex flex-wrap gap-1">
+                        {patient.allergies.split(',').map((allergy, i) => (
+                          <span
+                            key={i}
+                            className="inline-flex items-center text-[10px] text-rose-700 font-semibold bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200/80 shadow-2xs"
+                          >
+                            {allergy.trim()}
+                          </span>
+                        ))}
+                      </div>
                     ) : (
-                      <span className="text-slate-400">None</span>
+                      <span className="text-slate-400 text-xs">None</span>
                     )}
                   </td>
                   <td className="py-3 px-4 text-right">
@@ -407,9 +414,22 @@ export const PatientView: React.FC = () => {
               </div>
             </div>
 
-            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-900">
-              <span className="font-bold block text-[11px] mb-0.5">Clinical Allergies & Warnings:</span>
-              <p>{selectedPatient.allergies || 'No known allergies reported.'}</p>
+            <div className="p-3.5 rounded-apple-xl bg-rose-50 border border-rose-200 text-rose-900">
+              <span className="font-bold block text-[11px] uppercase tracking-wider mb-1">Clinical Allergies & Warnings:</span>
+              {selectedPatient.allergies && selectedPatient.allergies !== 'None' ? (
+                <div className="flex flex-wrap gap-1.5 mt-1">
+                  {selectedPatient.allergies.split(',').map((allergy, i) => (
+                    <span
+                      key={i}
+                      className="inline-flex items-center text-xs font-semibold text-rose-800 bg-white px-2 py-0.5 rounded-md border border-rose-300 shadow-2xs"
+                    >
+                      ⚠️ {allergy.trim()}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-rose-700">No known allergies reported.</p>
+              )}
             </div>
 
             <div className="flex justify-end pt-2">

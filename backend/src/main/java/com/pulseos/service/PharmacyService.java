@@ -2,7 +2,10 @@ package com.pulseos.service;
 
 import com.pulseos.common.exception.PulseException;
 import com.pulseos.dto.PharmacyDTOs.*;
+import com.pulseos.entity.Appointment;
+import com.pulseos.entity.Doctor;
 import com.pulseos.entity.Drug;
+import com.pulseos.entity.Patient;
 import com.pulseos.entity.Prescription;
 import com.pulseos.entity.PrescriptionItem;
 import com.pulseos.repository.*;
@@ -25,6 +28,9 @@ public class PharmacyService {
     private final PrescriptionRepository prescriptionRepository;
     private final PrescriptionItemRepository prescriptionItemRepository;
     private final DrugDispensationRepository drugDispensationRepository;
+    private final DoctorRepository doctorRepository;
+    private final PatientRepository patientRepository;
+    private final AppointmentRepository appointmentRepository;
 
     @Transactional(readOnly = true)
     public List<DrugResponse> getAllDrugs() {
@@ -76,6 +82,66 @@ public class PharmacyService {
         Drug saved = drugRepository.save(drug);
         log.info("Added drug: ID={}, Name={}", saved.getDrugId(), saved.getDrugName());
         return toDrugResponse(saved);
+    }
+
+    @Transactional
+    public PrescriptionResponse createPrescription(PrescriptionRequest req) {
+        Doctor doctor = null;
+        if (req.getDoctorId() != null) {
+            doctor = doctorRepository.findById(req.getDoctorId()).orElse(null);
+        }
+        if (doctor == null) {
+            doctor = doctorRepository.findAll().stream().findFirst()
+                    .orElseThrow(() -> PulseException.notFound("No registered doctor found"));
+        }
+
+        Patient patient = null;
+        if (req.getPatientId() != null) {
+            patient = patientRepository.findById(req.getPatientId()).orElse(null);
+        }
+        if (patient == null) {
+            throw PulseException.badRequest("Validation Error", "Patient is required for prescription");
+        }
+
+        Appointment appointment = null;
+        if (req.getAppointmentId() != null) {
+            appointment = appointmentRepository.findById(req.getAppointmentId()).orElse(null);
+        }
+
+        Prescription rx = new Prescription();
+        rx.setDoctor(doctor);
+        rx.setPatient(patient);
+        rx.setAppointment(appointment);
+        rx.setPrescriptionDate(java.time.LocalDateTime.now());
+        rx.setDoctorInstructions(req.getResolvedNotes() != null ? req.getResolvedNotes() : "Follow physician dosage instructions.");
+        rx.setPrescriptionNumber("RX-" + System.currentTimeMillis());
+        rx.setStatus("PENDING");
+
+        Prescription saved = prescriptionRepository.saveAndFlush(rx);
+
+        if (req.getItems() != null && !req.getItems().isEmpty()) {
+            for (PrescriptionItemRequest ir : req.getItems()) {
+                Drug drug = drugRepository.findById(ir.getDrugId())
+                        .orElseThrow(() -> PulseException.notFound("Drug not found with ID: " + ir.getDrugId()));
+                com.pulseos.entity.PrescriptionItemId itemId = new com.pulseos.entity.PrescriptionItemId(saved.getPrescriptionId(), drug.getDrugId());
+                PrescriptionItem item = new PrescriptionItem(
+                        itemId,
+                        saved,
+                        drug,
+                        ir.getDosage() != null ? ir.getDosage() : (drug.getStrength() != null ? drug.getStrength() : "1 tablet"),
+                        ir.getResolvedFrequency(),
+                        ir.getDurationDays() != null ? ir.getDurationDays() : 5,
+                        ir.getResolvedPrescribedQuantity(),
+                        false
+                );
+                item.setInstructions(ir.getInstructions() != null ? ir.getInstructions() : "Take with water");
+                prescriptionItemRepository.save(item);
+            }
+        }
+
+        Prescription reloaded = prescriptionRepository.findById(saved.getPrescriptionId()).orElse(saved);
+        log.info("Created new prescription: ID={}, Number={}, Patient={}", reloaded.getPrescriptionId(), reloaded.getPrescriptionNumber(), patient.getFullName());
+        return toPrescriptionResponse(reloaded);
     }
 
     @Transactional(readOnly = true)

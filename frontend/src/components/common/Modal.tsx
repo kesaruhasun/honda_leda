@@ -7,7 +7,7 @@ interface ModalProps {
   title: string;
   subtitle?: string;
   children: ReactNode;
-  maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
+  maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl' | '6xl' | 'full';
 }
 
 export const Modal: React.FC<ModalProps> = ({
@@ -34,32 +34,37 @@ export const Modal: React.FC<ModalProps> = ({
 
   if (!isOpen) return null;
 
-  const widthStyles = {
+  const widthStyles: Record<string, string> = {
     sm: 'max-w-sm',
     md: 'max-w-md',
     lg: 'max-w-lg',
     xl: 'max-w-xl',
     '2xl': 'max-w-2xl',
+    '3xl': 'max-w-3xl',
+    '4xl': 'max-w-4xl',
+    '5xl': 'max-w-5xl',
+    '6xl': 'max-w-6xl',
+    full: 'max-w-[95vw] lg:max-w-6xl',
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm transition-opacity">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-slate-900/50 backdrop-blur-sm transition-opacity overflow-y-auto">
       <div
-        className={`w-full ${widthStyles[maxWidth]} bg-white rounded-apple-2xl border border-slate-200/80 shadow-apple-modal overflow-hidden animate-in fade-in zoom-in-95 duration-150`}
+        className={`w-full ${widthStyles[maxWidth] || 'max-w-md'} bg-white rounded-apple-2xl border border-slate-200/80 shadow-apple-modal overflow-hidden animate-in fade-in zoom-in-95 duration-150 my-auto`}
       >
-        <div className="flex items-center justify-between p-4 border-b border-slate-100">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-slate-100 bg-white sticky top-0 z-10">
           <div>
-            <h3 className="text-sm font-bold text-clinical-ink tracking-tight">{title}</h3>
-            {subtitle && <p className="text-[11px] text-clinical-ink-muted mt-0.5">{subtitle}</p>}
+            <h3 className="text-sm sm:text-base font-bold text-clinical-ink tracking-tight">{title}</h3>
+            {subtitle && <p className="text-xs text-clinical-ink-muted mt-0.5">{subtitle}</p>}
           </div>
           <button
             onClick={onClose}
-            className="apple-btn p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+            className="apple-btn p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
           >
-            <X className="h-4 w-4" />
+            <X className="h-4 w-4 sm:h-5 sm:w-5" />
           </button>
         </div>
-        <div className="p-4 max-h-[80vh] overflow-y-auto custom-scrollbar">
+        <div className="p-4 sm:p-6 max-h-[85vh] overflow-y-auto custom-scrollbar">
           {children}
         </div>
       </div>

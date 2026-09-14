@@ -38,6 +38,7 @@ public class DataSeeder implements CommandLineRunner {
     private final PrescriptionItemRepository prescriptionItemRepository;
     private final DrugDispensationRepository drugDispensationRepository;
     private final LabTestRepository labTestRepository;
+    private final LabTestCatalogRepository labTestCatalogRepository;
     private final InvoiceRepository invoiceRepository;
     private final InvoiceDrugItemRepository invoiceDrugItemRepository;
     private final InvoiceLabItemRepository invoiceLabItemRepository;
@@ -275,7 +276,15 @@ public class DataSeeder implements CommandLineRunner {
                 LocalDate.of(2001, 5, 19), Gender.FEMALE, BloodGroup.O_POSITIVE, TriagePriority.EMERGENCY, "None",
                 "+94782345678", "Sirisena Dissanayake", "Father", "+94789012345");
 
-        List<Patient> patients = Arrays.asList(p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12);
+        // Dedicated Demo Patient (NIC: 199012345678 / password) for instant evaluation login
+        Patient pDemo = createPatient("199012345678", "Kasun", "Perera", "No. 45, Temple Road", "Colombo 07", "00700",
+                LocalDate.of(1990, 5, 12), Gender.MALE, BloodGroup.O_POSITIVE, TriagePriority.ROUTINE, "None",
+                "+94771234567", "Nimal Perera", "Brother", "+94779876543");
+        pDemo.setEmail("demo.patient@pulseos.lk");
+        pDemo.setPassword("password");
+        pDemo.setMedicalNotes("Regular outpatient baseline consultation record.");
+
+        List<Patient> patients = Arrays.asList(p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, pDemo);
         patientRepository.saveAll(patients);
 
         // 5. Patient Admissions (2 Active Admissions)
@@ -380,26 +389,81 @@ public class DataSeeder implements CommandLineRunner {
                 rx2, metformin, "500mg", "Twice daily with meals", 30, 60, false);
         prescriptionItemRepository.saveAll(Arrays.asList(item3, item4));
 
-        // 10. Lab Tests
+        // 10. Lab Test Catalog
+        LabTestCatalog cat1 = new LabTestCatalog(null, "LAB-FBC", "Full Blood Count (FBC) with ESR", "Hematology", new BigDecimal("1500.00"), "Whole Blood (EDTA)", 4.5, 11.0, "10^3/uL");
+        LabTestCatalog cat2 = new LabTestCatalog(null, "LAB-FBS", "Fasting Blood Sugar (FBS)", "Biochemistry", new BigDecimal("650.00"), "Fluoride Plasma", 70.0, 99.0, "mg/dL");
+        LabTestCatalog cat3 = new LabTestCatalog(null, "LAB-LIP", "Lipid Profile Panel (Total, HDL, LDL, Triglycerides)", "Biochemistry", new BigDecimal("2800.00"), "Serum", 100.0, 199.0, "mg/dL");
+        LabTestCatalog cat4 = new LabTestCatalog(null, "LAB-KFT", "Serum Creatinine & Renal Profile (eGFR)", "Biochemistry", new BigDecimal("1200.00"), "Serum", 0.7, 1.2, "mg/dL");
+        LabTestCatalog cat5 = new LabTestCatalog(null, "LAB-LFT", "Liver Function Test (SGPT, SGOT, Bilirubin)", "Biochemistry", new BigDecimal("3200.00"), "Serum", 7.0, 56.0, "U/L");
+        LabTestCatalog cat6 = new LabTestCatalog(null, "LAB-HBA1C", "HbA1c Glycated Hemoglobin", "Endocrinology", new BigDecimal("2200.00"), "Whole Blood", 4.0, 5.6, "%");
+        LabTestCatalog cat7 = new LabTestCatalog(null, "LAB-TSH", "Thyroid Stimulating Hormone (TSH)", "Endocrinology", new BigDecimal("2500.00"), "Serum", 0.4, 4.0, "uIU/mL");
+        LabTestCatalog cat8 = new LabTestCatalog(null, "LAB-UFR", "Urine Full Report (UFR) & Microscopy", "Pathology", new BigDecimal("800.00"), "Midstream Urine", 0.0, 5.0, "HPF");
+        LabTestCatalog cat9 = new LabTestCatalog(null, "LAB-DENGUE", "Dengue NS1 Antigen & Antibody Rapid", "Serology", new BigDecimal("2900.00"), "Serum / Whole Blood", 0.0, 0.9, "Index");
+        labTestCatalogRepository.saveAll(Arrays.asList(cat1, cat2, cat3, cat4, cat5, cat6, cat7, cat8, cat9));
+
+        // 11. Lab Tests
         LabTest test1 = new LabTest(null, apt1, p1, docKavinda, "Routine lipid monitoring", techNethuli,
-                LocalDateTime.now().minusHours(1), "Lipid Profile", "Biochemistry", new BigDecimal("2200.00"),
+                LocalDateTime.now().minusHours(1), "Lipid Profile Panel", "Biochemistry", new BigDecimal("2800.00"),
                 today, "Total Cholesterol: 185 mg/dL, HDL: 48 mg/dL, LDL: 110 mg/dL, Triglycerides: 135 mg/dL",
                 "Total < 200 mg/dL, LDL < 130 mg/dL, HDL > 40 mg/dL", LabTestStatus.COMPLETED);
+        test1.setTestCode("LAB-LIP");
+        test1.setSampleType("Serum (Gold Top SST)");
+        test1.setRequestNumber("REQ-2026-1001");
+        test1.setResultValue(185.0);
+        test1.setUnit("mg/dL");
+        test1.setFlag("NORMAL");
+        test1.setRemarks("Normal lipid profile. Triglycerides well within desirable limits.");
 
-        LabTest test2 = new LabTest(null, apt2, p2, docKavinda, "Suspected Type 2 Diabetes", techNethuli,
+        LabTest test2 = new LabTest(null, apt2, p2, docKavinda, "Suspected Type 2 Diabetes & metabolic check", techNethuli,
                 null, "Fasting Blood Sugar (FBS)", "Biochemistry", new BigDecimal("650.00"),
                 today, null, "70 - 99 mg/dL", LabTestStatus.SAMPLE_COLLECTED);
+        test2.setTestCode("LAB-FBS");
+        test2.setSampleType("Fluoride Plasma (Grey Top)");
+        test2.setRequestNumber("REQ-2026-1002");
+        test2.setUnit("mg/dL");
 
-        LabTest test3 = new LabTest(null, apt3, p3, docKavinda, "Pre-operative screening", null,
-                null, "Full Blood Count (FBC)", "Hematology", new BigDecimal("1200.00"),
+        LabTest test3 = new LabTest(null, apt3, p3, docKavinda, "Pre-operative screening workup", null,
+                null, "Full Blood Count (FBC) with ESR", "Hematology", new BigDecimal("1500.00"),
                 today.plusDays(1), null, "WBC: 4.5-11.0, Hb: 13.5-17.5 g/dL", LabTestStatus.REQUESTED);
+        test3.setTestCode("LAB-FBC");
+        test3.setSampleType("Whole Blood (EDTA Lavender Top)");
+        test3.setRequestNumber("REQ-2026-1003");
+        test3.setUnit("10^3/uL");
 
-        LabTest test4 = new LabTest(null, apt5, p5, docKavinda, "Electrolyte evaluation", techNethuli,
-                LocalDateTime.now().minusDays(1), "Serum Creatinine & Electrolytes", "Biochemistry", new BigDecimal("1800.00"),
-                today.minusDays(1), "Serum Creatinine: 0.9 mg/dL, Sodium: 138 mmol/L, Potassium: 4.2 mmol/L",
-                "Creatinine: 0.7 - 1.2 mg/dL, Na: 135 - 145 mmol/L, K: 3.5 - 5.0 mmol/L", LabTestStatus.COMPLETED);
+        LabTest test4 = new LabTest(null, apt5, p5, docKavinda, "Electrolyte and renal evaluation", techNethuli,
+                LocalDateTime.now().minusDays(1), "Serum Creatinine & Renal Profile", "Biochemistry", new BigDecimal("1200.00"),
+                today.minusDays(1), "Serum Creatinine: 0.9 mg/dL, eGFR: 98 mL/min/1.73m²",
+                "Creatinine: 0.7 - 1.2 mg/dL, eGFR > 90", LabTestStatus.COMPLETED);
+        test4.setTestCode("LAB-KFT");
+        test4.setSampleType("Serum (Gold Top SST)");
+        test4.setRequestNumber("REQ-2026-1004");
+        test4.setResultValue(0.9);
+        test4.setUnit("mg/dL");
+        test4.setFlag("NORMAL");
+        test4.setRemarks("Normal renal parameters. Preserved filtration capacity.");
 
-        labTestRepository.saveAll(Arrays.asList(test1, test2, test3, test4));
+        // Demo Patient tests (Kasun Perera - NIC 199012345678)
+        LabTest testDemoCompleted = new LabTest(null, null, pDemo, docKavinda, "Annual executive cardiovascular wellness screening", techNethuli,
+                LocalDateTime.now().minusHours(2), "Lipid Profile Panel (Total, HDL, LDL, Triglycerides)", "Biochemistry", new BigDecimal("2800.00"),
+                today, "Total Cholesterol: 192 mg/dL, HDL: 52 mg/dL, LDL: 114 mg/dL, Triglycerides: 130 mg/dL",
+                "Total < 200 mg/dL, LDL < 130 mg/dL, HDL > 40 mg/dL", LabTestStatus.COMPLETED);
+        testDemoCompleted.setTestCode("LAB-LIP");
+        testDemoCompleted.setSampleType("Serum (Gold Top SST)");
+        testDemoCompleted.setRequestNumber("REQ-2026-9091");
+        testDemoCompleted.setResultValue(192.0);
+        testDemoCompleted.setUnit("mg/dL");
+        testDemoCompleted.setFlag("NORMAL");
+        testDemoCompleted.setRemarks("Cardiac risk factors within normal clinical range. Annual review recommended.");
+
+        LabTest testDemoProcessing = new LabTest(null, null, pDemo, docKavinda, "Routine baseline hematology survey", techNethuli,
+                null, "Full Blood Count (FBC) with ESR", "Hematology", new BigDecimal("1500.00"),
+                today, null, "WBC: 4.5-11.0, Hb: 13.5-17.5 g/dL", LabTestStatus.PROCESSING);
+        testDemoProcessing.setTestCode("LAB-FBC");
+        testDemoProcessing.setSampleType("Whole Blood (EDTA Lavender Top)");
+        testDemoProcessing.setRequestNumber("REQ-2026-9092");
+        testDemoProcessing.setUnit("10^3/uL");
+
+        labTestRepository.saveAll(Arrays.asList(test1, test2, test3, test4, testDemoCompleted, testDemoProcessing));
 
         // 11. Invoices & Payments
         // Invoice 1: Settled encounter for Nimal Perera (Doctor 3500 + Drugs 2190 + Lab 2200 = LKR 7,890.00)
@@ -474,6 +538,7 @@ public class DataSeeder implements CommandLineRunner {
         p.setRegistrationDate(LocalDate.now().minusDays(new Random().nextInt(30)));
         p.setTriagePriority(triage);
         p.setAllergies(allergies);
+        p.setPassword("password");
         p.setIsArchived(false);
         p.setEmergencyContactName(emgName);
         p.setEmergencyContactRelation(emgRel);

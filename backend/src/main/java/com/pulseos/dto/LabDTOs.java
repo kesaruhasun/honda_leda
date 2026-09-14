@@ -90,8 +90,13 @@ public class LabDTOs {
         private String resultData;
         private String flag;
         private String referenceRange;
+        private String testCode;
+        private String sampleType;
+        private String specimenType;
         private String unit;
         private String remarks;
+        private String technicianName;
+        private String conductionDate;
         private Boolean isAbnormal;
         private BigDecimal standardFee;
         private String testDate;

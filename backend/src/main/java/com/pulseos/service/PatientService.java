@@ -137,6 +137,7 @@ public class PatientService {
         patient.setEmergencyContactPhone(req.getEmergencyContactPhone() != null ? req.getEmergencyContactPhone() : "N/A");
         patient.setEmergencyContactRelation(req.getEmergencyContactRelationship() != null ? req.getEmergencyContactRelationship() : "N/A");
         patient.setMedicalNotes(req.getMedicalNotes() != null ? req.getMedicalNotes() : "");
+        patient.setPassword(req.getPassword() != null && !req.getPassword().isBlank() ? req.getPassword().trim() : "password");
         patient.setRegistrationDate(LocalDate.now());
         patient.setIsArchived(false);
 

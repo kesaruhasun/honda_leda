@@ -59,3 +59,27 @@ Integrity mode: demo
 - [ ] PayHere Sandbox modal triggers and processes payment, transitioning status to PAID.
 - [ ] Git log confirms commits from all 6 team members across their respective feature branches.
 - [ ] Victory Auditor conducts full end-to-end verification against the SE2030 marking rubric.
+
+## 2026-09-14T11:01:20Z
+
+This is a single self-contained fix; keep it small and focused.
+Conduct a comprehensive codebase audit to identify missing UI integrations (like password handling) and implement strict production-level Role-Based Access Control (RBAC) where Doctors only see their own patients/schedules, while Admins see everything.
+
+Working directory: /Users/admin/Projects/honda_leda
+Integrity mode: benchmark
+
+## Requirements
+
+### R1. Production-Level Spring Security
+Implement full Spring Security in the backend with JWT tokens, hashed passwords, and strict endpoint authorization. Connect the frontend Patient Signup and Staff Login to these real endpoints rather than mock state.
+
+### R2. Role-Based Access Control (RBAC) Boundaries
+Implement strict data boundaries:
+- Doctors must only see patients assigned to them and their own schedules.
+- `CASHIER_ADMIN` must see all records globally across the hospital.
+
+## Acceptance Criteria
+
+### Security & Data Visibility
+- [ ] A separate reviewer agent confirms that Spring Security `@PreAuthorize` annotations are applied correctly to the endpoints to prevent cross-role data leakage.
+- [ ] Patient Signup sends the new password field to the Spring Boot backend, and it is stored properly as a hashed value.

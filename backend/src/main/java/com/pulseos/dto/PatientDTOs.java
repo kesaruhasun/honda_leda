@@ -18,6 +18,7 @@ public class PatientDTOs {
         private String firstName;
         private String lastName;
         private String email;
+        private String password;
         private String phoneNumber;
         private String contactNumber;
         private String address;

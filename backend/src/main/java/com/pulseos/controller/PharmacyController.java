@@ -37,6 +37,11 @@ public class PharmacyController {
         return ResponseEntity.ok(pharmacyService.getAllPrescriptions());
     }
 
+    @PostMapping("/prescriptions")
+    public ResponseEntity<PrescriptionResponse> createPrescription(@RequestBody PrescriptionRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(pharmacyService.createPrescription(request));
+    }
+
     @PostMapping("/prescriptions/{prescriptionId}/dispense")
     public ResponseEntity<DispenseResponse> dispensePrescription(@PathVariable Long prescriptionId) {
         return ResponseEntity.ok(pharmacyService.dispensePrescription(prescriptionId));

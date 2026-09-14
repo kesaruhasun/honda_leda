@@ -13,8 +13,10 @@ export default defineConfig({
         target: 'http://localhost:8080',
         changeOrigin: true,
         secure: false,
+        timeout: 60000,
+        proxyTimeout: 60000,
       },
-      '/h2-console': {
+      '/db-console': {
         target: 'http://localhost:8080',
         changeOrigin: true,
         secure: false,

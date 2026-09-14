@@ -22,14 +22,14 @@ public class SecurityConfig {
         http
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf
-                .ignoringRequestMatchers("/h2-console/**", "/api/**", "/api/v1/**")
+                .ignoringRequestMatchers("/h2-console/**", "/db-console/**", "/api/**", "/api/v1/**")
                 .disable()
             )
             .headers(headers -> headers
                 .frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin)
             )
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/h2-console/**").permitAll()
+                .requestMatchers("/h2-console/**", "/db-console/**").permitAll()
                 .requestMatchers("/api/**").permitAll()
                 .requestMatchers("/api/v1/**").permitAll()
                 .requestMatchers("/error").permitAll()

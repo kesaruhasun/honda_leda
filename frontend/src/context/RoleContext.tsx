@@ -68,8 +68,36 @@ const RoleContext = createContext<RoleContextType | undefined>(undefined);
 export const RoleProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [currentView, setCurrentView] = useState<AppViewMode>('landing');
   const [currentRole, setCurrentRole] = useState<UserRole>('RECEPTIONIST');
-  const [activeModule, setActiveModule] = useState<ModuleId>('patients');
-  const [patientSession, setPatientSession] = useState<Patient | null>(null);
+  const [activeModule, setActiveModule] = useState<ModuleId>("patients");
+  // Initialize patient session from sessionStorage
+  const [patientSession, setPatientSession] = useState<Patient | null>(() => {
+    const savedId = sessionStorage.getItem('currentPatientId');
+    const savedNic = sessionStorage.getItem('currentPatientNic');
+    const savedName = sessionStorage.getItem('currentPatientName');
+    
+    if (savedId && savedNic) {
+      // Return a partial Patient object that satisfies the UI needs
+      return {
+        id: Number(savedId),
+        patientId: `PAT-${savedId}`,
+        nicPassportNo: savedNic,
+        firstName: savedName ? savedName.split(' ')[0] : 'Patient',
+        lastName: savedName ? savedName.split(' ').slice(1).join(' ') : '',
+        fullName: savedName || 'Patient',
+        dob: '',
+        gender: 'OTHER',
+        bloodGroup: 'O+',
+        contactNumber: '',
+        emergencyContactName: '',
+        emergencyContactRelationship: '',
+        emergencyContactPhone: '',
+        triagePriority: 'ROUTINE',
+        registrationDate: '',
+        isArchived: false
+      } as Patient;
+    }
+    return null;
+  });
   const [isStaffLoginModalOpen, setIsStaffLoginModalOpen] = useState(false);
   const [isPatientLoginModalOpen, setIsPatientLoginModalOpen] = useState(false);
 
@@ -101,11 +129,18 @@ export const RoleProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const logoutPatient = () => {
+    localStorage.removeItem('token');
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('currentPatientId');
+    sessionStorage.removeItem('currentPatientNic');
+    sessionStorage.removeItem('currentPatientName');
     setPatientSession(null);
     setCurrentView('landing');
   };
 
   const logoutStaff = () => {
+    localStorage.removeItem('token');
+    sessionStorage.removeItem('token');
     setCurrentView('landing');
   };
 

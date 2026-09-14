@@ -45,6 +45,9 @@ public class Patient extends Person {
     @Column(name = "medical_notes", columnDefinition = "TEXT")
     private String medicalNotes;
 
+    @Column(name = "password", length = 100)
+    private String password;
+
     @Column(name = "is_archived", nullable = false)
     private Boolean isArchived = false;
 }

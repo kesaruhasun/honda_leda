@@ -20,7 +20,7 @@ public class Prescription {
     private Long prescriptionId;
 
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "appointment_id", nullable = false)
+    @JoinColumn(name = "appointment_id", nullable = true)
     private Appointment appointment;
 
     @ManyToOne(fetch = FetchType.EAGER)

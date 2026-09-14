@@ -21,7 +21,7 @@ public class LabTest {
     private Long testId;
 
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "appointment_id", nullable = false)
+    @JoinColumn(name = "appointment_id", nullable = true)
     private Appointment appointment;
 
     @ManyToOne(fetch = FetchType.EAGER)
@@ -62,6 +62,12 @@ public class LabTest {
 
     @Column(name = "request_number", length = 50)
     private String requestNumber;
+
+    @Column(name = "test_code", length = 50)
+    private String testCode;
+
+    @Column(name = "sample_type", length = 100)
+    private String sampleType;
 
     @Column(name = "urgency", length = 30)
     private String urgency = "ROUTINE";

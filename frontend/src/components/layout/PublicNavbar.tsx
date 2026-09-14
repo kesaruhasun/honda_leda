@@ -1,5 +1,5 @@
 import React from 'react';
-import { Activity, User, ShieldCheck, ExternalLink, PhoneCall } from 'lucide-react';
+import { User, ShieldCheck, ExternalLink, PhoneCall } from 'lucide-react';
 import { useRole } from '../../context/RoleContext';
 
 export const PublicNavbar: React.FC = () => {
@@ -20,7 +20,6 @@ export const PublicNavbar: React.FC = () => {
           </span>
           <div className="ml-auto flex items-center gap-3">
             <a
-              href="http://localhost:8080/h2-console"
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1 text-[10px] text-emerald-400 hover:text-emerald-300 font-mono transition-colors"
@@ -38,8 +37,8 @@ export const PublicNavbar: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
         {/* Brand */}
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-apple-xl bg-clinical-teal-600 flex items-center justify-center text-white shadow-sm shadow-clinical-teal-600/25">
-            <Activity className="h-5 w-5 stroke-[2.2]" />
+          <div className="h-10 w-10 rounded-xl overflow-hidden bg-white border border-slate-200/80 shadow-xs flex items-center justify-center p-0.5 shrink-0">
+            <img src="/pulseos-logo.jpg" alt="PulseOS Logo" className="h-full w-full object-contain rounded-lg" />
           </div>
           <div>
             <div className="flex items-center gap-2">
