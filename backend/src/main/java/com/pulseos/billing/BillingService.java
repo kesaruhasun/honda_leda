@@ -9,6 +9,7 @@ import com.pulseos.laboratory.LabTest;
 import com.pulseos.laboratory.LabTestRepository;
 import com.pulseos.notification.NotificationService;
 import com.pulseos.patient.Patient;
+import com.pulseos.patient.PatientRepository;
 import com.pulseos.pharmacy.Prescription;
 import com.pulseos.pharmacy.PrescriptionItem;
 import com.pulseos.pharmacy.PrescriptionRepository;
