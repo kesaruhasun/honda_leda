@@ -12,8 +12,24 @@ spring:
     banner-mode: console
   jpa:
     open-in-view: false
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
 
 pulseos:
+  jwt:
+    # 256-bit Base64-encoded HMAC-SHA256 key
+    secret: "7J+fvdU7B4rwLPxxbxZpDocaYcCaypaMezPOJI5AlBc="
+    # Token validity: 86400000 ms = 24 hours (1 day)
+    expiration-ms: 86400000
   payhere:
     merchant-id: "1220000"
     merchant-secret: "sandbox_secret_sliit_pulseos_2026"
@@ -23,6 +39,12 @@ pulseos:
     cancel-url: "http://localhost:5173/billing/payment-cancel"
     currency: "LKR"
     sandbox: true
+  notification:
+    enabled: true
+    # Set to "smtp" for real email, "console" for dev/demo logging
+    mode: console
+    from-address: "noreply@pulseos.lk"
+    from-name: "PulseOS Hospital"
 
 ---
 # -------------------------------------------------------------

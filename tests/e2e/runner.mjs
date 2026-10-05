@@ -10,6 +10,7 @@ import { registerAppointmentTests } from './tier1_features/appointment.test.mjs'
 import { registerPharmacyTests } from './tier1_features/pharmacy.test.mjs';
 import { registerBillingTests } from './tier1_features/billing.test.mjs';
 import { registerLaboratoryTests } from './tier1_features/laboratory.test.mjs';
+import { registerSecurityAuthTests } from './tier1_features/security_auth.test.mjs';
 
 // Tier 2 Suites
 import { registerPatientBoundaryTests } from './tier2_boundaries/patient_boundaries.test.mjs';
@@ -18,6 +19,7 @@ import { registerAppointmentBoundaryTests } from './tier2_boundaries/appointment
 import { registerPharmacyBoundaryTests } from './tier2_boundaries/pharmacy_boundaries.test.mjs';
 import { registerBillingBoundaryTests } from './tier2_boundaries/billing_boundaries.test.mjs';
 import { registerLaboratoryBoundaryTests } from './tier2_boundaries/laboratory_boundaries.test.mjs';
+import { registerSecurityRbacBoundaryTests } from './tier2_boundaries/security_rbac_boundaries.test.mjs';
 
 // Tier 3 Suites
 import { registerAppointmentPrescriptionInventoryTests } from './tier3_pairwise/appointment_prescription_inventory.test.mjs';
@@ -25,6 +27,9 @@ import { registerAppointmentLabInvoiceTests } from './tier3_pairwise/appointment
 import { registerFeeChangeInvoiceTests } from './tier3_pairwise/fee_change_invoice.test.mjs';
 import { registerPatientArchiveLifecycleTests } from './tier3_pairwise/patient_archive_lifecycle.test.mjs';
 import { registerBatchExpiryDispensingTests } from './tier3_pairwise/batch_expiry_dispensing.test.mjs';
+import { registerAppointmentNotificationPipelineTests } from './tier3_pairwise/appointment_notification_pipeline.test.mjs';
+import { registerPayHereMockPaymentInvoiceTests } from './tier3_pairwise/payhere_mock_payment_invoice.test.mjs';
+import { registerLandingStatsDynamicSyncTests } from './tier3_pairwise/landing_stats_dynamic_sync.test.mjs';
 
 // Tier 4 Suites
 import { registerFullPatientJourneyTests } from './tier4_scenarios/full_patient_journey.test.mjs';
@@ -32,6 +37,8 @@ import { registerRoutineCounterSettlementTests } from './tier4_scenarios/routine
 import { registerPediatricAcuteCareTests } from './tier4_scenarios/pediatric_acute_care.test.mjs';
 import { registerScheduleRescheduleLifecycleTests } from './tier4_scenarios/schedule_reschedule_lifecycle.test.mjs';
 import { registerFraudDetectionPayHereTests } from './tier4_scenarios/fraud_detection_payhere.test.mjs';
+import { registerAuthenticatedPatientLifecycleTests } from './tier4_scenarios/authenticated_patient_lifecycle.test.mjs';
+import { registerManagerHospitalOversightTests } from './tier4_scenarios/manager_hospital_oversight.test.mjs';
 
 async function main() {
   const args = process.argv.slice(2);
@@ -74,6 +81,7 @@ async function main() {
   registerPharmacyTests();
   registerBillingTests();
   registerLaboratoryTests();
+  registerSecurityAuthTests();
 
   // Register Tier 2 Boundaries
   registerPatientBoundaryTests();
@@ -82,6 +90,7 @@ async function main() {
   registerPharmacyBoundaryTests();
   registerBillingBoundaryTests();
   registerLaboratoryBoundaryTests();
+  registerSecurityRbacBoundaryTests();
 
   // Register Tier 3 Pairwise Combinations
   registerAppointmentPrescriptionInventoryTests();
@@ -89,6 +98,9 @@ async function main() {
   registerFeeChangeInvoiceTests();
   registerPatientArchiveLifecycleTests();
   registerBatchExpiryDispensingTests();
+  registerAppointmentNotificationPipelineTests();
+  registerPayHereMockPaymentInvoiceTests();
+  registerLandingStatsDynamicSyncTests();
 
   // Register Tier 4 Real-World Scenarios
   registerFullPatientJourneyTests();
@@ -96,6 +108,8 @@ async function main() {
   registerPediatricAcuteCareTests();
   registerScheduleRescheduleLifecycleTests();
   registerFraudDetectionPayHereTests();
+  registerAuthenticatedPatientLifecycleTests();
+  registerManagerHospitalOversightTests();
 
   // Execute test runner
   let outcome;

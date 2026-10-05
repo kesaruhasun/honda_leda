@@ -1,0 +1,210 @@
+<mxGraphModel adaptiveColors="auto">
+  <root>
+    <mxCell id="0" />
+    <mxCell id="1" parent="0" />
+    <mxCell id="Person" value="&lt;b&gt;Person&lt;/b&gt;&lt;hr&gt;id: INT [PK]&lt;br&gt;name: VARCHAR&lt;br&gt;contact_no: VARCHAR&lt;br&gt;nic_passport: VARCHAR" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;" vertex="1" parent="1">
+      <mxGeometry x="1344.0000000000002" y="92.0" width="196.0" height="138.0" as="geometry" />
+    </mxCell>
+    <mxCell id="Patient" value="&lt;b&gt;Patient&lt;/b&gt;&lt;hr&gt;patient_id: INT [PK]&lt;br&gt;person_id: INT [FK]" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;" vertex="1" parent="1">
+      <mxGeometry x="1376.6666666666667" y="482.99999999999994" width="196.0" height="138.0" as="geometry" />
+    </mxCell>
+    <mxCell id="Employee" value="&lt;b&gt;Employee&lt;/b&gt;&lt;hr&gt;employee_id: INT [PK]&lt;br&gt;person_id: INT [FK]&lt;br&gt;role: VARCHAR" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;" vertex="1" parent="1">
+      <mxGeometry x="578.6666666666669" y="276.0" width="196.0" height="138.0" as="geometry" />
+    </mxCell>
+    <mxCell id="Doctor" value="&lt;b&gt;Doctor&lt;/b&gt;&lt;hr&gt;doctor_id: INT [PK]&lt;br&gt;employee_id: INT [FK]&lt;br&gt;specialization: VARCHAR&lt;br&gt;reg_number: VARCHAR" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;" vertex="1" parent="1">
+      <mxGeometry x="299.60000000000014" y="482.99999999999994" width="196.0" height="138.0" as="geometry" />
+    </mxCell>
+    <mxCell id="Receptionist" value="&lt;b&gt;Receptionist&lt;/b&gt;&lt;hr&gt;receptionist_id: INT [PK]&lt;br&gt;employee_id: INT [FK]" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;" vertex="1" parent="1">
+      <mxGeometry x="1110.6666666666667" y="482.99999999999994" width="196.0" height="138.0" as="geometry" />
+    </mxCell>
+    <mxCell id="Pharmacist" value="&lt;b&gt;Pharmacist&lt;/b&gt;&lt;hr&gt;pharmacist_id: INT [PK]&lt;br&gt;employee_id: INT [FK]" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;" vertex="1" parent="1">
+      <mxGeometry x="578.6666666666669" y="482.99999999999994" width="196.0" height="138.0" as="geometry" />
+    </mxCell>
+    <mxCell id="Lab_Technician" value="&lt;b&gt;Lab_Technician&lt;/b&gt;&lt;hr&gt;technician_id: INT [PK]&lt;br&gt;employee_id: INT [FK]" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;" vertex="1" parent="1">
+      <mxGeometry x="33.599999999999994" y="482.99999999999994" width="196.0" height="138.0" as="geometry" />
+    </mxCell>
+    <mxCell id="System_Admin" value="&lt;b&gt;System_Admin&lt;/b&gt;&lt;hr&gt;admin_id: INT [PK]&lt;br&gt;employee_id: INT [FK]" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;" vertex="1" parent="1">
+      <mxGeometry x="844.6666666666669" y="482.99999999999994" width="196.0" height="138.0" as="geometry" />
+    </mxCell>
+    <mxCell id="Appointment" value="&lt;b&gt;Appointment&lt;/b&gt;&lt;hr&gt;appointment_id: INT [PK]&lt;br&gt;patient_id: INT [FK]&lt;br&gt;doctor_id: INT [FK]&lt;br&gt;date_time: TIMESTAMP&lt;br&gt;status: VARCHAR" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;" vertex="1" parent="1">
+      <mxGeometry x="1130.2666666666669" y="690.0" width="196.0" height="138.0" as="geometry" />
+    </mxCell>
+    <mxCell id="Schedule" value="&lt;b&gt;Schedule&lt;/b&gt;&lt;hr&gt;schedule_id: INT [PK]&lt;br&gt;doctor_id: INT [FK]&lt;br&gt;available_slots: INT" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;" vertex="1" parent="1">
+      <mxGeometry x="66.26666666666688" y="690.0" width="196.0" height="138.0" as="geometry" />
+    </mxCell>
+    <mxCell id="Invoice" value="&lt;b&gt;Invoice&lt;/b&gt;&lt;hr&gt;invoice_id: INT [PK]&lt;br&gt;patient_id: INT [FK]&lt;br&gt;total_amount: DECIMAL" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;" vertex="1" parent="1">
+      <mxGeometry x="1396.2666666666669" y="690.0" width="196.0" height="138.0" as="geometry" />
+    </mxCell>
+    <mxCell id="Payment" value="&lt;b&gt;Payment&lt;/b&gt;&lt;hr&gt;payment_id: INT [PK]&lt;br&gt;invoice_id: INT [FK]&lt;br&gt;amount_paid: DECIMAL&lt;br&gt;payment_method: VARCHAR" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;" vertex="1" parent="1">
+      <mxGeometry x="1396.2666666666669" y="896.9999999999999" width="196.0" height="138.0" as="geometry" />
+    </mxCell>
+    <mxCell id="Drug" value="&lt;b&gt;Drug&lt;/b&gt;&lt;hr&gt;drug_id: INT [PK]&lt;br&gt;name: VARCHAR&lt;br&gt;stock_quantity: INT&lt;br&gt;reorder_level: INT" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;" vertex="1" parent="1">
+      <mxGeometry x="864.2666666666669" y="690.0" width="196.0" height="138.0" as="geometry" />
+    </mxCell>
+    <mxCell id="Prescription" value="&lt;b&gt;Prescription&lt;/b&gt;&lt;hr&gt;prescription_id: INT [PK]&lt;br&gt;patient_id: INT [FK]&lt;br&gt;doctor_id: INT [FK]" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;" vertex="1" parent="1">
+      <mxGeometry x="332.2666666666669" y="690.0" width="196.0" height="138.0" as="geometry" />
+    </mxCell>
+    <mxCell id="Prescription_Item" value="&lt;b&gt;Prescription_Item&lt;/b&gt;&lt;hr&gt;item_id: INT [PK]&lt;br&gt;prescription_id: INT [FK]&lt;br&gt;drug_id: INT [FK]&lt;br&gt;quantity: INT" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;" vertex="1" parent="1">
+      <mxGeometry x="364.9333333333334" y="896.9999999999999" width="196.0" height="138.0" as="geometry" />
+    </mxCell>
+    <mxCell id="Lab_Test" value="&lt;b&gt;Lab_Test&lt;/b&gt;&lt;hr&gt;test_id: INT [PK]&lt;br&gt;patient_id: INT [FK]&lt;br&gt;status: VARCHAR" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;" vertex="1" parent="1">
+      <mxGeometry x="1694.9333333333334" y="690.0" width="196.0" height="138.0" as="geometry" />
+    </mxCell>
+    <mxCell id="Invoice_Lab_Item" value="&lt;b&gt;Invoice_Lab_Item&lt;/b&gt;&lt;hr&gt;invoice_item_id: INT [PK]&lt;br&gt;invoice_id: INT [FK]&lt;br&gt;test_id: INT [FK]&lt;br&gt;amount: DECIMAL" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;" vertex="1" parent="1">
+      <mxGeometry x="1662.2666666666669" y="896.9999999999999" width="196.0" height="138.0" as="geometry" />
+    </mxCell>
+    <mxCell id="Invoice_Drug_Item" value="&lt;b&gt;Invoice_Drug_Item&lt;/b&gt;&lt;hr&gt;invoice_item_id: INT [PK]&lt;br&gt;invoice_id: INT [FK]&lt;br&gt;drug_id: INT [FK]&lt;br&gt;amount: DECIMAL" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;" vertex="1" parent="1">
+      <mxGeometry x="1130.2666666666669" y="896.9999999999999" width="196.0" height="138.0" as="geometry" />
+    </mxCell>
+    <mxCell id="Purchase_Order" value="&lt;b&gt;Purchase_Order&lt;/b&gt;&lt;hr&gt;order_id: INT [PK]&lt;br&gt;status: VARCHAR" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;" vertex="1" parent="1">
+      <mxGeometry x="598.2666666666669" y="690.0" width="196.0" height="138.0" as="geometry" />
+    </mxCell>
+    <mxCell id="Purchase_Order_Item" value="&lt;b&gt;Purchase_Order_Item&lt;/b&gt;&lt;hr&gt;po_item_id: INT [PK]&lt;br&gt;order_id: INT [FK]&lt;br&gt;drug_id: INT [FK]&lt;br&gt;quantity: INT" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;" vertex="1" parent="1">
+      <mxGeometry x="831.6000000000001" y="896.9999999999999" width="196.0" height="138.0" as="geometry" />
+    </mxCell>
+    <mxCell id="e_1" value="is a" edge="1" parent="1" source="Person" target="Patient" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;jumpStyle=arc;labelBackgroundColor=none;">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e_2" value="is a" edge="1" parent="1" source="Person" target="Employee" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;jumpStyle=arc;labelBackgroundColor=none;">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="1409.3333333333335" y="252.99999999999997" />
+          <mxPoint x="676.6666666666669" y="252.99999999999997" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="e_3" value="is a" edge="1" parent="1" source="Employee" target="Doctor" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;jumpStyle=arc;labelBackgroundColor=none;">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="644.0000000000001" y="459.99999999999994" />
+          <mxPoint x="397.60000000000014" y="459.99999999999994" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="e_4" value="is a" edge="1" parent="1" source="Employee" target="Receptionist" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;jumpStyle=arc;labelBackgroundColor=none;">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="742.0000000000002" y="436.99999999999994" />
+          <mxPoint x="1208.6666666666667" y="436.99999999999994" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="e_5" value="is a" edge="1" parent="1" source="Employee" target="Pharmacist" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;jumpStyle=arc;labelBackgroundColor=none;">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e_6" value="is a" edge="1" parent="1" source="Employee" target="Lab_Technician" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;jumpStyle=arc;labelBackgroundColor=none;">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="611.3333333333336" y="436.99999999999994" />
+          <mxPoint x="131.6" y="436.99999999999994" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="e_7" value="is a" edge="1" parent="1" source="Employee" target="System_Admin" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;jumpStyle=arc;labelBackgroundColor=none;">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="709.3333333333336" y="459.99999999999994" />
+          <mxPoint x="942.6666666666669" y="459.99999999999994" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="e_8" value="has" edge="1" parent="1" source="Patient" target="Appointment" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;jumpStyle=arc;labelBackgroundColor=none;">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="1455.0666666666668" y="667.0" />
+          <mxPoint x="1260.9333333333334" y="667.0" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="e_9" value="assigned" edge="1" parent="1" source="Doctor" target="Appointment" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;jumpStyle=arc;labelBackgroundColor=none;">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="446.60000000000014" y="667.0" />
+          <mxPoint x="1195.6000000000001" y="667.0" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="e_10" value="has" edge="1" parent="1" source="Doctor" target="Schedule" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;jumpStyle=arc;labelBackgroundColor=none;">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="348.60000000000014" y="644.0" />
+          <mxPoint x="164.26666666666688" y="644.0" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="e_11" value="billed" edge="1" parent="1" source="Patient" target="Invoice" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;jumpStyle=arc;labelBackgroundColor=none;">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e_12" value="pays" edge="1" parent="1" source="Invoice" target="Payment" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;jumpStyle=arc;labelBackgroundColor=none;">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e_13" value="receives" edge="1" parent="1" source="Patient" target="Prescription" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;jumpStyle=arc;labelBackgroundColor=none;">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="1415.8666666666668" y="644.0" />
+          <mxPoint x="462.93333333333356" y="644.0" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="e_14" value="issues" edge="1" parent="1" source="Doctor" target="Prescription" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;jumpStyle=arc;labelBackgroundColor=none;">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e_15" value="contains" edge="1" parent="1" source="Prescription" target="Prescription_Item" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;jumpStyle=arc;labelBackgroundColor=none;">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e_16" value="for" edge="1" parent="1" source="Drug" target="Prescription_Item" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;jumpStyle=arc;labelBackgroundColor=none;">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="913.2666666666668" y="850.9999999999999" />
+          <mxPoint x="495.60000000000014" y="850.9999999999999" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="e_17" value="undergoes" edge="1" parent="1" source="Patient" target="Lab_Test" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;jumpStyle=arc;labelBackgroundColor=none;">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="1533.4666666666667" y="644.0" />
+          <mxPoint x="1792.9333333333334" y="644.0" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="e_18" value="includes" edge="1" parent="1" source="Invoice" target="Invoice_Lab_Item" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;jumpStyle=arc;labelBackgroundColor=none;">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="1543.2666666666669" y="850.9999999999999" />
+          <mxPoint x="1727.6000000000001" y="850.9999999999999" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="e_19" value="for" edge="1" parent="1" source="Lab_Test" target="Invoice_Lab_Item" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;jumpStyle=arc;labelBackgroundColor=none;">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e_20" value="includes" edge="1" parent="1" source="Invoice" target="Invoice_Drug_Item" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;jumpStyle=arc;labelBackgroundColor=none;">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="1445.2666666666669" y="850.9999999999999" />
+          <mxPoint x="1260.9333333333334" y="850.9999999999999" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="e_21" value="for" edge="1" parent="1" source="Drug" target="Invoice_Drug_Item" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;jumpStyle=arc;labelBackgroundColor=none;">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="1011.2666666666668" y="850.9999999999999" />
+          <mxPoint x="1195.6000000000001" y="850.9999999999999" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="e_22" value="contains" edge="1" parent="1" source="Purchase_Order" target="Purchase_Order_Item" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;jumpStyle=arc;labelBackgroundColor=none;">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="696.2666666666669" y="873.9999999999999" />
+          <mxPoint x="896.9333333333334" y="873.9999999999999" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="e_23" value="orders" edge="1" parent="1" source="Drug" target="Purchase_Order_Item" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;jumpStyle=arc;labelBackgroundColor=none;">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+  </root>
+</mxGraphModel>

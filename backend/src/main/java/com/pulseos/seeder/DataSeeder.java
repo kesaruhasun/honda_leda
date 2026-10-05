@@ -1,8 +1,12 @@
 package com.pulseos.seeder;
 
-import com.pulseos.entity.*;
-import com.pulseos.entity.enums.*;
-import com.pulseos.repository.*;
+import com.pulseos.patient.*;
+import com.pulseos.doctor.*;
+import com.pulseos.appointment.*;
+import com.pulseos.pharmacy.*;
+import com.pulseos.laboratory.*;
+import com.pulseos.billing.*;
+import com.pulseos.common.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
@@ -21,6 +25,9 @@ import java.util.*;
 @Slf4j
 @RequiredArgsConstructor
 public class DataSeeder implements CommandLineRunner {
+
+    // 10-round BCrypt hash for standard demo password: "password123"
+    public static final String BCRYPT_PASSWORD_123 = "$2a$10$PDpFqkPcJJ7sS5w1eqTD2ekdzBCwF7uhoFt1/BsCXO5WqI3CdQbUG";
 
     private final DepartmentRepository departmentRepository;
     private final DoctorRepository doctorRepository;
@@ -84,7 +91,7 @@ public class DataSeeder implements CommandLineRunner {
         docKavinda.setDeptJoiningDate(LocalDate.of(2022, 1, 10));
         docKavinda.setEmployeeRole(EmployeeRole.DOCTOR);
         docKavinda.setEmail("it25103999@my.sliit.lk");
-        docKavinda.setPasswordHash("$2a$10$7R6vD8xPulseOSHashKavinda2026");
+        docKavinda.setPasswordHash(BCRYPT_PASSWORD_123);
         docKavinda.setQualifications(new HashSet<>(Arrays.asList("MBBS (Colombo)", "MD (Cardiology)", "MRCP (UK)")));
         docKavinda.setDoctorLicenseNo("SLMC-48291");
         docKavinda.setSpecialization("Cardiology");
@@ -95,7 +102,7 @@ public class DataSeeder implements CommandLineRunner {
         cardiology.setManagerAppointedDate(LocalDate.of(2023, 1, 1));
         departmentRepository.save(cardiology);
 
-        // Receptionist Dila (Somarathna P. G. D. S. - IT25103819)
+        // Receptionist Dila (Somarathna P. G. D. S. - IT25100994)
         Receptionist recDila = new Receptionist();
         recDila.setNicPassportNo("200165809124");
         recDila.setFirstName("Dila");
@@ -112,8 +119,8 @@ public class DataSeeder implements CommandLineRunner {
         recDila.setDepartment(opd);
         recDila.setDeptJoiningDate(LocalDate.of(2023, 3, 15));
         recDila.setEmployeeRole(EmployeeRole.RECEPTIONIST);
-        recDila.setEmail("it25103819@my.sliit.lk");
-        recDila.setPasswordHash("$2a$10$7R6vD8xPulseOSHashDila2026");
+        recDila.setEmail("it25100994@my.sliit.lk");
+        recDila.setPasswordHash(BCRYPT_PASSWORD_123);
         recDila.setQualifications(new HashSet<>(Arrays.asList("Diploma in Hospital Administration", "Cert. Front Office Mgmt")));
         recDila.setDeskNumber("DESK-01");
         recDila.setShiftBlock(ShiftBlock.MORNING);
@@ -137,7 +144,7 @@ public class DataSeeder implements CommandLineRunner {
         pharmHarshika.setDeptJoiningDate(LocalDate.of(2022, 6, 1));
         pharmHarshika.setEmployeeRole(EmployeeRole.PHARMACIST);
         pharmHarshika.setEmail("it25100826@my.sliit.lk");
-        pharmHarshika.setPasswordHash("$2a$10$7R6vD8xPulseOSHashHarshika2026");
+        pharmHarshika.setPasswordHash(BCRYPT_PASSWORD_123);
         pharmHarshika.setQualifications(new HashSet<>(Arrays.asList("B.Pharm (Hons)", "Reg. Pharmacist SL")));
         pharmHarshika.setPharmacyLicenseNo("PHARM-7721");
         pharmHarshika.setAssignedUnit("Main Outpatient Dispensary");
@@ -161,7 +168,7 @@ public class DataSeeder implements CommandLineRunner {
         techNethuli.setDeptJoiningDate(LocalDate.of(2023, 2, 1));
         techNethuli.setEmployeeRole(EmployeeRole.LAB_TECHNICIAN);
         techNethuli.setEmail("it25103363@my.sliit.lk");
-        techNethuli.setPasswordHash("$2a$10$7R6vD8xPulseOSHashNethuli2026");
+        techNethuli.setPasswordHash(BCRYPT_PASSWORD_123);
         techNethuli.setQualifications(new HashSet<>(Arrays.asList("BSc Medical Laboratory Science", "SLMC Registered MLT")));
         techNethuli.setCertificationLevel("Senior Medical Technologist (MLT-1)");
         techNethuli.setLabSection("Hematology & Clinical Biochemistry");
@@ -184,8 +191,8 @@ public class DataSeeder implements CommandLineRunner {
         adminKesaru.setDepartment(itDept);
         adminKesaru.setDeptJoiningDate(LocalDate.of(2021, 11, 1));
         adminKesaru.setEmployeeRole(EmployeeRole.SYSTEM_ADMIN);
-        adminKesaru.setEmail("it25103992@my.sliit.lk");
-        adminKesaru.setPasswordHash("$2a$10$7R6vD8xPulseOSHashKesaru2026");
+        adminKesaru.setEmail("kesaruhasun@gmail.com");
+        adminKesaru.setPasswordHash(BCRYPT_PASSWORD_123);
         adminKesaru.setQualifications(new HashSet<>(Arrays.asList("BSc (Hons) Software Engineering (SLIIT)", "CISA")));
         adminKesaru.setAdminLevel("SUPER_ADMIN");
         adminKesaru.setSecurityClearance("TOP_SECRET");
@@ -213,7 +220,7 @@ public class DataSeeder implements CommandLineRunner {
         recChanul.setDeptJoiningDate(LocalDate.of(2023, 4, 1));
         recChanul.setEmployeeRole(EmployeeRole.RECEPTIONIST);
         recChanul.setEmail("it25101620@my.sliit.lk");
-        recChanul.setPasswordHash("$2a$10$7R6vD8xPulseOSHashChanul2026");
+        recChanul.setPasswordHash(BCRYPT_PASSWORD_123);
         recChanul.setQualifications(new HashSet<>(Collections.singletonList("BSc Health Services Management")));
         recChanul.setDeskNumber("DESK-02");
         recChanul.setShiftBlock(ShiftBlock.EVENING);
@@ -231,6 +238,8 @@ public class DataSeeder implements CommandLineRunner {
         Patient p1 = createPatient("198512304561", "Nimal", "Perera", "No. 15, Flower Road", "Colombo", "00700",
                 LocalDate.of(1985, 3, 12), Gender.MALE, BloodGroup.O_POSITIVE, TriagePriority.ROUTINE, "None",
                 "+94771234567", "Sunil Perera", "Brother", "+94779876543");
+        p1.setEmail("patient.sunil@gmail.com");
+        p1.setPassword(BCRYPT_PASSWORD_123);
 
         Patient p2 = createPatient("197265408923", "Sunethra", "Jayawardena", "42 Hill Street", "Kandy", "20000",
                 LocalDate.of(1972, 7, 24), Gender.FEMALE, BloodGroup.B_POSITIVE, TriagePriority.URGENT, "Penicillin, Aspirin",
@@ -281,7 +290,7 @@ public class DataSeeder implements CommandLineRunner {
                 LocalDate.of(1990, 5, 12), Gender.MALE, BloodGroup.O_POSITIVE, TriagePriority.ROUTINE, "None",
                 "+94771234567", "Nimal Perera", "Brother", "+94779876543");
         pDemo.setEmail("demo.patient@pulseos.lk");
-        pDemo.setPassword("password");
+        pDemo.setPassword(BCRYPT_PASSWORD_123);
         pDemo.setMedicalNotes("Regular outpatient baseline consultation record.");
 
         List<Patient> patients = Arrays.asList(p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, pDemo);
@@ -538,7 +547,7 @@ public class DataSeeder implements CommandLineRunner {
         p.setRegistrationDate(LocalDate.now().minusDays(new Random().nextInt(30)));
         p.setTriagePriority(triage);
         p.setAllergies(allergies);
-        p.setPassword("password");
+        p.setPassword(BCRYPT_PASSWORD_123);
         p.setIsArchived(false);
         p.setEmergencyContactName(emgName);
         p.setEmergencyContactRelation(emgRel);

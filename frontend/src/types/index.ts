@@ -13,7 +13,7 @@ export interface UserProfile {
   email: string;
 }
 
-export type ModuleId = 'patients' | 'doctors' | 'appointments' | 'pharmacy' | 'billing' | 'laboratory';
+export type ModuleId = 'patients' | 'doctors' | 'appointments' | 'pharmacy' | 'billing' | 'laboratory' | 'doctor' | 'manager' | 'pharmacist';
 
 // M1: Patient Entity & DTO
 export type BloodGroup = 'A+' | 'A-' | 'B+' | 'B-' | 'AB+' | 'AB-' | 'O+' | 'O-';

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { patientApi } from '../../services/api';
+import { authApi, patientApi } from '../../services/api';
 import { useToast } from '../../context/ToastContext';
 import { ArrowRight, UserRound, AlertCircle, ChevronLeft, Lock } from 'lucide-react';
 import { useRole } from '../../context/RoleContext';
@@ -26,7 +26,19 @@ export const PatientLoginView: React.FC = () => {
     setError('');
 
     try {
-      // Find patient by NIC
+      // 1. Authenticate with backend JWT endpoint
+      const loginRes = await authApi.login({
+        username: nic.trim(),
+        password: password.trim(),
+      });
+
+      const { token, fullName, userId } = loginRes.data;
+      if (token) {
+        localStorage.setItem('token', token);
+        sessionStorage.setItem('token', token);
+      }
+
+      // 2. Resolve patient details with authenticated session
       let patientData: any = null;
       try {
         const res = await patientApi.getByNic(nic.trim());
@@ -34,20 +46,29 @@ export const PatientLoginView: React.FC = () => {
           patientData = res.data;
         }
       } catch {
-        const searchRes = await patientApi.search(nic.trim());
-        if (searchRes.data && searchRes.data.length > 0) {
-          patientData = searchRes.data[0];
+        try {
+          const searchRes = await patientApi.search(nic.trim());
+          if (searchRes.data && searchRes.data.length > 0) {
+            patientData = searchRes.data[0];
+          }
+        } catch {
+          // Ignore search error
         }
       }
 
       if (!patientData) {
-        setError('No account found with this NIC / Passport number. Please sign up first.');
-        setLoading(false);
-        return;
+        // Fallback to auth payload
+        patientData = {
+          id: userId || 1,
+          nicPassportNo: nic.trim(),
+          fullName: fullName || 'Patient',
+          firstName: fullName?.split(' ')[0] || 'Patient',
+          lastName: fullName?.split(' ').slice(1).join(' ') || '',
+        };
       }
 
       setPatientSession(patientData);
-      sessionStorage.setItem('currentPatientId', patientData.id.toString());
+      sessionStorage.setItem('currentPatientId', (patientData.id || userId || 1).toString());
       sessionStorage.setItem('currentPatientNic', nic.trim());
       sessionStorage.setItem('currentPatientName', patientData.fullName || `${patientData.firstName} ${patientData.lastName}`);
 
@@ -174,7 +195,16 @@ export const PatientLoginView: React.FC = () => {
           <div className="mt-8 pt-6 border-t border-slate-100">
             <p className="text-xs text-center text-slate-400 font-medium uppercase tracking-wider mb-4">Demo Quick Access</p>
             <div className="flex justify-center">
-              <button onClick={() => {setNic("199012345678"); setPassword("password");}} className="apple-btn px-6 py-2 text-xs font-semibold bg-slate-50 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-100">Demo Patient</button>
+              <button
+                type="button"
+                onClick={() => {
+                  setNic("198512304561");
+                  setPassword("password123");
+                }}
+                className="apple-btn px-6 py-2 text-xs font-semibold bg-clinical-teal-50 border border-clinical-teal-200 text-clinical-teal-800 rounded-lg hover:bg-clinical-teal-100 transition-colors"
+              >
+                Demo Patient (Nimal Perera)
+              </button>
             </div>
           </div>
 

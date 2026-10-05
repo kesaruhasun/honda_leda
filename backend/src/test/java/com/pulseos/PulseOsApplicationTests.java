@@ -1,11 +1,12 @@
 package com.pulseos;
 
-import com.pulseos.entity.Doctor;
-import com.pulseos.entity.Patient;
-import com.pulseos.entity.Invoice;
-import com.pulseos.entity.enums.EmployeeRole;
-import com.pulseos.entity.enums.PaymentStatus;
-import com.pulseos.repository.*;
+import com.pulseos.appointment.*;
+import com.pulseos.billing.*;
+import com.pulseos.common.*;
+import com.pulseos.doctor.*;
+import com.pulseos.laboratory.*;
+import com.pulseos.patient.*;
+import com.pulseos.pharmacy.*;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -70,10 +71,10 @@ class PulseOsApplicationTests {
     }
 
     @Test
-    @DisplayName("DataSeeder successfully seeds 12 realistic patients and 23 drugs with low stock triggers")
+    @DisplayName("DataSeeder successfully seeds 13 patients (12 clinical + 1 demo) and 23 drugs with low stock triggers")
     void verifyPatientsAndDrugsSeeded() {
         List<Patient> activePatients = patientRepository.findByIsArchivedFalse();
-        assertThat(activePatients).hasSize(12);
+        assertThat(activePatients).hasSize(13);
 
         assertThat(drugRepository.count()).isEqualTo(23);
         assertThat(drugRepository.findLowStockDrugs()).hasSize(6);
@@ -83,7 +84,7 @@ class PulseOsApplicationTests {
     @DisplayName("DataSeeder successfully seeds clinical encounters, lab tests, and aggregated invoices")
     void verifyClinicalEncountersAndInvoices() {
         assertThat(appointmentRepository.count()).isEqualTo(5);
-        assertThat(labTestRepository.count()).isEqualTo(4);
+        assertThat(labTestRepository.count()).isEqualTo(6);
 
         List<Invoice> paidInvoices = invoiceRepository.findByPaymentStatus(PaymentStatus.PAID);
         assertThat(paidInvoices).isNotEmpty();

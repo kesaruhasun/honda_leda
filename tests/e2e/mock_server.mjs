@@ -2,6 +2,7 @@ import http from 'node:http';
 import { URL } from 'node:url';
 import { config } from './config.mjs';
 import { generatePayHereHash, verifyPayHereWebhookSignature, formatPayHereAmount } from './utils/payhere_crypto.mjs';
+import { signJwt, verifyJwt, JWT_SECRET } from './utils/jwt.mjs';
 
 /**
  * High-fidelity in-memory REST API server matching Spring Boot 3 contracts
@@ -117,12 +118,46 @@ export function createMockServer() {
     payments: [
       { id: 1, transactionReference: 'TXN-PH-99201', invoiceId: 1, paymentMethod: 'PAYHERE_GATEWAY', amountPaid: 11000.00, currency: 'LKR', status: 'SUCCESS', receiptNumber: 'REC-2026-0001' },
     ],
+    users: [
+      { id: 101, username: 'doc.kavinda@pulseos.lk', password: 'Password123!', fullName: 'Dr. Kavinda Rathnayaka', role: 'DOCTOR', userType: 'STAFF', doctorId: 1 },
+      { id: 102, username: 'receptionist@pulseos.lk', password: 'Password123!', fullName: 'Dilshan Somarathna', role: 'RECEPTIONIST', userType: 'STAFF' },
+      { id: 103, username: 'pharmacist@pulseos.lk', password: 'Password123!', fullName: 'Harshika Udumullage', role: 'PHARMACIST', userType: 'STAFF' },
+      { id: 104, username: 'labtech@pulseos.lk', password: 'Password123!', fullName: 'Nethuli Thilakarathne', role: 'LAB_TECHNICIAN', userType: 'STAFF' },
+      { id: 105, username: 'manager@pulseos.lk', password: 'Password123!', fullName: 'Kesaru Dhanasinghe', role: 'MANAGER', userType: 'STAFF' },
+      { id: 1, username: 'patient.sunil@gmail.com', password: 'Password123!', fullName: 'Sunil Perera', role: 'PATIENT', userType: 'PATIENT', patientId: 1 },
+    ],
+    notifications: [],
   };
 
   // Helper functions
   function getPatientFull(pat) {
     const person = db.persons.find(p => p.id === pat.personId) || {};
     return { ...person, ...pat, patientId: pat.id };
+  }
+
+  function extractAuthUser(req) {
+    const authHeader = req.headers['authorization'] || '';
+    if (!authHeader.startsWith('Bearer ')) {
+      return { authenticated: false, error: 'Missing or malformed Authorization header' };
+    }
+    const token = authHeader.substring(7).trim();
+    const verification = verifyJwt(token);
+    if (!verification.valid) {
+      return { authenticated: false, error: verification.error };
+    }
+    return { authenticated: true, user: verification.payload };
+  }
+
+  function recordNotification(notif) {
+    const notifId = Math.max(...db.notifications.map(n => n.id), 0) + 1;
+    const item = {
+      id: notifId,
+      sentAt: new Date().toISOString(),
+      status: 'SENT',
+      ...notif,
+    };
+    db.notifications.push(item);
+    return item;
   }
 
   function sendJson(res, statusCode, data) {
@@ -471,6 +506,17 @@ export function createMockServer() {
         symptomsReason: body.symptomsReason || 'Consultation',
       };
       db.appointments.push(newAppt);
+
+      const patientPerson = db.persons.find(p => p.id === patient.personId);
+      recordNotification({
+        recipientEmail: (patientPerson && patientPerson.email) || 'patient@pulseos.lk',
+        recipientName: patientPerson ? `${patientPerson.firstName} ${patientPerson.lastName}` : 'Patient',
+        subject: `Appointment Confirmation - ${newAppt.appointmentNumber}`,
+        eventType: 'APPOINTMENT_CREATED',
+        referenceId: newAppt.appointmentNumber,
+        appointmentId: newAppt.id,
+      });
+
       return sendJson(res, 201, newAppt);
     }
 
@@ -857,10 +903,67 @@ export function createMockServer() {
           status: 'SUCCESS',
           receiptNumber: `REC-2026-${String(paymentIdVal).padStart(4, '0')}`,
         });
+        const patientObj = getPatientFull(db.patients.find(p => p.id === inv.patientId) || {});
+        recordNotification({
+          recipientEmail: patientObj.email || 'patient@pulseos.lk',
+          recipientName: `${patientObj.firstName || 'Patient'} ${patientObj.lastName || ''}`.trim(),
+          subject: `Payment Receipt - ${inv.invoiceNumber}`,
+          eventType: 'PAYMENT_COMPLETED',
+          referenceId: inv.invoiceNumber,
+          invoiceId: inv.id,
+        });
         return sendText(res, 200, 'PAYMENT_RECORDED');
       }
 
       return sendText(res, 200, 'STATUS_NOTED');
+    }
+
+    // PayHere Mock Success Endpoint (/api/v1/payments/payhere/mock-success)
+    if (pathname === '/api/v1/payments/payhere/mock-success' && method === 'POST') {
+      const body = await parseBody(req);
+      const invoiceIdParam = parsedUrl.searchParams.get('invoiceId') || body.invoiceId;
+      if (!invoiceIdParam) {
+        return sendJson(res, 400, { error: 'Validation Error', message: 'invoiceId parameter is required' });
+      }
+      const invoiceId = parseInt(invoiceIdParam, 10);
+      const inv = db.invoices.find(i => i.id === invoiceId);
+      if (!inv) {
+        return sendJson(res, 404, { error: 'Not Found', message: `Invoice with ID ${invoiceId} not found` });
+      }
+      if (inv.status === 'PAID') {
+        return sendJson(res, 400, { error: 'Already Paid', message: `Invoice ${inv.invoiceNumber} is already settled` });
+      }
+
+      inv.status = 'PAID';
+      const paymentIdVal = Math.max(...db.payments.map(p => p.id), 0) + 1;
+      const payment = {
+        id: paymentIdVal,
+        transactionReference: `TXN-MOCK-PH-${Date.now()}`,
+        invoiceId: inv.id,
+        paymentMethod: 'PAYHERE_MOCK',
+        amountPaid: inv.netAmount,
+        currency: config.payhere.currency,
+        status: 'SUCCESS',
+        receiptNumber: `REC-MOCK-${String(paymentIdVal).padStart(4, '0')}`,
+      };
+      db.payments.push(payment);
+
+      const patientObj = getPatientFull(db.patients.find(p => p.id === inv.patientId) || {});
+      recordNotification({
+        recipientEmail: patientObj.email || 'patient@pulseos.lk',
+        recipientName: `${patientObj.firstName || 'Patient'} ${patientObj.lastName || ''}`.trim(),
+        subject: `Payment Receipt - ${inv.invoiceNumber}`,
+        eventType: 'PAYMENT_COMPLETED',
+        referenceId: inv.invoiceNumber,
+        invoiceId: inv.id,
+      });
+
+      return sendJson(res, 200, {
+        success: true,
+        message: 'Mock payment processed successfully via PayHere Mock',
+        invoice: inv,
+        payment,
+      });
     }
 
     // Counter Cash / Card Settlement
@@ -892,6 +995,17 @@ export function createMockServer() {
         receiptNumber,
       };
       db.payments.push(payment);
+
+      const patientObj = getPatientFull(db.patients.find(p => p.id === inv.patientId) || {});
+      recordNotification({
+        recipientEmail: patientObj.email || 'patient@pulseos.lk',
+        recipientName: `${patientObj.firstName || 'Patient'} ${patientObj.lastName || ''}`.trim(),
+        subject: `Payment Receipt - ${inv.invoiceNumber}`,
+        eventType: 'PAYMENT_COMPLETED',
+        referenceId: inv.invoiceNumber,
+        invoiceId: inv.id,
+      });
+
       return sendJson(res, 200, { message: 'Settlement successful', invoice: inv, payment });
     }
 
@@ -986,6 +1100,198 @@ export function createMockServer() {
       reqItem.remarks = body.clinicalRemarks || '';
 
       return sendJson(res, 200, reqItem);
+    }
+
+    // ------------------------------------------------------------------------
+    // M2: AUTHENTICATION & RBAC (/api/v1/auth)
+    // ------------------------------------------------------------------------
+    if (pathname === '/api/v1/auth/login' && method === 'POST') {
+      const body = await parseBody(req);
+      if (!body.username || !body.password) {
+        return sendJson(res, 400, { error: 'Validation Error', message: 'Username and password are required' });
+      }
+      const user = db.users.find(u => (u.username === body.username || u.username.split('@')[0] === body.username) && u.password === body.password);
+      if (!user) {
+        return sendJson(res, 401, { error: 'Unauthorized', message: 'Invalid username or password' });
+      }
+      const tokenPayload = {
+        userId: user.id,
+        username: user.username,
+        fullName: user.fullName,
+        role: user.role,
+        userType: user.userType,
+        ...(user.doctorId ? { doctorId: user.doctorId } : {}),
+        ...(user.patientId ? { patientId: user.patientId } : {}),
+      };
+      const token = signJwt(tokenPayload);
+      return sendJson(res, 200, {
+        token,
+        tokenType: 'Bearer',
+        userId: user.id,
+        username: user.username,
+        fullName: user.fullName,
+        role: user.role,
+        userType: user.userType,
+      });
+    }
+
+    if (pathname === '/api/v1/auth/me' && method === 'GET') {
+      const auth = extractAuthUser(req);
+      if (!auth.authenticated) {
+        return sendJson(res, 401, { error: 'Unauthorized', message: auth.error });
+      }
+      return sendJson(res, 200, auth.user);
+    }
+
+    // Protected Manager KPI endpoint (/api/v1/manager/kpis)
+    if (pathname === '/api/v1/manager/kpis' && method === 'GET') {
+      const auth = extractAuthUser(req);
+      if (!auth.authenticated) {
+        return sendJson(res, 401, { error: 'Unauthorized', message: auth.error });
+      }
+      if (auth.user.role !== 'MANAGER' && auth.user.role !== 'ADMIN') {
+        return sendJson(res, 403, { error: 'Forbidden', message: 'Access denied: requires MANAGER or ADMIN role' });
+      }
+      const totalRevenue = db.payments.reduce((acc, p) => acc + (p.amountPaid || 0), 0);
+      return sendJson(res, 200, {
+        totalRevenue,
+        occupancyRate: 78.5,
+        bedCapacity: 50,
+        activeStaffCount: db.users.filter(u => u.userType === 'STAFF').length,
+        activeDoctorsCount: db.doctors.filter(d => d.isAvailable !== false).length,
+        totalAppointments: db.appointments.length,
+      });
+    }
+
+    // Protected Clinical Consultations endpoint (/api/v1/clinical/consultations)
+    if (pathname === '/api/v1/clinical/consultations' && method === 'GET') {
+      const auth = extractAuthUser(req);
+      if (!auth.authenticated) {
+        return sendJson(res, 401, { error: 'Unauthorized', message: auth.error });
+      }
+      if (auth.user.role !== 'DOCTOR') {
+        return sendJson(res, 403, { error: 'Forbidden', message: 'Access denied: requires DOCTOR role' });
+      }
+      const targetDocId = auth.user.doctorId || 1;
+      return sendJson(res, 200, {
+        doctorId: targetDocId,
+        doctorName: auth.user.fullName,
+        activePatientsInQueue: db.appointments.filter(a => a.doctorId === targetDocId),
+      });
+    }
+
+    // ------------------------------------------------------------------------
+    // M3: NOTIFICATIONS PIPELINE (/api/v1/notifications)
+    // ------------------------------------------------------------------------
+    if (pathname === '/api/v1/notifications' && method === 'GET') {
+      const eventType = parsedUrl.searchParams.get('eventType');
+      const recipientEmail = parsedUrl.searchParams.get('recipientEmail');
+      const referenceId = parsedUrl.searchParams.get('referenceId');
+      let notifs = [...db.notifications];
+      if (eventType) notifs = notifs.filter(n => n.eventType === eventType);
+      if (recipientEmail) notifs = notifs.filter(n => n.recipientEmail === recipientEmail);
+      if (referenceId) notifs = notifs.filter(n => n.referenceId === referenceId);
+      return sendJson(res, 200, notifs);
+    }
+
+    const notifIdMatch = pathname.match(/^\/api\/v1\/notifications\/(\d+)$/);
+    if (notifIdMatch && method === 'GET') {
+      const id = parseInt(notifIdMatch[1], 10);
+      const n = db.notifications.find(item => item.id === id);
+      if (!n) return sendJson(res, 404, { error: 'Not Found', message: 'Notification not found' });
+      return sendJson(res, 200, n);
+    }
+
+    // ------------------------------------------------------------------------
+    // M4: DYNAMIC LANDING PAGE STATS (/api/v1/landing/stats)
+    // ------------------------------------------------------------------------
+    if (pathname === '/api/v1/landing/stats' && method === 'GET') {
+      const activeDoctors = db.doctors.filter(d => d.isAvailable !== false);
+      const specs = Array.from(new Set(db.doctors.map(d => d.specialization).filter(Boolean)));
+      const completedAppts = db.appointments.filter(a => a.status === 'COMPLETED').length;
+      return sendJson(res, 200, {
+        activeDoctorsCount: activeDoctors.length,
+        departmentsCount: 6,
+        satisfiedPatientsCount: 1540 + completedAppts,
+        testsAvailableCount: db.labTests.length,
+        featuredSpecialties: specs.length > 0 ? specs : ['Cardiology', 'General Medicine'],
+      });
+    }
+
+    // ------------------------------------------------------------------------
+    // M4/M5: APPOINTMENT CALENDAR (/api/v1/appointments/calendar)
+    // ------------------------------------------------------------------------
+    if (pathname === '/api/v1/appointments/calendar' && method === 'GET') {
+      const role = parsedUrl.searchParams.get('role');
+      if (!role || !['PATIENT', 'DOCTOR', 'MANAGER', 'RECEPTIONIST'].includes(role)) {
+        return sendJson(res, 400, { error: 'Validation Error', message: 'Valid role parameter (PATIENT, DOCTOR, MANAGER) is required' });
+      }
+
+      if (role === 'PATIENT') {
+        const patientIdParam = parsedUrl.searchParams.get('patientId');
+        const patientId = patientIdParam ? parseInt(patientIdParam, 10) : null;
+        const myAppts = patientId ? db.appointments.filter(a => a.patientId === patientId) : [];
+        const availableSlots = [];
+        for (const doc of db.doctors.filter(d => d.isAvailable)) {
+          const scheds = db.doctorSchedules.filter(s => s.doctorId === doc.id && s.isActive);
+          for (const s of scheds) {
+            availableSlots.push({
+              doctorId: doc.id,
+              doctorName: `Dr. ${doc.firstName} ${doc.lastName}`,
+              specialization: doc.specialization,
+              dayOfWeek: s.dayOfWeek,
+              startTime: s.startTime,
+              endTime: s.endTime,
+              slotDurationMinutes: s.slotDurationMinutes || 15,
+            });
+          }
+        }
+        return sendJson(res, 200, {
+          role: 'PATIENT',
+          patientId,
+          appointments: myAppts,
+          availableSlots,
+        });
+      }
+
+      if (role === 'DOCTOR') {
+        const doctorIdParam = parsedUrl.searchParams.get('doctorId');
+        if (!doctorIdParam) {
+          return sendJson(res, 400, { error: 'Validation Error', message: 'doctorId parameter is required for DOCTOR calendar view' });
+        }
+        const doctorId = parseInt(doctorIdParam, 10);
+        const doc = db.doctors.find(d => d.id === doctorId);
+        if (!doc) {
+          return sendJson(res, 404, { error: 'Not Found', message: `Doctor ${doctorId} not found` });
+        }
+        const schedules = db.doctorSchedules.filter(s => s.doctorId === doctorId && s.isActive);
+        const queue = db.appointments.filter(a => a.doctorId === doctorId);
+        return sendJson(res, 200, {
+          role: 'DOCTOR',
+          doctorId,
+          doctorName: `Dr. ${doc.firstName} ${doc.lastName}`,
+          schedules,
+          queue,
+          totalAppointments: queue.length,
+        });
+      }
+
+      if (role === 'MANAGER') {
+        const doctorLoad = db.doctors.map(d => ({
+          doctorId: d.id,
+          doctorName: `Dr. ${d.firstName} ${d.lastName}`,
+          specialization: d.specialization,
+          appointmentCount: db.appointments.filter(a => a.doctorId === d.id).length,
+          isAvailable: d.isAvailable,
+        }));
+        return sendJson(res, 200, {
+          role: 'MANAGER',
+          allSchedules: db.doctorSchedules,
+          totalAppointments: db.appointments.length,
+          hospitalLoad: 'NORMAL',
+          doctorLoad,
+        });
+      }
     }
 
     // Default 404

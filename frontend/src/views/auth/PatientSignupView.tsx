@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { patientApi } from '../../services/api';
+import { authApi, patientApi } from '../../services/api';
 import { useToast } from '../../context/ToastContext';
 import { UserRound, Lock, AlertCircle, ChevronLeft, Mail, Phone, Calendar as CalendarIcon } from 'lucide-react';
 import { useRole } from '../../context/RoleContext';
@@ -64,6 +64,20 @@ export const PatientSignupView: React.FC = () => {
       
       const response = await patientApi.create(payload);
       const createdPatient = response.data;
+
+      // Auto-authenticate with backend and obtain JWT
+      try {
+        const loginRes = await authApi.login({
+          username: formData.nicPassportNo.trim(),
+          password: formData.password,
+        });
+        if (loginRes.data?.token) {
+          localStorage.setItem('token', loginRes.data.token);
+          sessionStorage.setItem('token', loginRes.data.token);
+        }
+      } catch (loginErr) {
+        console.warn('Auto-login after registration fallback', loginErr);
+      }
 
       // Save to context
       const newPatient = {

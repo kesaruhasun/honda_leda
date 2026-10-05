@@ -23,6 +23,11 @@ import { PharmacyView } from './views/PharmacyView';
 import { BillingView } from './views/BillingView';
 import { LaboratoryView } from './views/LaboratoryView';
 
+// Dedicated Role Dashboards
+import { DoctorDashboardView } from './views/DoctorDashboardView';
+import { ManagerDashboardView } from './views/ManagerDashboardView';
+import { PharmacistDashboardView } from './views/PharmacistDashboardView';
+
 export const App: React.FC = () => {
   return (
     <ToastProvider>
@@ -38,6 +43,8 @@ export const App: React.FC = () => {
             <Route path="/patient/login" element={<PatientLoginView />} />
             <Route path="/patient/signup" element={<PatientSignupView />} />
             <Route path="/admin" element={<StaffLoginView />} />
+            <Route path="/staff" element={<StaffLoginView />} />
+            <Route path="/staff/login" element={<StaffLoginView />} />
 
             {/* Patient Portal */}
             <Route path="/patient/portal" element={<PatientPortalView />} />
@@ -45,6 +52,9 @@ export const App: React.FC = () => {
             {/* Clinical Dashboard */}
             <Route path="/dashboard" element={<Layout />}>
               <Route index element={<Navigate to="patients" replace />} />
+              <Route path="doctor" element={<DoctorDashboardView />} />
+              <Route path="manager" element={<ManagerDashboardView />} />
+              <Route path="pharmacist" element={<PharmacistDashboardView />} />
               <Route path="patients" element={<PatientView />} />
               <Route path="doctors" element={<DoctorView />} />
               <Route path="appointments" element={<AppointmentView />} />

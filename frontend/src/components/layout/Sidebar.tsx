@@ -30,6 +30,14 @@ interface NavGroup {
 
 const NAV_GROUPS: NavGroup[] = [
   {
+    heading: 'Dedicated Portals',
+    items: [
+      { id: 'doctor', label: 'Doctor Station', icon: Stethoscope },
+      { id: 'pharmacist', label: 'Pharmacist Station', icon: Pill },
+      { id: 'manager', label: 'Manager Oversight', icon: Activity },
+    ],
+  },
+  {
     heading: 'Clinical Encounters',
     items: [
       { id: 'patients', label: 'Patient Registry', icon: Users },
@@ -53,19 +61,19 @@ const NAV_GROUPS: NavGroup[] = [
 ];
 
 const ROLE_ALLOWED_MODULES: Record<UserRole, ModuleId[]> = {
-  DOCTOR: ['appointments', 'patients'],
-  RECEPTIONIST: ['patients', 'appointments', 'doctors', 'billing'],
-  PHARMACIST: ['pharmacy', 'patients'],
+  DOCTOR: ['doctor', 'appointments', 'patients'],
+  RECEPTIONIST: ['patients', 'appointments', 'doctors', 'billing', 'manager'],
+  PHARMACIST: ['pharmacist', 'pharmacy', 'patients'],
   LAB_TECHNICIAN: ['laboratory', 'patients'],
-  CASHIER_ADMIN: ['patients', 'doctors', 'appointments', 'pharmacy', 'laboratory', 'billing'],
+  CASHIER_ADMIN: ['manager', 'doctor', 'pharmacist', 'patients', 'doctors', 'appointments', 'pharmacy', 'laboratory', 'billing'],
 };
 
 const ROLE_PRIMARY_MODULE: Record<UserRole, ModuleId> = {
-  DOCTOR: 'appointments',
+  DOCTOR: 'doctor',
   RECEPTIONIST: 'patients',
-  PHARMACIST: 'pharmacy',
+  PHARMACIST: 'pharmacist',
   LAB_TECHNICIAN: 'laboratory',
-  CASHIER_ADMIN: 'billing',
+  CASHIER_ADMIN: 'manager',
 };
 
 export const Sidebar: React.FC = () => {

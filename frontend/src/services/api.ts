@@ -20,6 +20,15 @@ const api = axios.create({
   },
 });
 
+// Request interceptor to attach JWT token if present
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 // Response interceptor for clean error extraction
 api.interceptors.response.use(
   (response) => response,
@@ -130,6 +139,78 @@ export const labApi = {
     }
   ) => api.post<LabTest>(`/laboratory/tests/${testId}/results`, payload),
   deleteTest: (testId: number) => api.delete<void>(`/laboratory/tests/${testId}`),
+};
+
+// Auth API
+export const authApi = {
+  login: (credentials: { username: string; password?: string }) =>
+    api.post<{
+      token: string;
+      tokenType: string;
+      userId: number;
+      username: string;
+      fullName: string;
+      role: string;
+      userType: string;
+      department?: string;
+      roleTitle?: string;
+    }>('/auth/login', credentials),
+  getMe: () =>
+    api.get<{
+      userId: number;
+      username: string;
+      fullName: string;
+      role: string;
+      userType: string;
+      department?: string;
+      roleTitle?: string;
+    }>('/auth/me'),
+};
+
+// Dynamic Landing Page API
+export const landingApi = {
+  getStats: () =>
+    api.get<{
+      activeDoctorsCount: number;
+      departmentsCount: number;
+      satisfiedPatientsCount: number;
+      testsAvailableCount: number;
+      featuredSpecialties: string[];
+    }>('/landing/stats'),
+  getDoctors: () =>
+    api.get<Array<{
+      id: number;
+      fullName: string;
+      specialization: string;
+      roomNumber: string;
+      consultationFee: number;
+      isAvailable: boolean;
+    }>>('/landing/doctors'),
+  getLabTests: () => api.get<any[]>('/landing/lab-tests'),
+};
+
+// Calendar API
+export const calendarApi = {
+  getCalendar: (role: 'PATIENT' | 'DOCTOR' | 'MANAGER', params?: { patientId?: number; doctorId?: number }) => {
+    let url = `/appointments/calendar?role=${role}`;
+    if (params?.patientId) url += `&patientId=${params.patientId}`;
+    if (params?.doctorId) url += `&doctorId=${params.doctorId}`;
+    return api.get<any>(url);
+  },
+};
+
+// Notifications Audit API
+export const notificationsApi = {
+  getAll: (params?: { eventType?: string; recipientEmail?: string; referenceId?: string }) => {
+    let url = '/notifications';
+    const query = new URLSearchParams();
+    if (params?.eventType) query.append('eventType', params.eventType);
+    if (params?.recipientEmail) query.append('recipientEmail', params.recipientEmail);
+    if (params?.referenceId) query.append('referenceId', params.referenceId);
+    const qs = query.toString();
+    if (qs) url += `?${qs}`;
+    return api.get<any[]>(url);
+  },
 };
 
 export default api;

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { authApi } from '../../services/api';
 import { useToast } from '../../context/ToastContext';
 import { useRole } from '../../context/RoleContext';
 import { Lock, UserRound, ChevronLeft, AlertCircle } from 'lucide-react';
@@ -15,34 +16,54 @@ export const StaffLoginView: React.FC = () => {
   const { showToast } = useToast();
   const { setRole } = useRole();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!username.trim() || !password.trim()) return;
+    if (!username.trim() || !password.trim()) {
+      setError('Please enter your Staff ID / email and password.');
+      return;
+    }
     
     setLoading(true);
     setError('');
 
-    const u = username.toLowerCase().trim();
-    let roleToSet: UserRole = 'RECEPTIONIST';
-    if (u.includes('admin')) roleToSet = 'CASHIER_ADMIN';
-    else if (u.includes('doc')) roleToSet = 'DOCTOR';
-    else if (u.includes('pharm')) roleToSet = 'PHARMACIST';
-    else if (u.includes('lab')) roleToSet = 'LAB_TECHNICIAN';
-    else if (u.includes('rec')) roleToSet = 'RECEPTIONIST';
-    else roleToSet = 'CASHIER_ADMIN';
+    try {
+      const res = await authApi.login({
+        username: username.trim(),
+        password: password.trim(),
+      });
 
-    setRole(roleToSet);
-    showToast('success', 'Authenticated', `Logged in as ${roleToSet.replace('_', ' ')}`);
+      const { token, role, fullName } = res.data;
+      if (token) {
+        localStorage.setItem('token', token);
+        sessionStorage.setItem('token', token);
+      }
 
-    switch (roleToSet) {
-      case 'DOCTOR': navigate('/dashboard/appointments'); break;
-      case 'RECEPTIONIST': navigate('/dashboard/patients'); break;
-      case 'PHARMACIST': navigate('/dashboard/pharmacy'); break;
-      case 'LAB_TECHNICIAN': navigate('/dashboard/laboratory'); break;
-      case 'CASHIER_ADMIN': navigate('/dashboard/billing'); break;
-      default: navigate('/dashboard/patients');
+      let roleToSet: UserRole = 'RECEPTIONIST';
+      const r = (role || '').toUpperCase();
+      if (r === 'DOCTOR') roleToSet = 'DOCTOR';
+      else if (r === 'PHARMACIST') roleToSet = 'PHARMACIST';
+      else if (r === 'LAB_TECHNICIAN') roleToSet = 'LAB_TECHNICIAN';
+      else if (r === 'RECEPTIONIST') roleToSet = 'RECEPTIONIST';
+      else if (r.includes('ADMIN') || r === 'MANAGER') roleToSet = 'CASHIER_ADMIN';
+      else roleToSet = 'RECEPTIONIST';
+
+      setRole(roleToSet);
+      showToast('success', 'Authenticated', `Logged in as ${fullName || roleToSet.replace('_', ' ')}`);
+
+      switch (roleToSet) {
+        case 'DOCTOR': navigate('/dashboard/doctor'); break;
+        case 'RECEPTIONIST': navigate('/dashboard/patients'); break;
+        case 'PHARMACIST': navigate('/dashboard/pharmacist'); break;
+        case 'LAB_TECHNICIAN': navigate('/dashboard/laboratory'); break;
+        case 'CASHIER_ADMIN': navigate('/dashboard/manager'); break;
+        default: navigate('/dashboard/patients');
+      }
+    } catch (err: any) {
+      const msg = err.response?.data?.message || err.response?.data?.error || err.message || 'Invalid Staff ID / username or password.';
+      setError(msg);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (

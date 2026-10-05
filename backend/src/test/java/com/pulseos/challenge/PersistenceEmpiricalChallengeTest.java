@@ -1,11 +1,12 @@
 package com.pulseos.challenge;
 
-import com.pulseos.entity.*;
-import com.pulseos.entity.enums.AppointmentStatus;
-import com.pulseos.entity.enums.BloodGroup;
-import com.pulseos.entity.enums.EmployeeRole;
-import com.pulseos.entity.enums.TriagePriority;
-import com.pulseos.repository.*;
+import com.pulseos.patient.*;
+import com.pulseos.doctor.*;
+import com.pulseos.appointment.*;
+import com.pulseos.pharmacy.*;
+import com.pulseos.laboratory.*;
+import com.pulseos.billing.*;
+import com.pulseos.common.*;
 import com.pulseos.seeder.DataSeeder;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -23,9 +24,7 @@ import java.sql.Time;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -62,6 +61,27 @@ public class PersistenceEmpiricalChallengeTest {
     private LabTestRepository labTestRepository;
 
     @Autowired
+    private PrescriptionRepository prescriptionRepository;
+
+    @Autowired
+    private PrescriptionItemRepository prescriptionItemRepository;
+
+    @Autowired
+    private InvoiceDrugItemRepository invoiceDrugItemRepository;
+
+    @Autowired
+    private InvoiceLabItemRepository invoiceLabItemRepository;
+
+    @Autowired
+    private PatientAdmissionRepository patientAdmissionRepository;
+
+    @Autowired
+    private WardRepository wardRepository;
+
+    @Autowired
+    private DoctorScheduleRepository doctorScheduleRepository;
+
+    @Autowired
     private DataSeeder dataSeeder;
 
     @Autowired
@@ -77,6 +97,11 @@ public class PersistenceEmpiricalChallengeTest {
         }
         // Clean up any test records with future dates >= 2026-12-01
         jdbcTemplate.update("DELETE FROM appointments WHERE appointment_date >= '2026-12-01'");
+        // Clean up any dynamically seeded test doctors or patients respecting Table-Per-Type FK order
+        jdbcTemplate.update("DELETE FROM doctors WHERE employee_id IN (SELECT person_id FROM persons WHERE nic_passport_no IN ('888888888V', '999999999V'))");
+        jdbcTemplate.update("DELETE FROM employees WHERE employee_id IN (SELECT person_id FROM persons WHERE nic_passport_no IN ('888888888V', '999999999V'))");
+        jdbcTemplate.update("DELETE FROM patients WHERE patient_id IN (SELECT person_id FROM persons WHERE nic_passport_no IN ('888888888V', '999999999V'))");
+        jdbcTemplate.update("DELETE FROM persons WHERE nic_passport_no IN ('888888888V', '999999999V')");
     }
 
     @Nested
@@ -374,6 +399,418 @@ public class PersistenceEmpiricalChallengeTest {
 
             assertThat(hasPatientType).isTrue();
             assertThat(hasDoctorType).isTrue();
+        }
+    }
+
+    @Nested
+    @DisplayName("Challenge 4: Foreign Key Constraint Integrity Across Bounded Contexts")
+    class ForeignKeyConstraintIntegrityTests {
+
+        @Test
+        @DisplayName("Direct database deletion of Doctor with active appointments must fail with foreign key constraint violation")
+        void testDeleteDoctorWithActiveAppointmentsFails() {
+            List<Doctor> doctors = doctorRepository.findBySpecialization("Cardiology");
+            assertThat(doctors).isNotEmpty();
+            Long docId = doctors.get(0).getId();
+
+            // Doctor has appointments in database; foreign key constraint must reject direct delete
+            assertThatThrownBy(() -> jdbcTemplate.update("DELETE FROM doctors WHERE employee_id = ?", docId))
+                    .isInstanceOf(DataIntegrityViolationException.class);
+        }
+
+        @Test
+        @DisplayName("Direct database deletion of Patient with active appointments/invoices must fail with foreign key constraint violation")
+        void testDeletePatientWithActiveEncountersFails() {
+            List<Patient> patients = patientRepository.findByIsArchivedFalse();
+            assertThat(patients).isNotEmpty();
+            Long patientId = patients.get(0).getId(); // Nimal Perera has apt1 and inv1
+
+            assertThatThrownBy(() -> jdbcTemplate.update("DELETE FROM patients WHERE patient_id = ?", patientId))
+                    .isInstanceOf(DataIntegrityViolationException.class);
+        }
+
+        @Test
+        @DisplayName("Direct database deletion of Department with active staff must fail with foreign key constraint violation")
+        void testDeleteDepartmentWithActiveStaffFails() {
+            Department cardiology = departmentRepository.findByDepartmentName("Cardiology").orElseThrow();
+
+            assertThatThrownBy(() -> jdbcTemplate.update("DELETE FROM departments WHERE department_id = ?", cardiology.getDepartmentId()))
+                    .isInstanceOf(DataIntegrityViolationException.class);
+        }
+
+        @Test
+        @DisplayName("Inserting appointment with non-existent doctor ID must fail foreign key constraint")
+        void testInsertAppointmentWithInvalidDoctorFails() {
+            List<Patient> patients = patientRepository.findByIsArchivedFalse();
+            Long patientId = patients.get(0).getId();
+
+            String insertSql = "INSERT INTO appointments (patient_id, doctor_id, booking_date, appointment_date, appointment_time, status) " +
+                    "VALUES (?, 999999, CURRENT_TIMESTAMP, '2026-12-28', '11:00:00', 'SCHEDULED')";
+
+            assertThatThrownBy(() -> jdbcTemplate.update(insertSql, patientId))
+                    .isInstanceOf(DataIntegrityViolationException.class);
+        }
+
+        @Test
+        @DisplayName("Inserting appointment with non-existent patient ID must fail foreign key constraint")
+        void testInsertAppointmentWithInvalidPatientFails() {
+            List<Doctor> doctors = doctorRepository.findBySpecialization("Cardiology");
+            Long doctorId = doctors.get(0).getId();
+
+            String insertSql = "INSERT INTO appointments (patient_id, doctor_id, booking_date, appointment_date, appointment_time, status) " +
+                    "VALUES (999999, ?, CURRENT_TIMESTAMP, '2026-12-28', '11:15:00', 'SCHEDULED')";
+
+            assertThatThrownBy(() -> jdbcTemplate.update(insertSql, doctorId))
+                    .isInstanceOf(DataIntegrityViolationException.class);
+        }
+    }
+
+    @Nested
+    @DisplayName("Challenge 5: Cross-Package Domain Queries & Traversal Edge Cases")
+    class CrossPackageQueryEdgeCaseTests {
+
+        @Test
+        @DisplayName("PatientRepository.searchPatients queries inherited Person fields cleanly")
+        void testPatientSearchInheritedFields() {
+            // First name query
+            List<Patient> byFirst = patientRepository.searchPatients("Nimal");
+            assertThat(byFirst).isNotEmpty();
+            assertThat(byFirst.get(0).getFirstName()).isEqualTo("Nimal");
+
+            // Last name query (multiple matches: Nimal Perera, Kasun Perera)
+            List<Patient> byLast = patientRepository.searchPatients("Perera");
+            assertThat(byLast).hasSizeGreaterThanOrEqualTo(2);
+
+            // NIC query
+            List<Patient> byNic = patientRepository.searchPatients("199012345678");
+            assertThat(byNic).hasSize(1);
+            assertThat(byNic.get(0).getFirstName()).isEqualTo("Kasun");
+
+            // Case-insensitive query
+            List<Patient> byCaseInsensitive = patientRepository.searchPatients("kAsUn");
+            assertThat(byCaseInsensitive).isNotEmpty();
+
+            // Non-existent search query returns empty list without exception
+            List<Patient> emptySearch = patientRepository.searchPatients("ZZZ_NO_MATCH_XYZ");
+            assertThat(emptySearch).isEmpty();
+        }
+
+        @Test
+        @DisplayName("EmployeeRepository.findByEmployeeRole returns correct polymorphic subclasses across packages")
+        void testEmployeeRoleSubclassResolution() {
+            List<Employee> doctors = employeeRepository.findByEmployeeRole(EmployeeRole.DOCTOR);
+            assertThat(doctors).isNotEmpty();
+            assertThat(doctors.get(0)).isInstanceOf(Doctor.class);
+            Doctor doc = (Doctor) doctors.get(0);
+            assertThat(doc.getDoctorLicenseNo()).isNotBlank();
+            assertThat(doc.getSpecialization()).isNotBlank();
+
+            List<Employee> pharmacists = employeeRepository.findByEmployeeRole(EmployeeRole.PHARMACIST);
+            assertThat(pharmacists).isNotEmpty();
+            assertThat(pharmacists.get(0)).isInstanceOf(Pharmacist.class);
+            Pharmacist pharm = (Pharmacist) pharmacists.get(0);
+            assertThat(pharm.getPharmacyLicenseNo()).isNotBlank();
+
+            List<Employee> techs = employeeRepository.findByEmployeeRole(EmployeeRole.LAB_TECHNICIAN);
+            assertThat(techs).isNotEmpty();
+            assertThat(techs.get(0)).isInstanceOf(LabTechnician.class);
+            LabTechnician tech = (LabTechnician) techs.get(0);
+            assertThat(tech.getCertificationLevel()).isNotBlank();
+
+            List<Employee> receptionists = employeeRepository.findByEmployeeRole(EmployeeRole.RECEPTIONIST);
+            assertThat(receptionists).isNotEmpty();
+            assertThat(receptionists.get(0)).isInstanceOf(Receptionist.class);
+            Receptionist rec = (Receptionist) receptionists.get(0);
+            assertThat(rec.getDeskNumber()).isNotBlank();
+
+            List<Employee> admins = employeeRepository.findByEmployeeRole(EmployeeRole.SYSTEM_ADMIN);
+            assertThat(admins).isNotEmpty();
+            assertThat(admins.get(0)).isInstanceOf(SystemAdmin.class);
+            SystemAdmin admin = (SystemAdmin) admins.get(0);
+            assertThat(admin.getAdminLevel()).isNotBlank();
+        }
+
+        @Test
+        @DisplayName("EmployeeRepository.findByEmail resolves employee entities across all domains")
+        void testEmployeeEmailLookupAcrossSubclasses() {
+            Optional<Employee> docOpt = employeeRepository.findByEmail("it25103999@my.sliit.lk");
+            assertThat(docOpt).isPresent();
+            assertThat(docOpt.get()).isInstanceOf(Doctor.class);
+
+            Optional<Employee> pharmOpt = employeeRepository.findByEmail("it25100826@my.sliit.lk");
+            assertThat(pharmOpt).isPresent();
+            assertThat(pharmOpt.get()).isInstanceOf(Pharmacist.class);
+
+            Optional<Employee> techOpt = employeeRepository.findByEmail("it25103363@my.sliit.lk");
+            assertThat(techOpt).isPresent();
+            assertThat(techOpt.get()).isInstanceOf(LabTechnician.class);
+
+            Optional<Employee> nonExistent = employeeRepository.findByEmail("nobody@pulseos.lk");
+            assertThat(nonExistent).isEmpty();
+        }
+
+        @Test
+        @DisplayName("Cross-package traversal from billing Invoice to patient, appointment, doctor, and department")
+        void testCrossPackageInvoiceTraversal() {
+            List<Invoice> invoices = invoiceRepository.findAll();
+            assertThat(invoices).isNotEmpty();
+
+            for (Invoice inv : invoices) {
+                // Billing -> Patient -> Person
+                assertThat(inv.getPatient()).isNotNull();
+                assertThat(inv.getPatient().getFullName()).isNotBlank();
+                assertThat(inv.getPatient().getNicPassportNo()).isNotBlank();
+                assertThat(inv.getPatient().getAge()).isGreaterThan(0);
+
+                if (inv.getAppointment() != null) {
+                    // Billing -> Appointment -> Doctor -> Employee -> Department
+                    Doctor doc = inv.getAppointment().getDoctor();
+                    assertThat(doc).isNotNull();
+                    assertThat(doc.getSpecialization()).isNotBlank();
+                    assertThat(doc.getDepartment()).isNotNull();
+                    assertThat(doc.getDepartment().getDepartmentName()).isNotBlank();
+                }
+            }
+        }
+
+        @Test
+        @DisplayName("Cross-package traversal from pharmacy Prescription to appointment, doctor, patient, and items")
+        void testCrossPackagePrescriptionTraversal() {
+            List<Prescription> prescriptions = prescriptionRepository.findAll();
+            assertThat(prescriptions).isNotEmpty();
+
+            for (Prescription rx : prescriptions) {
+                assertThat(rx.getPatient()).isNotNull();
+                assertThat(rx.getPatient().getFullName()).isNotBlank();
+
+                assertThat(rx.getDoctor()).isNotNull();
+                assertThat(rx.getDoctor().getDoctorLicenseNo()).isNotBlank();
+
+                assertThat(rx.getItems()).isNotEmpty();
+                for (PrescriptionItem item : rx.getItems()) {
+                    assertThat(item.getDrug()).isNotNull();
+                    assertThat(item.getDrug().getDrugName()).isNotBlank();
+                    assertThat(item.getPrescription().getPrescriptionId()).isEqualTo(rx.getPrescriptionId());
+                }
+            }
+        }
+
+        @Test
+        @DisplayName("Cross-package traversal from laboratory LabTest to appointment, doctor, patient, and technician")
+        void testCrossPackageLabTestTraversal() {
+            List<LabTest> tests = labTestRepository.findAll();
+            assertThat(tests).isNotEmpty();
+
+            for (LabTest test : tests) {
+                assertThat(test.getPatient()).isNotNull();
+                assertThat(test.getPatient().getFullName()).isNotBlank();
+                assertThat(test.getDoctor()).isNotNull();
+                assertThat(test.getDoctor().getSpecialization()).isNotBlank();
+
+                if (test.getTechnician() != null) {
+                    assertThat(test.getTechnician().getCertificationLevel()).isNotBlank();
+                    assertThat(test.getTechnician().getDepartment()).isNotNull();
+                }
+            }
+        }
+
+        @Test
+        @DisplayName("PatientAdmission repository correctly filters active admissions by patient and ward")
+        void testPatientAdmissionQueries() {
+            List<PatientAdmission> admissions = patientAdmissionRepository.findAll();
+            assertThat(admissions).isNotEmpty();
+
+            for (PatientAdmission adm : admissions) {
+                if (adm.getDischargeDate() == null) {
+                    Optional<PatientAdmission> active = patientAdmissionRepository.findByPatientIdAndDischargeDateIsNull(adm.getPatient().getId());
+                    assertThat(active).isPresent();
+                    assertThat(active.get().getAdmissionId()).isEqualTo(adm.getAdmissionId());
+
+                    List<PatientAdmission> wardAdmissions = patientAdmissionRepository.findByWardWardIdAndDischargeDateIsNull(adm.getWard().getWardId());
+                    assertThat(wardAdmissions).isNotEmpty();
+                }
+            }
+        }
+    }
+
+    @Nested
+    @DisplayName("Challenge 6: Polymorphic Lifecycle and Joined-Table Synchronization")
+    class PolymorphicLifecycleTests {
+
+        @Test
+        @DisplayName("Creating new Doctor entity persists rows synchronously across persons, employees, and doctors tables")
+        void testDoctorCreationAcrossJoinedTables() {
+            Department opd = departmentRepository.findByDepartmentName("Outpatient Department (OPD)").orElseThrow();
+
+            Doctor newDoc = new Doctor();
+            newDoc.setNicPassportNo("999999999V");
+            newDoc.setFirstName("Empirical");
+            newDoc.setLastName("Challenger");
+            newDoc.setStreet("Research Lab Way");
+            newDoc.setCity("Colombo");
+            newDoc.setPostalCode("00100");
+            newDoc.setDateOfBirth(LocalDate.of(1982, 4, 15));
+            newDoc.setGender(Gender.MALE);
+            newDoc.setContactNumbers(new HashSet<>(Collections.singletonList("+94770000000")));
+            newDoc.setHireDate(LocalDate.now());
+            newDoc.setSalary(new BigDecimal("550000.00"));
+            newDoc.setEmploymentType(EmploymentType.FULL_TIME);
+            newDoc.setDepartment(opd);
+            newDoc.setDeptJoiningDate(LocalDate.now());
+            newDoc.setEmployeeRole(EmployeeRole.DOCTOR);
+            newDoc.setEmail("test.challenger.doc@pulseos.lk");
+            newDoc.setPasswordHash("hashedPassword");
+            newDoc.setDoctorLicenseNo("SLMC-TEST-9999");
+            newDoc.setSpecialization("Neurology");
+            newDoc.setConsultationFee(new BigDecimal("4000.00"));
+
+            Doctor saved = doctorRepository.saveAndFlush(newDoc);
+            Long id = saved.getId();
+            assertThat(id).isNotNull();
+
+            try {
+                // Assert Hibernate polymorphic loads
+                Optional<Person> asPerson = personRepository.findById(id);
+                assertThat(asPerson).isPresent();
+                assertThat(asPerson.get()).isInstanceOf(Doctor.class);
+                assertThat(((Doctor) asPerson.get()).getSpecialization()).isEqualTo("Neurology");
+
+                Optional<Employee> asEmployee = employeeRepository.findById(id);
+                assertThat(asEmployee).isPresent();
+                assertThat(asEmployee.get()).isInstanceOf(Doctor.class);
+
+                Optional<Doctor> asDoctor = doctorRepository.findById(id);
+                assertThat(asDoctor).isPresent();
+                assertThat(asDoctor.get().getDoctorLicenseNo()).isEqualTo("SLMC-TEST-9999");
+
+                // Direct raw SQL verification: all 3 tables must have exactly 1 corresponding row
+                Integer personCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM persons WHERE person_id = ?", Integer.class, id);
+                Integer employeeCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM employees WHERE employee_id = ?", Integer.class, id);
+                Integer doctorCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM doctors WHERE employee_id = ?", Integer.class, id);
+
+                assertThat(personCount).isEqualTo(1);
+                assertThat(employeeCount).isEqualTo(1);
+                assertThat(doctorCount).isEqualTo(1);
+            } finally {
+                // Clean up
+                doctorRepository.delete(saved);
+                doctorRepository.flush();
+
+                // Direct raw SQL verification: all 3 tables must have row deleted
+                Integer personCountAfter = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM persons WHERE person_id = ?", Integer.class, id);
+                Integer employeeCountAfter = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM employees WHERE employee_id = ?", Integer.class, id);
+                Integer doctorCountAfter = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM doctors WHERE employee_id = ?", Integer.class, id);
+
+                assertThat(personCountAfter).isEqualTo(0);
+                assertThat(employeeCountAfter).isEqualTo(0);
+                assertThat(doctorCountAfter).isEqualTo(0);
+            }
+        }
+
+        @Test
+        @DisplayName("Creating new Patient entity persists rows synchronously across persons and patients tables")
+        void testPatientCreationAcrossJoinedTables() {
+            Patient newPatient = new Patient();
+            newPatient.setNicPassportNo("888888888V");
+            newPatient.setFirstName("Adversarial");
+            newPatient.setLastName("Patient");
+            newPatient.setStreet("Audit Lane");
+            newPatient.setCity("Kandy");
+            newPatient.setPostalCode("20000");
+            newPatient.setDateOfBirth(LocalDate.of(1995, 6, 15));
+            newPatient.setGender(Gender.FEMALE);
+            newPatient.setContactNumbers(new HashSet<>(Collections.singletonList("+94711111111")));
+            newPatient.setBloodGroup(BloodGroup.B_POSITIVE);
+            newPatient.setRegistrationDate(LocalDate.now());
+            newPatient.setTriagePriority(TriagePriority.URGENT);
+            newPatient.setEmail("test.patient@pulseos.lk");
+            newPatient.setIsArchived(false);
+
+            Patient saved = patientRepository.saveAndFlush(newPatient);
+            Long id = saved.getId();
+            assertThat(id).isNotNull();
+
+            try {
+                // Assert Hibernate polymorphic loads
+                Optional<Person> asPerson = personRepository.findById(id);
+                assertThat(asPerson).isPresent();
+                assertThat(asPerson.get()).isInstanceOf(Patient.class);
+                assertThat(((Patient) asPerson.get()).getBloodGroup()).isEqualTo(BloodGroup.B_POSITIVE);
+
+                Optional<Patient> asPatient = patientRepository.findById(id);
+                assertThat(asPatient).isPresent();
+
+                // Direct raw SQL verification: both tables must have 1 row
+                Integer personCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM persons WHERE person_id = ?", Integer.class, id);
+                Integer patientCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM patients WHERE patient_id = ?", Integer.class, id);
+
+                assertThat(personCount).isEqualTo(1);
+                assertThat(patientCount).isEqualTo(1);
+            } finally {
+                // Clean up
+                patientRepository.delete(saved);
+                patientRepository.flush();
+
+                Integer personCountAfter = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM persons WHERE person_id = ?", Integer.class, id);
+                Integer patientCountAfter = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM patients WHERE patient_id = ?", Integer.class, id);
+
+                assertThat(personCountAfter).isEqualTo(0);
+                assertThat(patientCountAfter).isEqualTo(0);
+            }
+        }
+    }
+
+    @Nested
+    @DisplayName("Challenge 7: Composite Key Integrity Across Bounded Contexts")
+    class CompositeKeyRelationshipTests {
+
+        @Test
+        @DisplayName("PrescriptionItem composite key correctly links Prescription and Drug entities")
+        void testPrescriptionItemCompositeKey() {
+            List<PrescriptionItem> items = prescriptionItemRepository.findAll();
+            assertThat(items).isNotEmpty();
+
+            for (PrescriptionItem item : items) {
+                assertThat(item.getId()).isNotNull();
+                assertThat(item.getId().getPrescriptionId()).isNotNull();
+                assertThat(item.getId().getDrugId()).isNotNull();
+
+                assertThat(item.getPrescription().getPrescriptionId()).isEqualTo(item.getId().getPrescriptionId());
+                assertThat(item.getDrug().getDrugId()).isEqualTo(item.getId().getDrugId());
+                assertThat(item.getQuantity()).isGreaterThan(0);
+            }
+        }
+
+        @Test
+        @DisplayName("InvoiceDrugItem composite key correctly links Invoice and Drug entities")
+        void testInvoiceDrugItemCompositeKey() {
+            List<InvoiceDrugItem> items = invoiceDrugItemRepository.findAll();
+            assertThat(items).isNotEmpty();
+
+            for (InvoiceDrugItem item : items) {
+                assertThat(item.getId()).isNotNull();
+                assertThat(item.getId().getInvoiceId()).isNotNull();
+                assertThat(item.getId().getDrugId()).isNotNull();
+
+                assertThat(item.getInvoice().getInvoiceId()).isEqualTo(item.getId().getInvoiceId());
+                assertThat(item.getDrug().getDrugId()).isEqualTo(item.getId().getDrugId());
+            }
+        }
+
+        @Test
+        @DisplayName("InvoiceLabItem composite key correctly links Invoice and LabTest entities")
+        void testInvoiceLabItemCompositeKey() {
+            List<InvoiceLabItem> items = invoiceLabItemRepository.findAll();
+            assertThat(items).isNotEmpty();
+
+            for (InvoiceLabItem item : items) {
+                assertThat(item.getId()).isNotNull();
+                assertThat(item.getId().getInvoiceId()).isNotNull();
+                assertThat(item.getId().getTestId()).isNotNull();
+
+                assertThat(item.getInvoice().getInvoiceId()).isEqualTo(item.getId().getInvoiceId());
+                assertThat(item.getLabTest().getTestId()).isEqualTo(item.getId().getTestId());
+            }
         }
     }
 }
