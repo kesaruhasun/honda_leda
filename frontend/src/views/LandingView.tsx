@@ -1,12 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import {
   ShieldCheck,
   ArrowRight,
   UserRound,
-  Stethoscope,
-  FlaskConical,
-  Building2,
   Calendar,
   PhoneCall,
   Activity,
@@ -16,7 +13,6 @@ import {
 import { landingApi } from '../services/api';
 
 export const LandingView: React.FC = () => {
-  const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [stats, setStats] = useState({
     activeDoctorsCount: 6,
@@ -238,56 +234,6 @@ export const LandingView: React.FC = () => {
                 </div>
               </div>
 
-              {/* Clinical Station Navigation Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div
-                  onClick={() => navigate('/patient/portal')}
-                  className="p-3.5 sm:p-4 rounded-xl border border-slate-200 bg-white hover:border-teal-500 hover:shadow-xs transition-all cursor-pointer group"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <UserRound className="h-5 w-5 text-teal-600" />
-                    <span className="text-[11px] font-medium text-slate-400">Portal</span>
-                  </div>
-                  <h3 className="text-sm font-bold text-slate-900 group-hover:text-teal-700 transition-colors">Patient Wellness Hub</h3>
-                  <p className="text-xs text-slate-500 mt-1 line-clamp-1">View lab results, pharmacy orders &amp; visits</p>
-                </div>
-
-                <div
-                  onClick={() => navigate('/admin')}
-                  className="p-3.5 sm:p-4 rounded-xl border border-slate-200 bg-white hover:border-blue-500 hover:shadow-xs transition-all cursor-pointer group"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <Stethoscope className="h-5 w-5 text-blue-600" />
-                    <span className="text-[11px] font-medium text-slate-400">Station</span>
-                  </div>
-                  <h3 className="text-sm font-bold text-slate-900 group-hover:text-blue-700 transition-colors">Physician Station</h3>
-                  <p className="text-xs text-slate-500 mt-1 line-clamp-1">Clinical dossiers, e-prescriptions &amp; notes</p>
-                </div>
-
-                <div
-                  onClick={() => navigate('/admin')}
-                  className="p-3.5 sm:p-4 rounded-xl border border-slate-200 bg-white hover:border-emerald-500 hover:shadow-xs transition-all cursor-pointer group"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <FlaskConical className="h-5 w-5 text-emerald-600" />
-                    <span className="text-[11px] font-medium text-slate-400">Dispensary</span>
-                  </div>
-                  <h3 className="text-sm font-bold text-slate-900 group-hover:text-emerald-700 transition-colors">Pharmacy &amp; Lab</h3>
-                  <p className="text-xs text-slate-500 mt-1 line-clamp-1">Barcoded dispensing &amp; specimen pipeline</p>
-                </div>
-
-                <div
-                  onClick={() => navigate('/admin')}
-                  className="p-3.5 sm:p-4 rounded-xl border border-slate-200 bg-white hover:border-purple-500 hover:shadow-xs transition-all cursor-pointer group"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <Building2 className="h-5 w-5 text-purple-600" />
-                    <span className="text-[11px] font-medium text-slate-400">Cockpit</span>
-                  </div>
-                  <h3 className="text-sm font-bold text-slate-900 group-hover:text-purple-700 transition-colors">Executive Ops</h3>
-                  <p className="text-xs text-slate-500 mt-1 line-clamp-1">Hospital occupancy, cash flow &amp; audits</p>
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -313,36 +259,51 @@ export const LandingView: React.FC = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {doctors.length > 0 ? (
-              doctors.slice(0, 6).map((doc) => (
+              doctors.slice(0, 6).map((doc) => {
+                const isFemale = doc.fullName.toLowerCase().includes('female') || doc.gender === 'FEMALE';
+                const avatarUrl = isFemale 
+                  ? 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?q=80&w=200&h=200&fit=crop'
+                  : 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?q=80&w=200&h=200&fit=crop';
+                  
+                return (
                 <div
                   key={doc.id}
-                  className="p-6 rounded-xl border border-slate-200 bg-white hover:border-slate-300 hover:shadow-xs transition-all space-y-4"
+                  className="p-5 rounded-xl border border-slate-200 bg-white hover:border-slate-300 hover:shadow-xs transition-all flex flex-col gap-4"
                 >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className="text-base font-bold text-slate-900">{doc.fullName}</h3>
-                      <p className="text-xs text-teal-700 font-medium">{doc.specialization}</p>
+                  <div className="flex items-start gap-4">
+                    <img 
+                      src={avatarUrl} 
+                      alt={doc.fullName} 
+                      className="w-14 h-14 rounded-full object-cover border border-slate-200 shadow-sm"
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <h3 className="text-sm font-bold text-slate-900">{doc.fullName}</h3>
+                          <p className="text-[11px] text-teal-700 font-medium">{doc.specialization}</p>
+                        </div>
+                        <span className="px-1.5 py-0.5 text-[9px] font-bold rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          Duty
+                        </span>
+                      </div>
                     </div>
-                    <span className="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                      On Duty
-                    </span>
                   </div>
 
-                  <div className="space-y-1 text-xs text-slate-500">
-                    <p>Consultation Suite: <span className="font-semibold text-slate-800">{doc.roomNumber || 'Room 204'}</span></p>
-                    <p>Consultation Fee: <span className="font-bold text-slate-900 font-mono">LKR {doc.consultationFee || 2500}</span></p>
+                  <div className="space-y-1.5 text-xs text-slate-500 pt-3 border-t border-slate-100">
+                    <p className="flex justify-between"><span>Suite:</span> <span className="font-semibold text-slate-800">{doc.roomNumber || 'Room 204'}</span></p>
+                    <p className="flex justify-between"><span>Fee:</span> <span className="font-bold text-slate-900 font-mono">LKR {doc.consultationFee || 2500}</span></p>
                   </div>
 
                   <Link
                     to="/patient/portal"
-                    className="block w-full py-2 px-3 text-center rounded-lg border border-slate-200 hover:bg-slate-50 text-xs font-semibold text-slate-700 transition-colors"
+                    className="block w-full mt-auto py-2 px-3 text-center rounded-lg bg-slate-50 border border-slate-200 hover:bg-slate-100 hover:border-slate-300 text-xs font-bold text-slate-700 transition-colors shadow-sm"
                   >
                     Book Consultation
                   </Link>
                 </div>
-              ))
+              )})
             ) : (
-              <div className="col-span-3 py-12 text-center text-slate-400">Loading specialist directory...</div>
+              <div className="col-span-1 md:col-span-2 lg:col-span-3 py-12 text-center text-slate-400 font-medium border border-dashed border-slate-200 rounded-xl">Loading specialist directory...</div>
             )}
           </div>
         </div>
@@ -351,32 +312,47 @@ export const LandingView: React.FC = () => {
       {/* Diagnostic Investigations Catalog */}
       <section id="diagnostics" className="py-20 bg-slate-50 border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-2xl mx-auto mb-12">
-            <span className="text-xs font-bold text-teal-600 uppercase tracking-wider">Pathology & Diagnostics</span>
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1">Diagnostic Laboratory Catalog</h2>
-            <p className="text-sm text-slate-500 mt-1">
-              Accurate, certified medical testing with digital results directly uploaded to your patient portal
-            </p>
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+            <div className="max-w-2xl">
+              <span className="text-teal-600 font-bold tracking-wider uppercase text-[10px]">Pathology & Diagnostics</span>
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-2 mb-3">Diagnostic Laboratory Catalog</h2>
+              <p className="text-slate-600 text-sm leading-relaxed">
+                Accurate, certified medical testing with digital results directly uploaded to your patient portal
+              </p>
+            </div>
+            <Link 
+              to="/patient/login" 
+              className="px-6 py-3 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-lg shadow-sm transition-colors shrink-0"
+            >
+              Login to Request Lab Test
+            </Link>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {labTests.length > 0 ? (
               labTests.slice(0, 6).map((test) => (
-                <div key={test.id} className="p-5 rounded-xl border border-slate-200 bg-white shadow-xs space-y-3">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-bold">
+                <div key={test.id} className="rounded-xl border border-slate-200 bg-white shadow-xs overflow-hidden group hover:border-slate-300 hover:shadow-sm transition-all flex flex-col">
+                  <div className="h-32 bg-slate-100 relative overflow-hidden">
+                    <img 
+                      src={`https://images.unsplash.com/photo-1579154204601-01588f351e67?q=80&w=400&h=200&fit=crop&auto=format&ixlib=rb-4.0.3`}
+                      alt="Lab equipment" 
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-90"
+                    />
+                    <div className="absolute top-3 right-3">
+                      <span className="text-[10px] font-mono px-2 py-1 rounded bg-white/90 text-slate-800 font-bold backdrop-blur-sm shadow-sm border border-slate-200/50">
                         {test.testCode}
                       </span>
-                      <h4 className="text-sm font-bold text-slate-900 mt-2">{test.testName}</h4>
                     </div>
                   </div>
-
-                  <div className="pt-2 flex items-center justify-between border-t border-slate-100 text-xs">
-                    <span className="text-slate-500">Standard Fee:</span>
-                    <span className="font-bold text-slate-900 font-mono">
-                      LKR {test.standardFee || test.price || 1500}
-                    </span>
+                  
+                  <div className="p-5 flex-1 flex flex-col">
+                    <h4 className="text-sm font-bold text-slate-900 mb-4">{test.testName}</h4>
+                    <div className="mt-auto pt-3 flex items-center justify-between border-t border-slate-100 text-xs">
+                      <span className="text-slate-500 font-medium">Standard Fee:</span>
+                      <span className="font-bold text-teal-700 font-mono text-[13px] bg-teal-50 px-2 py-0.5 rounded border border-teal-100">
+                        LKR {test.standardFee || test.price || 1500}
+                      </span>
+                    </div>
                   </div>
                 </div>
               ))

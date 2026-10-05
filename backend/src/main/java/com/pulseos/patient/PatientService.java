@@ -1,5 +1,10 @@
 package com.pulseos.patient;
 
+import com.pulseos.notification.NotificationService;
+import com.pulseos.notification.EmailNotification;
+import java.time.LocalDateTime;
+import com.pulseos.notification.NotificationService;
+
 import com.pulseos.common.Gender;
 import com.pulseos.common.PulseException;
 import com.pulseos.patient.PatientDTOs.*;
@@ -20,6 +25,8 @@ import java.util.stream.Collectors;
 public class PatientService {
 
     private final PatientRepository patientRepository;
+    private final ArchivedPatientRepository archivedPatientRepository;
+    private final NotificationService notificationService;
 
     @Transactional(readOnly = true)
     public List<PatientResponse> getAllPatients(String triagePriority, String search) {
@@ -140,6 +147,21 @@ public class PatientService {
 
         Patient saved = patientRepository.save(patient);
         log.info("Registered new patient: ID={}, NIC={}", saved.getId(), saved.getNicPassportNo());
+
+        if (saved.getEmail() != null && !saved.getEmail().isBlank()) {
+            EmailNotification welcomeNotif = EmailNotification.builder()
+                .to(saved.getEmail())
+                .subject("Welcome to PulseOS - Account Created")
+                .body("Hello " + saved.getFirstName() + " " + saved.getLastName() + ",\n\nWelcome to PulseOS Hospital Management System! Your patient account has been successfully created.\n\nYour NIC: " + saved.getNicPassportNo() + "\n\nYou can now log in to the Patient Portal to manage your appointments, lab reports, and prescriptions.\n\nBest Regards,\nThe PulseOS Team")
+                .templateType("PATIENT_WELCOME")
+                .build();
+            try {
+                notificationService.send(welcomeNotif);
+            } catch (Exception e) {
+                log.warn("Failed to send welcome email to {}: {}", saved.getEmail(), e.getMessage());
+            }
+        }
+
         return toResponse(saved);
     }
 
@@ -210,12 +232,40 @@ public class PatientService {
     }
 
     @Transactional
-    public PatientResponse archivePatient(Long id) {
+    public PatientResponse archivePatient(Long id, String reason, String archivedBy) {
         Patient patient = patientRepository.findById(id)
                 .orElseThrow(() -> PulseException.notFound("Patient not found"));
         patient.setIsArchived(true);
         Patient saved = patientRepository.save(patient);
+
+        ArchivedPatient archived = ArchivedPatient.builder()
+                .originalPatientId(patient.getId())
+                .firstName(patient.getFirstName() != null ? patient.getFirstName() : "")
+                .lastName(patient.getLastName() != null ? patient.getLastName() : "")
+                .email(patient.getEmail() != null ? patient.getEmail() : "")
+                .nicPassportNo(patient.getNicPassportNo())
+                .contactNumber((patient.getContactNumbers() != null && !patient.getContactNumbers().isEmpty()) ? patient.getContactNumbers().iterator().next() : "")
+                .gender(patient.getGender() != null ? patient.getGender().name() : "")
+                .dateOfBirth(patient.getDateOfBirth())
+                .city(patient.getCity() != null ? patient.getCity() : "Colombo")
+                .bloodGroup(patient.getBloodGroup() != null ? patient.getBloodGroup().name() : "UNKNOWN")
+                .emergencyContactName(patient.getEmergencyContactName())
+                .emergencyContactPhone(patient.getEmergencyContactPhone())
+                .emergencyContactRelation(patient.getEmergencyContactRelation())
+                .allergies(patient.getAllergies())
+                .medicalNotes(patient.getMedicalNotes())
+                .archiveReason(reason != null && !reason.isBlank() ? reason : "Archived per clinical protocol")
+                .archivedAt(LocalDateTime.now())
+                .archivedBy(archivedBy != null && !archivedBy.isBlank() ? archivedBy : "Staff")
+                .build();
+
+        archivedPatientRepository.save(archived);
         return toResponse(saved);
+    }
+
+    @Transactional
+    public PatientResponse archivePatient(Long id) {
+        return archivePatient(id, "Archived per clinical protocol", "Staff");
     }
 
     @Transactional
@@ -224,7 +274,14 @@ public class PatientService {
                 .orElseThrow(() -> PulseException.notFound("Patient not found"));
         patient.setIsArchived(false);
         Patient saved = patientRepository.save(patient);
+
+        archivedPatientRepository.deleteByOriginalPatientId(id);
         return toResponse(saved);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ArchivedPatient> getArchivedPatients() {
+        return archivedPatientRepository.findAllByOrderByArchivedAtDesc();
     }
 
     public PatientResponse toResponse(Patient p) {

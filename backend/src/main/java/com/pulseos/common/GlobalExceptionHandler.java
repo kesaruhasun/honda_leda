@@ -65,11 +65,15 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
-    public ResponseEntity<Map<String, Object>> handleAccessDeniedException(org.springframework.security.access.AccessDeniedException ex) {
+    public ResponseEntity<Map<String, Object>> handleAccessDeniedException(
+            org.springframework.security.access.AccessDeniedException ex,
+            jakarta.servlet.http.HttpServletRequest request) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("error", "Forbidden");
         body.put("message", "Access denied: You do not have permission to access this resource");
         body.put("status", HttpStatus.FORBIDDEN.value());
+        body.put("path", request.getRequestURI());
+        body.put("timestamp", java.time.Instant.now().toString());
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(body);
     }
 
@@ -77,11 +81,15 @@ public class GlobalExceptionHandler {
         org.springframework.security.authentication.BadCredentialsException.class,
         org.springframework.security.core.AuthenticationException.class
     })
-    public ResponseEntity<Map<String, Object>> handleAuthenticationException(Exception ex) {
+    public ResponseEntity<Map<String, Object>> handleAuthenticationException(
+            Exception ex,
+            jakarta.servlet.http.HttpServletRequest request) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("error", "Unauthorized");
         body.put("message", ex.getMessage() != null && !ex.getMessage().isBlank() ? ex.getMessage() : "Invalid credentials");
         body.put("status", HttpStatus.UNAUTHORIZED.value());
+        body.put("path", request.getRequestURI());
+        body.put("timestamp", java.time.Instant.now().toString());
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body);
     }
 

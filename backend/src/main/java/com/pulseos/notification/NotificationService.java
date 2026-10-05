@@ -31,9 +31,10 @@ public class NotificationService {
 
     private final NotificationConfig config;
     private final JavaMailSender mailSender;
+    private final NotificationRepository notificationRepository;
 
     private final List<NotificationRecord> notificationLog = new CopyOnWriteArrayList<>();
-    private final AtomicLong idGenerator = new AtomicLong(1);
+    private final java.util.concurrent.atomic.AtomicLong idGenerator = new java.util.concurrent.atomic.AtomicLong(1);
 
     /**
      * Send an email notification asynchronously and record in audit log.
@@ -87,6 +88,7 @@ public class NotificationService {
                 .timestamp(LocalDateTime.now())
                 .build();
 
+        record = notificationRepository.save(record);
         notificationLog.add(record);
 
         send(EmailNotification.builder()
@@ -132,6 +134,7 @@ public class NotificationService {
                 .timestamp(LocalDateTime.now())
                 .build();
 
+        record = notificationRepository.save(record);
         notificationLog.add(record);
 
         send(EmailNotification.builder()
@@ -175,6 +178,7 @@ public class NotificationService {
                 .timestamp(LocalDateTime.now())
                 .build();
 
+        record = notificationRepository.save(record);
         notificationLog.add(record);
 
         send(EmailNotification.builder()
@@ -187,18 +191,67 @@ public class NotificationService {
         return record;
     }
 
+    /**
+     * Convenience: send account creation welcome email.
+     */
+    public NotificationRecord sendWelcomeEmail(String toEmail, String patientName, String nicNumber) {
+        String subject = "Welcome to PulseOS Hospital Healthcare Network";
+        String body = String.format("""
+                Dear %s,
+
+                Welcome to PulseOS Hospital Management Network! Your patient profile has been successfully registered.
+
+                Patient Name: %s
+                NIC / Identification: %s
+                Registration Status: ACTIVE & VERIFIED
+
+                You can now log in to the Patient Portal to:
+                - Schedule consultations with top medical specialists
+                - Track pathology lab test orders and access certified diagnostic reports
+                - Manage electronic prescriptions and pharmacy pickup authorizations
+                - View and settle hospital invoices securely via PayHere
+
+                If you require emergency assistance, please dial our 24/7 hotline at 1990.
+
+                Warm regards,
+                PulseOS Hospital Administration Team
+                """, patientName, patientName, nicNumber != null ? nicNumber : "Registered");
+
+        NotificationRecord record = NotificationRecord.builder()
+                .eventType("PATIENT_WELCOME")
+                .recipientEmail(toEmail)
+                .recipientName(patientName)
+                .referenceId(nicNumber)
+                .subject(subject)
+                .body(body)
+                .status("SENT")
+                .timestamp(LocalDateTime.now())
+                .build();
+
+        record = notificationRepository.save(record);
+        notificationLog.add(record);
+
+        send(EmailNotification.builder()
+                .to(toEmail)
+                .subject(subject)
+                .body(body)
+                .templateType("PATIENT_WELCOME")
+                .build());
+
+        return record;
+    }
+
     public List<NotificationRecord> getNotifications(String eventType, String recipientEmail, String referenceId) {
-        return notificationLog.stream()
-                .filter(n -> eventType == null || n.getEventType().equalsIgnoreCase(eventType))
-                .filter(n -> recipientEmail == null || n.getRecipientEmail().equalsIgnoreCase(recipientEmail))
-                .filter(n -> referenceId == null || n.getReferenceId().equalsIgnoreCase(referenceId))
+        List<NotificationRecord> records = notificationRepository.findAllByOrderByTimestampDesc();
+        return records.stream()
+                .filter(n -> eventType == null || (n.getEventType() != null && n.getEventType().equalsIgnoreCase(eventType)))
+                .filter(n -> recipientEmail == null || (n.getRecipientEmail() != null && n.getRecipientEmail().equalsIgnoreCase(recipientEmail)))
+                .filter(n -> referenceId == null || (n.getReferenceId() != null && n.getReferenceId().equalsIgnoreCase(referenceId)))
                 .collect(Collectors.toList());
     }
 
     public Optional<NotificationRecord> getNotificationById(Long id) {
-        return notificationLog.stream()
-                .filter(n -> n.getId().equals(id))
-                .findFirst();
+        return notificationRepository.findById(id);
     }
 
     private void sendConsole(EmailNotification notification) {

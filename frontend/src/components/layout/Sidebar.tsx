@@ -25,6 +25,7 @@ interface NavGroup {
     label: string;
     icon: React.ElementType;
     badge?: string;
+    allowedRoles?: UserRole[];
   }[];
 }
 
@@ -32,30 +33,29 @@ const NAV_GROUPS: NavGroup[] = [
   {
     heading: 'Dedicated Portals',
     items: [
-      { id: 'doctor', label: 'Doctor Station', icon: Stethoscope },
-      { id: 'pharmacist', label: 'Pharmacist Station', icon: Pill },
-      { id: 'manager', label: 'Manager Oversight', icon: Activity },
+      { id: 'doctor', label: 'Doctor Station', icon: Stethoscope, allowedRoles: ['DOCTOR'] },
+      { id: 'pharmacist', label: 'Pharmacist Station', icon: Pill, allowedRoles: ['PHARMACIST'] },
     ],
   },
   {
     heading: 'Clinical Encounters',
     items: [
-      { id: 'patients', label: 'Patient Registry', icon: Users },
-      { id: 'doctors', label: 'Physician Rosters', icon: Stethoscope },
-      { id: 'appointments', label: 'Consultations', icon: CalendarCheck },
+      { id: 'patients', label: 'Patient Registry', icon: Users, allowedRoles: ['RECEPTIONIST', 'DOCTOR'] },
+      { id: 'doctors', label: 'Physician Rosters', icon: Stethoscope, allowedRoles: ['RECEPTIONIST'] },
+      { id: 'appointments', label: 'Consultations', icon: CalendarCheck, allowedRoles: ['RECEPTIONIST', 'DOCTOR'] },
     ],
   },
   {
     heading: 'Diagnostics & Therapy',
     items: [
-      { id: 'pharmacy', label: 'Central Dispensary', icon: Pill },
-      { id: 'laboratory', label: 'Diagnostic Pathology', icon: FlaskConical },
+      { id: 'pharmacy', label: 'Central Dispensary', icon: Pill, allowedRoles: ['PHARMACIST'] },
+      { id: 'laboratory', label: 'Diagnostic Pathology', icon: FlaskConical, allowedRoles: ['LAB_TECHNICIAN', 'DOCTOR'] },
     ],
   },
   {
     heading: 'Administration',
     items: [
-      { id: 'billing', label: 'Billing & Cashier', icon: Receipt },
+      { id: 'billing', label: 'Billing & Cashier', icon: Receipt, allowedRoles: ['CASHIER_ADMIN', 'RECEPTIONIST'] },
     ],
   },
 ];

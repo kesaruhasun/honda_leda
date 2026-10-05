@@ -75,6 +75,9 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/landing/**").permitAll()
                 // Role-based calendar queries
                 .requestMatchers("/api/v1/appointments/calendar").permitAll()
+                // Public catalog and formulary reads
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/pharmacy/drugs").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/laboratory/catalog").permitAll()
                 // Notification audit and query pipeline
                 .requestMatchers("/api/v1/notifications/**").permitAll()
                 // PayHere IPN Webhook callback (unauthenticated server-to-server POST)

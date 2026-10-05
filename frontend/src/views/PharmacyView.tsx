@@ -8,6 +8,7 @@ import {
   ArrowDownCircle,
   Boxes,
   Barcode,
+  Printer,
 } from 'lucide-react';
 import { MetricCard } from '../components/common/MetricCard';
 import { Badge } from '../components/common/Badge';
@@ -39,6 +40,7 @@ export const PharmacyView: React.FC = () => {
   const [dispensingInProgress, setDispensingInProgress] = useState(false);
   const [pharmacistVerified, setPharmacistVerified] = useState(false);
   const [allergyChecked, setAllergyChecked] = useState(false);
+  const [printRxLabel, setPrintRxLabel] = useState<Prescription | null>(null);
 
   // New Shipment Form State
   const [shipmentForm, setShipmentForm] = useState({
@@ -414,10 +416,20 @@ export const PharmacyView: React.FC = () => {
                             <span>Verify & Dispense</span>
                           </button>
                         ) : (
-                          <span className="text-[11px] font-mono text-emerald-700 font-semibold flex items-center justify-end gap-1">
-                            <CheckCircle2 className="h-3.5 w-3.5" />
-                            Fulfilled
-                          </span>
+                          <div className="flex items-center justify-end gap-2">
+                            <span className="text-[11px] font-mono text-emerald-700 font-semibold flex items-center gap-1">
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                              Fulfilled
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setPrintRxLabel(prs)}
+                              className="p-1.5 text-slate-500 hover:text-teal-700 rounded-md hover:bg-slate-100 border border-slate-200 transition-colors"
+                              title="Print Rx Dispensing Bottle Barcode Label"
+                            >
+                              <Printer className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
                         )}
                       </td>
                     </tr>
@@ -720,6 +732,109 @@ export const PharmacyView: React.FC = () => {
         }}
         mode="pharmacy"
       />
+      {/* Printable Rx Dispensing Bottle Barcode Label */}
+      {printRxLabel && (
+        <Modal
+          isOpen={true}
+          onClose={() => setPrintRxLabel(null)}
+          title="Print Dispensing Bottle Barcode Label"
+          subtitle={`Prescription: ${printRxLabel.prescriptionNumber || `RX-${printRxLabel.id}`}`}
+          maxWidth="sm"
+        >
+          <div className="space-y-4 text-xs font-sans">
+            <div className="p-4 rounded-xl border-2 border-dashed border-slate-300 bg-white shadow-xs font-mono select-none">
+              <div className="flex justify-between items-start border-b border-slate-200 pb-2 mb-2">
+                <div>
+                  <div className="text-[10px] font-bold text-teal-700 tracking-wider uppercase">PULSEOS PHARMACY</div>
+                  <div className="text-sm font-black text-slate-900">{printRxLabel.patientName}</div>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] text-slate-400 block">RX NUMBER</span>
+                  <span className="font-bold text-slate-800">{printRxLabel.prescriptionNumber || `RX-${printRxLabel.id}`}</span>
+                </div>
+              </div>
+
+              {/* Drug Details */}
+              <div className="p-2 bg-slate-50 rounded border border-slate-100 space-y-1 my-2">
+                <div className="font-bold text-slate-900 text-xs">
+                  {printRxLabel.drugName || printRxLabel.items?.[0]?.drugName || 'Prescribed Drug'}
+                </div>
+                <div className="text-[11px] text-slate-600">
+                  Dosage: {printRxLabel.dosage || printRxLabel.items?.[0]?.dosage || 'Standard'} &bull; Qty: {printRxLabel.quantity ?? printRxLabel.items?.[0]?.prescribedQuantity ?? 10} Units
+                </div>
+                <div className="text-[10px] text-teal-800 font-semibold bg-teal-50/60 p-1 rounded">
+                  Directions: {printRxLabel.instructions || printRxLabel.notes || printRxLabel.doctorInstructions || 'Take with water'}
+                </div>
+              </div>
+
+              {/* Barcode Visualization */}
+              <div className="py-2.5 flex flex-col items-center justify-center bg-slate-50/50 rounded-lg my-2 border border-slate-100">
+                <svg className="w-48 h-12" viewBox="0 0 192 48">
+                  <rect x="6" y="0" width="3" height="48" fill="#1e293b"/>
+                  <rect x="12" y="0" width="2" height="48" fill="#1e293b"/>
+                  <rect x="17" y="0" width="4" height="48" fill="#1e293b"/>
+                  <rect x="24" y="0" width="1" height="48" fill="#1e293b"/>
+                  <rect x="28" y="0" width="3" height="48" fill="#1e293b"/>
+                  <rect x="34" y="0" width="5" height="48" fill="#1e293b"/>
+                  <rect x="42" y="0" width="2" height="48" fill="#1e293b"/>
+                  <rect x="47" y="0" width="4" height="48" fill="#1e293b"/>
+                  <rect x="54" y="0" width="2" height="48" fill="#1e293b"/>
+                  <rect x="59" y="0" width="3" height="48" fill="#1e293b"/>
+                  <rect x="65" y="0" width="1" height="48" fill="#1e293b"/>
+                  <rect x="69" y="0" width="4" height="48" fill="#1e293b"/>
+                  <rect x="76" y="0" width="2" height="48" fill="#1e293b"/>
+                  <rect x="81" y="0" width="5" height="48" fill="#1e293b"/>
+                  <rect x="89" y="0" width="3" height="48" fill="#1e293b"/>
+                  <rect x="95" y="0" width="1" height="48" fill="#1e293b"/>
+                  <rect x="99" y="0" width="4" height="48" fill="#1e293b"/>
+                  <rect x="106" y="0" width="2" height="48" fill="#1e293b"/>
+                  <rect x="111" y="0" width="3" height="48" fill="#1e293b"/>
+                  <rect x="117" y="0" width="5" height="48" fill="#1e293b"/>
+                  <rect x="125" y="0" width="2" height="48" fill="#1e293b"/>
+                  <rect x="130" y="0" width="4" height="48" fill="#1e293b"/>
+                  <rect x="137" y="0" width="1" height="48" fill="#1e293b"/>
+                  <rect x="141" y="0" width="3" height="48" fill="#1e293b"/>
+                  <rect x="147" y="0" width="5" height="48" fill="#1e293b"/>
+                  <rect x="155" y="0" width="2" height="48" fill="#1e293b"/>
+                  <rect x="160" y="0" width="4" height="48" fill="#1e293b"/>
+                  <rect x="167" y="0" width="2" height="48" fill="#1e293b"/>
+                  <rect x="172" y="0" width="3" height="48" fill="#1e293b"/>
+                  <rect x="178" y="0" width="4" height="48" fill="#1e293b"/>
+                </svg>
+                <span className="text-[11px] font-bold text-slate-800 tracking-widest mt-1">
+                  *{printRxLabel.prescriptionNumber || `RX-${printRxLabel.id}`}*
+                </span>
+              </div>
+
+              <div className="flex justify-between text-[10px] text-slate-500 border-t border-slate-200 pt-2">
+                <span>Dispensed: {new Date().toLocaleDateString()}</span>
+                <span>Pharmacist: Verified Staff</span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setPrintRxLabel(null)}
+                className="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 font-semibold"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  window.print();
+                  showToast('success', 'Label Printed', 'Prescription bottle barcode label dispatched to printer.');
+                }}
+                className="px-4 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-bold flex items-center gap-1.5 shadow-2xs"
+              >
+                <Printer className="h-3.5 w-3.5" />
+                <span>Print Bottle Label</span>
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 };

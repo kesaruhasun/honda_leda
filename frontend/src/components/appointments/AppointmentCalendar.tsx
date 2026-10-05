@@ -8,7 +8,7 @@ interface AppointmentCalendarProps {
   patientId?: number;
   doctorId?: number;
   doctors?: Doctor[];
-  onConfirm?: (doctorId: number, date: string, time: string, reason: string) => void;
+  onConfirm?: (doctorId: number, date: string, time: string, reason: string) => Promise<void> | void;
 }
 
 export const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
@@ -22,6 +22,7 @@ export const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
   const [doctors, setDoctors] = useState<Doctor[]>(externalDoctors || []);
   const [calendarData, setCalendarData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>(() => {
     const d = new Date();
     return d.toISOString().split('T')[0];
@@ -32,15 +33,19 @@ export const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
 
   // Fetch doctors for doctor picker in Patient / Manager mode
   useEffect(() => {
-    doctorApi.getAll()
-      .then((res) => {
-        setDoctors(res.data);
-        if (!selectedDoctorId && res.data.length > 0) {
-          setSelectedDoctorId(res.data[0].id);
-        }
-      })
-      .catch((err) => console.error('Failed to load doctors for calendar:', err));
-  }, []);
+    if (externalDoctors && externalDoctors.length > 0) {
+      if (!selectedDoctorId) setSelectedDoctorId(externalDoctors[0].id);
+    } else {
+      doctorApi.getAll()
+        .then((res) => {
+          setDoctors(res.data);
+          if (!selectedDoctorId && res.data.length > 0) {
+            setSelectedDoctorId(res.data[0].id);
+          }
+        })
+        .catch((err) => console.error('Failed to load doctors for calendar:', err));
+    }
+  }, [externalDoctors]);
 
   // Fetch calendar data from backend
   useEffect(() => {
@@ -100,57 +105,24 @@ export const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
     setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedDoctorId || !selectedDate || !selectedTime) return;
     if (onConfirm) {
-      onConfirm(selectedDoctorId, selectedDate, selectedTime, reason || 'Routine Consultation');
+      setIsSubmitting(true);
+      try {
+        await onConfirm(selectedDoctorId, selectedDate, selectedTime, reason || 'Routine Consultation');
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
-  if (role === 'DOCTOR') {
+  if (loading) {
     return (
-      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-xs">
-        <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-          <div>
-            <h3 className="text-base font-bold text-slate-900">Today's Consultation Schedule</h3>
-            <p className="text-xs text-slate-500">Live clinical queue and scheduled patient slots</p>
-          </div>
-          <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-teal-50 text-teal-700 border border-teal-200">
-            {calendarData?.totalAppointments || 0} Patients Scheduled
-          </span>
-        </div>
-
-        {loading ? (
-          <div className="py-12 text-center text-sm text-slate-400">Loading schedule...</div>
-        ) : (
-          <div className="mt-4 space-y-3">
-            {calendarData?.queue && calendarData.queue.length > 0 ? (
-              calendarData.queue.map((appt: any) => (
-                <div key={appt.id} className="flex items-center justify-between p-3.5 rounded-lg border border-slate-200/80 hover:bg-slate-50 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <div className="flex flex-col items-center justify-center h-11 w-11 rounded-lg bg-teal-50 text-teal-700 font-mono text-xs font-bold border border-teal-200">
-                      <span>{appt.appointmentTime?.slice(0, 5) || '10:00'}</span>
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-bold text-slate-900">{appt.patientName}</h4>
-                      <p className="text-xs text-slate-500">NIC: {appt.patientNic || 'N/A'} &bull; Reason: {appt.reasonForVisit || 'General'}</p>
-                    </div>
-                  </div>
-                  <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${
-                    appt.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
-                    appt.status === 'CANCELLED' ? 'bg-rose-50 text-rose-700 border border-rose-200' :
-                    'bg-sky-50 text-sky-700 border border-sky-200'
-                  }`}>
-                    {appt.status}
-                  </span>
-                </div>
-              ))
-            ) : (
-              <div className="py-8 text-center text-sm text-slate-400">No scheduled appointments for this clinician.</div>
-            )}
-          </div>
-        )}
+      <div className="flex items-center justify-center p-12 text-slate-500">
+        <div className="w-6 h-6 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin mr-3"></div>
+        <span>Loading clinical schedule...</span>
       </div>
     );
   }
@@ -281,21 +253,55 @@ export const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
               {availableSlots.map((slot: string) => {
                 const isSelected = selectedTime === slot;
+                const normalizeTime = (t: string) => (t ? t.slice(0, 5) : '');
+                
+                // Determine if slot is already booked for this doctor on the selected date
+                const isBooked = calendarData?.appointments?.some(
+                  (apt: any) =>
+                    Number(apt.doctorId) === Number(selectedDoctorId) &&
+                    apt.appointmentDate === selectedDate &&
+                    normalizeTime(apt.appointmentTime) === normalizeTime(slot) &&
+                    apt.status !== 'CANCELLED'
+                );
+
                 return (
                   <button
                     key={slot}
                     type="button"
+                    disabled={isBooked}
                     onClick={() => setSelectedTime(slot)}
-                    className={`py-2 px-2 text-xs font-mono font-semibold rounded-lg border text-center transition-all ${
+                    title={isBooked ? 'This slot has already been booked' : `Book for ${slot.slice(0, 5)}`}
+                    className={`py-2 px-2 text-xs font-mono font-semibold rounded-lg border text-center transition-all relative ${
                       isSelected
-                        ? 'bg-teal-600 text-white border-teal-600 shadow-xs'
-                        : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-800'
+                        ? 'bg-teal-600 text-white border-teal-600 shadow-sm ring-2 ring-teal-500/20 font-bold'
+                        : isBooked
+                        ? 'bg-slate-200 text-slate-400 border-slate-300 cursor-not-allowed shadow-inner opacity-50 decoration-2 decoration-rose-500/50 line-through'
+                        : 'border-slate-200 bg-white hover:bg-teal-50/50 hover:border-teal-300 text-slate-800 shadow-xs'
                     }`}
                   >
-                    {slot.slice(0, 5)}
+                    <span>{slot.slice(0, 5)}</span>
+                    {isBooked && (
+                      <span className="block text-[9px] font-sans font-medium text-rose-500 no-underline not-italic tracking-tight mt-0.5">
+                        Booked
+                      </span>
+                    )}
                   </button>
                 );
               })}
+            </div>
+            
+            {/* Slot Legend */}
+            <div className="flex items-center gap-4 mt-3 pt-3 border-t border-slate-100 text-[11px] text-slate-500">
+              <span className="flex items-center gap-1.5">
+                <span className="h-2.5 w-2.5 rounded border border-slate-300 bg-white"></span> Available
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="h-2.5 w-2.5 rounded bg-teal-600"></span> Selected
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="h-2.5 w-2.5 rounded border border-slate-200 bg-slate-200/80"></span>
+                <span className="text-slate-400 line-through">Booked / Unavailable</span>
+              </span>
             </div>
           </div>
         </div>
@@ -335,10 +341,17 @@ export const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
 
             <button
               type="submit"
-              disabled={!selectedTime || !selectedDate}
-              className="w-full py-2.5 px-4 rounded-lg bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white font-semibold text-xs transition-colors shadow-xs"
+              disabled={!selectedTime || !selectedDate || isSubmitting}
+              className="w-full py-2.5 px-4 rounded-lg bg-teal-600 hover:bg-teal-700 disabled:opacity-70 text-white font-semibold text-xs transition-colors shadow-xs flex items-center justify-center gap-2"
             >
-              Confirm Appointment
+              {isSubmitting ? (
+                <>
+                  <div className="h-3 w-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>Booking...</span>
+                </>
+              ) : (
+                'Confirm Appointment'
+              )}
             </button>
           </form>
         </div>

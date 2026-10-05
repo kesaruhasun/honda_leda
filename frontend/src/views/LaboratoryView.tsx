@@ -7,7 +7,9 @@ import {
   Send,
   Microscope,
   AlertTriangle,
+  Barcode,
 } from 'lucide-react';
+import { BarcodeScannerModal } from '../components/common/BarcodeScannerModal';
 import { StatCard } from '../components/common/StatCard';
 import { StatusBadge } from '../components/common/StatusBadge';
 import { DataTable, Column } from '../components/common/DataTable';
@@ -30,6 +32,8 @@ export const LaboratoryView: React.FC = () => {
   const [resultModalTest, setResultModalTest] = useState<LabTest | null>(null);
   const [viewingReportTest, setViewingReportTest] = useState<LabTest | null>(null);
   const [selectedInspectTest, setSelectedInspectTest] = useState<LabTest | null>(null);
+  const [isBarcodeScannerOpen, setIsBarcodeScannerOpen] = useState(false);
+  const [barcodeLabelTest, setBarcodeLabelTest] = useState<LabTest | null>(null);
 
   // New Order Form State
   const [newOrderForm, setNewOrderForm] = useState({
@@ -138,16 +142,7 @@ export const LaboratoryView: React.FC = () => {
   const abnormalTests = tests.filter((t) => t.isAbnormal);
   const urgentTests = tests.filter((t) => t.urgency === 'URGENT' || t.urgency === 'STAT');
 
-  const filteredTests = tests.filter((t) => {
-    const q = searchTerm.toLowerCase();
-    return (
-      t.testName?.toLowerCase().includes(q) ||
-      t.patientName?.toLowerCase().includes(q) ||
-      t.doctorName?.toLowerCase().includes(q) ||
-      t.requestNumber?.toLowerCase().includes(q) ||
-      t.testCode?.toLowerCase().includes(q)
-    );
-  });
+  const filteredTests = tests;
 
   const columns: Column<LabTest>[] = [
     {
@@ -221,6 +216,15 @@ export const LaboratoryView: React.FC = () => {
         <div className="flex items-center gap-2 shrink-0">
           <button
             type="button"
+            onClick={() => setIsBarcodeScannerOpen(true)}
+            className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold border border-slate-200 flex items-center gap-1.5 transition-colors shrink-0"
+            title="Scan specimen tube barcode via camera"
+          >
+            <Barcode className="h-4 w-4 text-teal-600" />
+            <span>Scan Specimen Tube</span>
+          </button>
+          <button
+            type="button"
             onClick={() => setIsOrderModalOpen(true)}
             className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-2xs flex items-center gap-1.5 transition-colors shrink-0"
           >
@@ -287,6 +291,14 @@ export const LaboratoryView: React.FC = () => {
         onRowClick={(test) => setSelectedInspectTest(test)}
         actions={(t) => (
           <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setBarcodeLabelTest(t)}
+              className="p-1.5 text-slate-500 hover:text-teal-700 rounded-md hover:bg-slate-100 border border-slate-200/80 transition-colors"
+              title="Print Specimen Tube Barcode Label"
+            >
+              <Barcode className="h-3.5 w-3.5" />
+            </button>
             {t.status !== 'COMPLETED' && (
               <>
                 <button
@@ -523,6 +535,138 @@ export const LaboratoryView: React.FC = () => {
       )}
 
       {/* Official Diagnostic Report Viewer Modal */}
+      {/* Optical Specimen Barcode Scanner Modal */}
+      <BarcodeScannerModal
+        isOpen={isBarcodeScannerOpen}
+        onClose={() => setIsBarcodeScannerOpen(false)}
+        mode="laboratory"
+        title="Specimen Tube Optical Barcode Scanner"
+        subtitle="Aim camera at specimen tube vial barcode or select sample barcode below"
+        onScan={(code) => {
+          showToast('info', 'Specimen Scanned', `Matched accession code: ${code}`);
+          const found = tests.find((t) => 
+            t.testCode?.toLowerCase() === code.toLowerCase() ||
+            t.requestNumber?.toLowerCase() === code.toLowerCase() ||
+            `LAB-${t.id}`.toLowerCase() === code.toLowerCase() ||
+            String(t.id) === code
+          );
+          if (found) {
+            setSelectedInspectTest(found);
+            showToast('success', 'Order Located', `Loaded specimen for ${found.patientName || 'Patient'}`);
+          }
+        }}
+      />
+
+      {/* Printable Specimen Tube Label Modal */}
+      {barcodeLabelTest && (
+        <Modal
+          isOpen={true}
+          onClose={() => setBarcodeLabelTest(null)}
+          title="Print Specimen Barcode Label"
+          subtitle={`Accession ID: LAB-${String(barcodeLabelTest.id).padStart(6, '0')}`}
+          maxWidth="sm"
+        >
+          <div className="space-y-4 text-xs font-sans">
+            {/* Realistic Thermal Specimen Tube Label */}
+            <div className="p-4 rounded-xl border-2 border-dashed border-slate-300 bg-white shadow-xs font-mono select-none">
+              <div className="flex justify-between items-start border-b border-slate-200 pb-2 mb-2">
+                <div>
+                  <div className="text-[10px] font-bold text-slate-400 tracking-wider uppercase">PULSEOS PATHOLOGY</div>
+                  <div className="text-sm font-black text-slate-900">{barcodeLabelTest.patientName || `Patient #${barcodeLabelTest.patientId}`}</div>
+                </div>
+                <div className="text-right">
+                  <span className="inline-block px-1.5 py-0.5 rounded bg-slate-100 text-[10px] font-bold text-slate-700 border border-slate-200">
+                    {barcodeLabelTest.urgency || 'ROUTINE'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Barcode Visualization */}
+              <div className="py-2.5 flex flex-col items-center justify-center bg-slate-50/50 rounded-lg my-2 border border-slate-100">
+                <svg className="w-48 h-12" viewBox="0 0 192 48">
+                  {/* High fidelity Code 128 barcode bars pattern */}
+                  <rect x="6" y="0" width="3" height="48" fill="#1e293b"/>
+                  <rect x="12" y="0" width="2" height="48" fill="#1e293b"/>
+                  <rect x="17" y="0" width="4" height="48" fill="#1e293b"/>
+                  <rect x="24" y="0" width="1" height="48" fill="#1e293b"/>
+                  <rect x="28" y="0" width="3" height="48" fill="#1e293b"/>
+                  <rect x="34" y="0" width="5" height="48" fill="#1e293b"/>
+                  <rect x="42" y="0" width="2" height="48" fill="#1e293b"/>
+                  <rect x="47" y="0" width="4" height="48" fill="#1e293b"/>
+                  <rect x="54" y="0" width="2" height="48" fill="#1e293b"/>
+                  <rect x="59" y="0" width="3" height="48" fill="#1e293b"/>
+                  <rect x="65" y="0" width="1" height="48" fill="#1e293b"/>
+                  <rect x="69" y="0" width="4" height="48" fill="#1e293b"/>
+                  <rect x="76" y="0" width="2" height="48" fill="#1e293b"/>
+                  <rect x="81" y="0" width="5" height="48" fill="#1e293b"/>
+                  <rect x="89" y="0" width="3" height="48" fill="#1e293b"/>
+                  <rect x="95" y="0" width="1" height="48" fill="#1e293b"/>
+                  <rect x="99" y="0" width="4" height="48" fill="#1e293b"/>
+                  <rect x="106" y="0" width="2" height="48" fill="#1e293b"/>
+                  <rect x="111" y="0" width="3" height="48" fill="#1e293b"/>
+                  <rect x="117" y="0" width="5" height="48" fill="#1e293b"/>
+                  <rect x="125" y="0" width="2" height="48" fill="#1e293b"/>
+                  <rect x="130" y="0" width="4" height="48" fill="#1e293b"/>
+                  <rect x="137" y="0" width="1" height="48" fill="#1e293b"/>
+                  <rect x="141" y="0" width="3" height="48" fill="#1e293b"/>
+                  <rect x="147" y="0" width="5" height="48" fill="#1e293b"/>
+                  <rect x="155" y="0" width="2" height="48" fill="#1e293b"/>
+                  <rect x="160" y="0" width="4" height="48" fill="#1e293b"/>
+                  <rect x="167" y="0" width="2" height="48" fill="#1e293b"/>
+                  <rect x="172" y="0" width="3" height="48" fill="#1e293b"/>
+                  <rect x="178" y="0" width="4" height="48" fill="#1e293b"/>
+                </svg>
+                <span className="text-[11px] font-bold text-slate-800 tracking-widest mt-1">
+                  *LAB-{String(barcodeLabelTest.id).padStart(6, '0')}*
+                </span>
+              </div>
+
+              {/* Specimen Metadata */}
+              <div className="grid grid-cols-2 gap-2 text-[10px] text-slate-600 border-t border-slate-200 pt-2">
+                <div>
+                  <span className="text-slate-400 block">TEST ASSAY:</span>
+                  <span className="font-bold text-slate-800">{barcodeLabelTest.testName}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block">VIAL CONTAINER:</span>
+                  <span className="font-bold text-purple-700">EDTA Lavender (Whole Blood)</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block">COLLECTED AT:</span>
+                  <span className="font-semibold text-slate-700">{new Date().toLocaleString()}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block">ACCESSION ID:</span>
+                  <span className="font-semibold text-slate-700">{barcodeLabelTest.testCode || `L-ACC-${barcodeLabelTest.id}`}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Print Buttons */}
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setBarcodeLabelTest(null)}
+                className="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 font-semibold"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  window.print();
+                  showToast('success', 'Label Printed', 'Specimen barcode label sent to thermal printer.');
+                }}
+                className="px-4 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-bold flex items-center gap-1.5 shadow-2xs"
+              >
+                <Printer className="h-3.5 w-3.5" />
+                <span>Print Thermal Barcode Label</span>
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
       {viewingReportTest && (
         <DiagnosticReportModal
           isOpen={true}

@@ -19,7 +19,7 @@ import { StatusBadge } from '../components/common/StatusBadge';
 import { Modal } from '../components/common/Modal';
 import { useToast } from '../context/ToastContext';
 import { useRole } from '../context/RoleContext';
-import { appointmentApi, pharmacyApi, labApi, patientApi } from '../services/api';
+import { appointmentApi, doctorApi, pharmacyApi, labApi, patientApi } from '../services/api';
 import { Appointment, Patient } from '../types';
 import { AppointmentCalendar } from '../components/appointments/AppointmentCalendar';
 
@@ -28,10 +28,52 @@ export const DoctorDashboardView: React.FC = () => {
   const { currentUser } = useRole();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
+
+  // Profile Edit State
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [profileFormData, setProfileFormData] = useState({
+    email: '',
+    contactNumber: '',
+    roomNumber: '',
+    consultationFee: '',
+  });
+
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      if (!currentUser?.id) throw new Error('Not logged in properly');
+      let docId = 1;
+      try {
+        const docRes = await doctorApi.getAll();
+        const found = docRes.data.find((d: any) => d.email === currentUser?.email || d.fullName?.toLowerCase().includes('kavinda'));
+        if (found?.id) {
+          docId = found.id;
+        } else if (docRes.data.length > 0) {
+          docId = docRes.data[0].id;
+        }
+      } catch (e) {
+        console.warn('Fallback to doctor ID 1', e);
+      }
+      
+      const payload: any = {};
+      if (profileFormData.email) payload.email = profileFormData.email;
+      if (profileFormData.contactNumber) payload.phoneNumber = profileFormData.contactNumber;
+      if (profileFormData.roomNumber) payload.roomNumber = profileFormData.roomNumber;
+      if (profileFormData.consultationFee) payload.consultationFee = parseFloat(profileFormData.consultationFee);
+      
+      await doctorApi.updateProfile(docId, payload);
+
+      showToast('success', 'Profile Updated', 'Your consultant profile has been successfully updated.');
+      setIsEditProfileOpen(false);
+    } catch (err: any) {
+      showToast('error', 'Update Failed', err.message || 'Failed to update profile');
+    }
+  };
   const [loading, setLoading] = useState(true);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [selectedPatientData, setSelectedPatientData] = useState<Patient | null>(null);
   const [searchFilter, setSearchFilter] = useState('');
+  const [activeTab, setActiveTab] = useState<'dossier' | 'schedule'>('dossier');
 
   // Quick Action Modals
   const [isRxModalOpen, setIsRxModalOpen] = useState(false);
@@ -157,9 +199,16 @@ export const DoctorDashboardView: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          <span className="text-[11px] font-mono text-slate-600 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200 font-semibold">
+          <span className="text-[11px] font-mono text-slate-600 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200 font-semibold hidden md:inline-block">
             EHR Synced &bull; Suite 204
           </span>
+          <button
+            onClick={() => setIsEditProfileOpen(true)}
+            className="apple-btn inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-bold text-slate-700 transition-colors shadow-sm"
+          >
+            <Users className="h-3.5 w-3.5" />
+            <span>Edit Profile</span>
+          </button>
         </div>
       </div>
 
@@ -272,7 +321,25 @@ export const DoctorDashboardView: React.FC = () => {
 
         {/* Right Pane: Longitudinal Clinical Dossier & Active Encounter Workspace (8 Cols) */}
         <div className="lg:col-span-8 space-y-5 min-w-0">
-          {selectedAppointment ? (
+          
+          {/* Tab Headers */}
+          <div className="flex bg-slate-100 p-1 rounded-xl">
+            <button
+              onClick={() => setActiveTab('dossier')}
+              className={`flex-1 text-xs font-bold py-2 rounded-lg transition-all ${activeTab === 'dossier' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              Patient Dossier
+            </button>
+            <button
+              onClick={() => setActiveTab('schedule')}
+              className={`flex-1 text-xs font-bold py-2 rounded-lg transition-all ${activeTab === 'schedule' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              Today's Consultation Schedule
+            </button>
+          </div>
+
+          {activeTab === 'dossier' && (
+            selectedAppointment ? (
             <div className="rounded-2xl border border-slate-200 bg-white shadow-2xs p-5 sm:p-6 space-y-5 min-w-0">
               {/* Dossier Header */}
               <div className="flex flex-wrap items-start justify-between gap-4 pb-4 border-b border-slate-100">
@@ -442,10 +509,12 @@ export const DoctorDashboardView: React.FC = () => {
               <Stethoscope className="h-8 w-8 text-slate-300" />
               <span>Select an appointment from the queue to open the active patient dossier</span>
             </div>
-          )}
+          ))}
 
           {/* Consultation Calendar */}
-          <AppointmentCalendar role="DOCTOR" doctorId={1} />
+          {activeTab === 'schedule' && (
+            <AppointmentCalendar role="DOCTOR" doctorId={1} />
+          )}
         </div>
       </div>
 
@@ -587,6 +656,78 @@ export const DoctorDashboardView: React.FC = () => {
               >
                 <Send className="h-3.5 w-3.5" />
                 <span>Dispatch Lab Request</span>
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* Edit Profile Modal */}
+      {isEditProfileOpen && (
+        <Modal
+          isOpen={true}
+          onClose={() => setIsEditProfileOpen(false)}
+          title="Edit Consultant Profile"
+          subtitle="Update your contact and suite details"
+          maxWidth="md"
+        >
+          <form onSubmit={handleUpdateProfile} className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Email Address</label>
+                <input
+                  type="email"
+                  className="w-full px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                  placeholder={currentUser?.email || "consultant@pulseos.com"}
+                  value={profileFormData.email}
+                  onChange={(e) => setProfileFormData({...profileFormData, email: e.target.value})}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Phone</label>
+                <input
+                  type="text"
+                  className="w-full px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                  placeholder="+94 77 ..."
+                  value={profileFormData.contactNumber}
+                  onChange={(e) => setProfileFormData({...profileFormData, contactNumber: e.target.value})}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Suite / Room No</label>
+                <input
+                  type="text"
+                  className="w-full px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                  placeholder="204"
+                  value={profileFormData.roomNumber}
+                  onChange={(e) => setProfileFormData({...profileFormData, roomNumber: e.target.value})}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Consultation Fee (LKR)</label>
+                <input
+                  type="number"
+                  className="w-full px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-sm font-medium font-mono focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                  placeholder="2500"
+                  value={profileFormData.consultationFee}
+                  onChange={(e) => setProfileFormData({...profileFormData, consultationFee: e.target.value})}
+                />
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setIsEditProfileOpen(false)}
+                className="px-4 py-2 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-xs font-bold text-white shadow-sm"
+              >
+                Save Profile
               </button>
             </div>
           </form>

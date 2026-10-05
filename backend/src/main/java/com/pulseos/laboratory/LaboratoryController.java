@@ -18,25 +18,24 @@ public class LaboratoryController {
     private final LaboratoryService laboratoryService;
 
     @GetMapping("/catalog")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<LabCatalogResponse>> getCatalog() {
         return ResponseEntity.ok(laboratoryService.getCatalog());
     }
 
     @GetMapping("/tests")
-    @PreAuthorize("hasAnyRole('LAB_TECHNICIAN', 'DOCTOR', 'SYSTEM_ADMIN', 'ADMIN', 'MANAGER', 'PATIENT')")
+    @PreAuthorize("hasAnyRole('LAB_TECHNICIAN', 'DOCTOR', 'SYSTEM_ADMIN', 'ADMIN', 'MANAGER', 'PATIENT', 'RECEPTIONIST', 'CASHIER_ADMIN')")
     public ResponseEntity<List<LabRequestResponse>> getAllTests() {
         return ResponseEntity.ok(laboratoryService.getAllTests());
     }
 
     @PostMapping("/tests")
-    @PreAuthorize("hasAnyRole('DOCTOR', 'SYSTEM_ADMIN', 'ADMIN', 'MANAGER', 'PATIENT')")
+    @PreAuthorize("hasAnyRole('DOCTOR', 'SYSTEM_ADMIN', 'ADMIN', 'MANAGER', 'PATIENT', 'LAB_TECHNICIAN', 'RECEPTIONIST')")
     public ResponseEntity<LabRequestResponse> createTest(@RequestBody LabOrderRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(laboratoryService.createTest(request));
     }
 
     @PatchMapping("/tests/{id}/status")
-    @PreAuthorize("hasAnyRole('LAB_TECHNICIAN', 'SYSTEM_ADMIN', 'ADMIN', 'MANAGER')")
+    @PreAuthorize("hasAnyRole('LAB_TECHNICIAN', 'SYSTEM_ADMIN', 'ADMIN', 'MANAGER', 'DOCTOR', 'RECEPTIONIST')")
     public ResponseEntity<LabRequestResponse> updateTestStatus(
             @PathVariable Long id,
             @RequestBody Map<String, String> request) {
@@ -45,15 +44,22 @@ public class LaboratoryController {
     }
 
     @PostMapping("/tests/{id}/results")
-    @PreAuthorize("hasAnyRole('LAB_TECHNICIAN', 'SYSTEM_ADMIN', 'ADMIN', 'MANAGER')")
+    @PreAuthorize("hasAnyRole('LAB_TECHNICIAN', 'SYSTEM_ADMIN', 'ADMIN', 'DOCTOR')")
     public ResponseEntity<LabRequestResponse> submitResults(
             @PathVariable Long id,
             @RequestBody LabResultRequest request) {
         return ResponseEntity.ok(laboratoryService.submitResults(id, request));
     }
 
+    @PostMapping("/results")
+    @PreAuthorize("hasAnyRole('LAB_TECHNICIAN', 'SYSTEM_ADMIN', 'ADMIN', 'DOCTOR')")
+    public ResponseEntity<LabRequestResponse> submitResultsDirect(@RequestBody LabResultDirectRequest request) {
+        Long id = request.getResolvedId();
+        return ResponseEntity.ok(laboratoryService.submitResults(id, request.toResultRequest()));
+    }
+
     @DeleteMapping("/tests/{id}")
-    @PreAuthorize("hasAnyRole('DOCTOR', 'SYSTEM_ADMIN', 'ADMIN', 'MANAGER')")
+    @PreAuthorize("hasAnyRole('DOCTOR', 'SYSTEM_ADMIN', 'ADMIN', 'MANAGER', 'LAB_TECHNICIAN', 'RECEPTIONIST', 'PATIENT')")
     public ResponseEntity<Void> deleteTest(@PathVariable Long id) {
         laboratoryService.deleteTest(id);
         return ResponseEntity.noContent().build();

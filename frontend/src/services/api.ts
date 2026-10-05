@@ -59,7 +59,9 @@ export const patientApi = {
   search: (query: string) => api.get<Patient[]>(`/patients/search?q=${encodeURIComponent(query)}`),
   create: (patient: Partial<Patient>) => api.post<Patient>('/patients', patient),
   update: (id: number, patient: Partial<Patient>) => api.put<Patient>(`/patients/${id}`, patient),
-  archive: (id: number) => api.patch<void>(`/patients/${id}/archive`),
+  archive: (id: number, reason?: string) => api.post<Patient>(`/patients/${id}/archive`, { reason }),
+  restore: (id: number) => api.post<Patient>(`/patients/${id}/restore`),
+  getArchived: () => api.get<any[]>('/patients/archived'),
 };
 
 // M2: Doctors API
@@ -70,6 +72,9 @@ export const doctorApi = {
   getSchedules: (doctorId: number) => api.get<DoctorSchedule[]>(`/doctors/${doctorId}/schedules`),
   toggleAvailability: (id: number, isAvailable: boolean) =>
     api.patch<Doctor>(`/doctors/${id}/availability`, { isAvailable }),
+  updateProfile: (id: number, data: Partial<Doctor>) =>
+    api.put<Doctor>(`/doctors/${id}`, data),
+
   updateFee: (id: number, consultationFee: number) =>
     api.patch<Doctor>(`/doctors/${id}/fee`, { consultationFee }),
 };
@@ -239,6 +244,18 @@ export const notificationsApi = {
     if (qs) url += `?${qs}`;
     return api.get<any[]>(url);
   },
+};
+
+// M7: Wards & Bed Management API
+export const wardApi = {
+  getAll: () => api.get<any[]>('/wards'),
+  getById: (id: number) => api.get<any>(`/wards/${id}`),
+  getActiveAdmissions: () => api.get<any[]>('/wards/admissions'),
+  getByWardAdmissions: (wardId: number) => api.get<any[]>(`/wards/${wardId}/admissions`),
+  admitPatient: (data: { patientId: number; wardId: number; bedNumber?: string }) =>
+    api.post<any>('/wards/admissions', data),
+  dischargePatient: (admissionId: number) =>
+    api.post<any>(`/wards/admissions/${admissionId}/discharge`),
 };
 
 export default api;

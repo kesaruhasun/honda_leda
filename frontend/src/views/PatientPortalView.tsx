@@ -38,6 +38,7 @@ import {
   doctorApi,
   patientApi,
 } from '../services/api';
+import api from '../services/api';
 import {
   Appointment,
   Prescription,
@@ -126,6 +127,8 @@ export const PatientPortalView: React.FC = () => {
 
   // Booking Modal State
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
+  // const [notifications, setNotifications] = useState<any[]>([]);
+  // const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
   // PayHere Checkout Modal State
   const [payHereModalInvoice, setPayHereModalInvoice] = useState<Invoice | null>(null);
@@ -189,6 +192,12 @@ export const PatientPortalView: React.FC = () => {
     if (!patientSession) {
       return;
     }
+    // Fetch notifications
+    api.get('/notifications?recipientEmail=' + encodeURIComponent(patientSession.email || patientSession.nicPassportNo))
+      .then(() => {
+      })
+      .catch(err => console.warn('Could not load notifications', err));
+
 
     const patientFullName = (patientSession.fullName || `${patientSession.firstName} ${patientSession.lastName}`).toLowerCase();
 
@@ -1045,6 +1054,27 @@ export const PatientPortalView: React.FC = () => {
                         </div>
                         <p className="text-slate-600 italic mt-1">{notes}</p>
                       </div>
+                      {!isDispensed && (
+                        <div className="flex justify-end pt-2 border-t border-slate-100">
+                          <button
+                            onClick={() => {
+                              const dummyInvoice = {
+                                id: prs.id,
+                                invoiceNumber: `INV-RX-${prs.id}`,
+                                totalAmount: 2500, // Fallback fee
+                                status: 'PENDING',
+                                paymentStatus: 'PENDING',
+                                createdAt: prs.prescriptionDate || new Date().toISOString()
+                              };
+                              setPayHereModalInvoice(dummyInvoice as any);
+                            }}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-colors"
+                          >
+                            <CreditCard className="h-3.5 w-3.5" />
+                            <span>Pay LKR 2500.00 (PayHere)</span>
+                          </button>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -1312,14 +1342,28 @@ export const PatientPortalView: React.FC = () => {
                           </div>
                         )}
 
-                        {/* Pay with PayHere button if pending and matching invoice not paid */}
-                        {matchingInvoice && matchingInvoice.status !== 'PAID' && (
+                        {/* Pay with PayHere button if pending and matching invoice not paid or no invoice found */}
+                        {(!matchingInvoice || matchingInvoice.status !== 'PAID') && !isCompleted && (
                           <button
-                            onClick={() => setPayHereModalInvoice(matchingInvoice)}
+                            onClick={() => {
+                              if (matchingInvoice) {
+                                setPayHereModalInvoice(matchingInvoice);
+                              } else {
+                                const dummyInvoice = {
+                                  id: test.id,
+                                  invoiceNumber: `INV-LAB-${test.id}`,
+                                  totalAmount: 1500, // Fallback fee
+                                  status: 'PENDING',
+                                  paymentStatus: 'PENDING',
+                                  createdAt: test.testDate || new Date().toISOString()
+                                };
+                                setPayHereModalInvoice(dummyInvoice as any);
+                              }
+                            }}
                             className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] shadow-xs transition-colors ml-auto"
                           >
                             <CreditCard className="h-3.5 w-3.5" />
-                            <span>Pay LKR {Number(matchingInvoice.totalAmount).toFixed(2)} (PayHere)</span>
+                            <span>Pay LKR {matchingInvoice ? Number(matchingInvoice.totalAmount).toFixed(2) : '1500.00'} (PayHere)</span>
                           </button>
                         )}
                       </div>
@@ -1354,13 +1398,38 @@ export const PatientPortalView: React.FC = () => {
                               <CheckCircle2 className="h-4 w-4 text-emerald-600" />
                               <span>Verified by Senior Technologist &bull; ISO 15189 Accredited</span>
                             </div>
-                            <button
-                              onClick={() => setSelectedReportTest(test)}
-                              className="apple-btn inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-clinical-teal-600 hover:bg-clinical-teal-700 text-white font-bold text-xs shadow-xs transition-colors"
-                            >
-                              <Printer className="h-3.5 w-3.5" />
-                              <span>View & Download Official Report</span>
-                            </button>
+                            {(!matchingInvoice || matchingInvoice.status !== 'PAID') ? (
+                              <button
+                                onClick={() => {
+                                  if (matchingInvoice) {
+                                    setPayHereModalInvoice(matchingInvoice);
+                                  } else {
+                                    const dummyInvoice = {
+                                      id: test.id,
+                                      invoiceNumber: `INV-LAB-${test.id}`,
+                                      totalAmount: 1500,
+                                      status: 'PENDING',
+                                      paymentStatus: 'PENDING',
+                                      createdAt: test.testDate || new Date().toISOString()
+                                    };
+                                    setPayHereModalInvoice(dummyInvoice as any);
+                                  }
+                                  showToast('error', 'Payment Required', 'You must settle the invoice before downloading the certified report.');
+                                }}
+                                className="apple-btn inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs shadow-xs transition-colors"
+                              >
+                                <CreditCard className="h-3.5 w-3.5" />
+                                <span>Pay to Unlock Report</span>
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => setSelectedReportTest(test)}
+                                className="apple-btn inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-clinical-teal-600 hover:bg-clinical-teal-700 text-white font-bold text-xs shadow-xs transition-colors"
+                              >
+                                <Printer className="h-3.5 w-3.5" />
+                                <span>View & Download Official Report</span>
+                              </button>
+                            )}
                           </div>
                         </div>
                       )}

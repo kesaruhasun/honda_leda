@@ -17,7 +17,7 @@ public class PatientController {
     private final PatientService patientService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('DOCTOR', 'RECEPTIONIST', 'SYSTEM_ADMIN', 'ADMIN', 'PHARMACIST', 'LAB_TECHNICIAN', 'MANAGER')")
+    @PreAuthorize("hasAnyRole('DOCTOR', 'RECEPTIONIST', 'SYSTEM_ADMIN', 'ADMIN', 'PHARMACIST', 'LAB_TECHNICIAN', 'MANAGER', 'CASHIER_ADMIN')")
     public ResponseEntity<List<PatientResponse>> getAllPatients(
             @RequestParam(required = false) String triagePriority,
             @RequestParam(required = false) String search) {
@@ -40,26 +40,36 @@ public class PatientController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('DOCTOR', 'RECEPTIONIST', 'SYSTEM_ADMIN', 'ADMIN', 'PHARMACIST', 'LAB_TECHNICIAN', 'PATIENT', 'MANAGER')")
+    @PreAuthorize("hasAnyRole('DOCTOR', 'RECEPTIONIST', 'SYSTEM_ADMIN', 'ADMIN', 'PHARMACIST', 'LAB_TECHNICIAN', 'PATIENT', 'MANAGER', 'CASHIER_ADMIN')")
     public ResponseEntity<PatientResponse> getPatientById(@PathVariable Long id) {
         return ResponseEntity.ok(patientService.getPatientById(id));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('RECEPTIONIST', 'SYSTEM_ADMIN', 'ADMIN', 'PATIENT', 'MANAGER')")
+    @PreAuthorize("hasAnyRole('RECEPTIONIST', 'SYSTEM_ADMIN', 'ADMIN', 'PATIENT', 'MANAGER', 'DOCTOR', 'CASHIER_ADMIN')")
     public ResponseEntity<PatientResponse> updatePatient(
             @PathVariable Long id,
             @RequestBody PatientRequest request) {
         return ResponseEntity.ok(patientService.updatePatient(id, request));
     }
 
-    @PatchMapping("/{id}/archive")
+    @GetMapping("/archived")
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ADMIN', 'RECEPTIONIST', 'MANAGER')")
-    public ResponseEntity<PatientResponse> archivePatient(@PathVariable Long id) {
-        return ResponseEntity.ok(patientService.archivePatient(id));
+    public ResponseEntity<List<ArchivedPatient>> getArchivedPatients() {
+        return ResponseEntity.ok(patientService.getArchivedPatients());
     }
 
-    @PatchMapping("/{id}/restore")
+    @RequestMapping(value = "/{id}/archive", method = {RequestMethod.PATCH, RequestMethod.POST})
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ADMIN', 'RECEPTIONIST', 'MANAGER')")
+    public ResponseEntity<PatientResponse> archivePatient(
+            @PathVariable Long id,
+            @RequestBody(required = false) java.util.Map<String, String> body) {
+        String reason = body != null ? body.get("reason") : null;
+        String archivedBy = body != null ? body.get("archivedBy") : null;
+        return ResponseEntity.ok(patientService.archivePatient(id, reason, archivedBy));
+    }
+
+    @RequestMapping(value = "/{id}/restore", method = {RequestMethod.PATCH, RequestMethod.POST})
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ADMIN', 'RECEPTIONIST', 'MANAGER')")
     public ResponseEntity<PatientResponse> restorePatient(@PathVariable Long id) {
         return ResponseEntity.ok(patientService.restorePatient(id));

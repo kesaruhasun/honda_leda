@@ -15,8 +15,8 @@ spring:
   mail:
     host: ${MAIL_HOST:smtp.gmail.com}
     port: ${MAIL_PORT:587}
-    username: ${MAIL_USERNAME:}
-    password: ${MAIL_PASSWORD:}
+    username: lordoracle221b@gmail.com
+    password: "grkv jpsn pbip oawx"
     properties:
       mail:
         smtp:
@@ -31,8 +31,8 @@ pulseos:
     # Token validity: 86400000 ms = 24 hours (1 day)
     expiration-ms: 86400000
   payhere:
-    merchant-id: "1220000"
-    merchant-secret: "sandbox_secret_sliit_pulseos_2026"
+    merchant-id: "4OVzEYZKfse4JH5F6UZLZU3PS"
+    merchant-secret: "4TnQaQO6OBP4UsgtU9waai48fsuWuaxev4vVrRSH4gKp"
     checkout-url: "https://sandbox.payhere.lk/pay/checkout"
     notify-url: "http://localhost:8080/api/v1/payments/payhere/notify"
     return-url: "http://localhost:5173/billing/payment-success"
@@ -42,7 +42,7 @@ pulseos:
   notification:
     enabled: true
     # Set to "smtp" for real email, "console" for dev/demo logging
-    mode: console
+    mode: smtp
     from-address: "noreply@pulseos.lk"
     from-name: "PulseOS Hospital"
 

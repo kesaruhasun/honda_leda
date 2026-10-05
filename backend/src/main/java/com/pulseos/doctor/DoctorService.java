@@ -110,6 +110,20 @@ public class DoctorService {
     }
 
     @Transactional
+    public DoctorResponse updateDoctor(Long id, DoctorRequest req) {
+        Doctor doctor = doctorRepository.findById(id)
+                .orElseThrow(() -> PulseException.notFound("Doctor with ID " + id + " not found"));
+        if (req.getFirstName() != null) doctor.setFirstName(req.getFirstName());
+        if (req.getLastName() != null) doctor.setLastName(req.getLastName());
+        if (req.getEmail() != null) doctor.setEmail(req.getEmail());
+        if (req.getPhoneNumber() != null) doctor.setContactNumbers(new java.util.HashSet<>(java.util.Collections.singletonList(req.getPhoneNumber())));
+        if (req.getConsultationFee() != null) doctor.setConsultationFee(req.getConsultationFee());
+        if (req.getSpecialization() != null) doctor.setSpecialization(req.getSpecialization());
+        if (req.getRoomNumber() != null) doctor.setRoomNumber(req.getRoomNumber());
+        return toResponse(doctorRepository.save(doctor));
+    }
+
+    @Transactional
     public DoctorResponse updateAvailability(Long id, Boolean isAvailable) {
         Doctor doc = doctorRepository.findById(id)
                 .orElseThrow(() -> PulseException.notFound("Doctor not found"));

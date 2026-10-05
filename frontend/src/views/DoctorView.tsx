@@ -124,13 +124,7 @@ export const DoctorView: React.FC = () => {
   const departments = ['ALL', ...Array.from(new Set(doctors.map((d) => d.specialization).filter(Boolean)))];
 
   const filteredDoctors = doctors.filter((d) => {
-    const docName = d.fullName || `${d.firstName} ${d.lastName}`;
-    const matchesSearch =
-      docName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      d.specialization?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      d.roomNumber?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesDept = selectedDept === 'ALL' || d.specialization === selectedDept;
-    return matchesSearch && matchesDept;
+    return selectedDept === 'ALL' || d.specialization === selectedDept;
   });
 
   const availableDocs = doctors.filter((d) => d.isAvailable !== false);

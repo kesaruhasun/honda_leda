@@ -33,10 +33,18 @@ public class AppointmentService {
     private final NotificationService notificationService;
 
     @Transactional(readOnly = true)
-    public List<AppointmentResponse> getAllAppointments() {
+    public List<AppointmentResponse> getAppointments(Long doctorId, Long patientId, LocalDate date) {
         return appointmentRepository.findAll().stream()
+                .filter(a -> doctorId == null || (a.getDoctor() != null && doctorId.equals(a.getDoctor().getId())))
+                .filter(a -> patientId == null || (a.getPatient() != null && patientId.equals(a.getPatient().getId())))
+                .filter(a -> date == null || (a.getAppointmentDate() != null && date.equals(a.getAppointmentDate())))
                 .map(this::toResponse)
                 .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<AppointmentResponse> getAllAppointments() {
+        return getAppointments(null, null, null);
     }
 
     @Transactional(readOnly = true)
@@ -66,12 +74,18 @@ public class AppointmentService {
         Doctor doctor = doctorRepository.findById(req.getDoctorId())
                 .orElseThrow(() -> PulseException.notFound("Doctor not found"));
 
-        // Double-booking guard
-        boolean conflicting = appointmentRepository
-                .existsByDoctorIdAndAppointmentDateAndAppointmentTime(doctor.getId(), date, time);
-        if (conflicting) {
-            throw PulseException.conflict("Double Booking",
-                    "Dr. " + doctor.getFullName() + " already has an appointment at " + date + " " + time);
+        // Double-booking guard (cancelled appointments free up the doctor's slot)
+        List<Appointment> existingList = appointmentRepository.findByDoctorIdAndAppointmentDate(doctor.getId(), date);
+        for (Appointment ex : existingList) {
+            if (ex.getAppointmentTime().equals(time)) {
+                if (ex.getStatus() != AppointmentStatus.CANCELLED) {
+                    throw PulseException.conflict("Double Booking",
+                            "Dr. " + doctor.getFullName() + " already has an appointment at " + date + " " + time);
+                } else {
+                    appointmentRepository.delete(ex);
+                    appointmentRepository.flush();
+                }
+            }
         }
 
         Appointment appointment = new Appointment();
@@ -116,10 +130,16 @@ public class AppointmentService {
         LocalDate newDate = req.getAppointmentDate() != null ? LocalDate.parse(req.getAppointmentDate()) : a.getAppointmentDate();
         LocalTime newTime = req.getResolvedStartTime() != null ? LocalTime.parse(req.getResolvedStartTime()) : a.getAppointmentTime();
 
-        boolean conflicting = appointmentRepository
-                .existsByDoctorIdAndAppointmentDateAndAppointmentTime(a.getDoctor().getId(), newDate, newTime);
-        if (conflicting) {
-            throw PulseException.conflict("Double Booking", "Doctor already has an appointment at the new time");
+        List<Appointment> existingList = appointmentRepository.findByDoctorIdAndAppointmentDate(a.getDoctor().getId(), newDate);
+        for (Appointment ex : existingList) {
+            if (ex.getAppointmentTime().equals(newTime) && !ex.getAppointmentId().equals(a.getAppointmentId())) {
+                if (ex.getStatus() != AppointmentStatus.CANCELLED) {
+                    throw PulseException.conflict("Double Booking", "Doctor already has an appointment at the new time");
+                } else {
+                    appointmentRepository.delete(ex);
+                    appointmentRepository.flush();
+                }
+            }
         }
 
         a.setAppointmentDate(newDate);
@@ -156,6 +176,15 @@ public class AppointmentService {
         return toResponse(saved);
     }
 
+    @Transactional
+    public AppointmentResponse updateAppointmentStatus(Long id, AppointmentStatus status) {
+        Appointment a = appointmentRepository.findById(id)
+                .orElseThrow(() -> PulseException.notFound("Appointment not found"));
+        a.setStatus(status);
+        Appointment saved = appointmentRepository.save(a);
+        return toResponse(saved);
+    }
+
     @Transactional(readOnly = true)
     public CalendarViewResponse getCalendarView(String role, Long patientId, Long doctorId) {
         if (role == null || role.isBlank()) {
@@ -168,12 +197,22 @@ public class AppointmentService {
         }
 
         if ("PATIENT".equals(normalizedRole)) {
-            List<AppointmentResponse> myAppts = new ArrayList<>();
-            if (patientId != null) {
-                myAppts = appointmentRepository.findByPatientId(patientId).stream()
-                        .map(this::toResponse)
-                        .collect(Collectors.toList());
-            }
+            // Return all booked appointments (anonymized for other patients) so calendar can shadow unavailable slots
+            List<AppointmentResponse> myAppts = appointmentRepository.findAll().stream()
+                    .filter(a -> a.getStatus() != AppointmentStatus.CANCELLED)
+                    .map(a -> {
+                        boolean isSelf = patientId != null && a.getPatient() != null && patientId.equals(a.getPatient().getId());
+                        return AppointmentResponse.builder()
+                                .id(a.getAppointmentId())
+                                .doctorId(a.getDoctor() != null ? a.getDoctor().getId() : null)
+                                .appointmentDate(a.getAppointmentDate() != null ? a.getAppointmentDate().toString() : "")
+                                .appointmentTime(a.getAppointmentTime() != null ? a.getAppointmentTime().toString() : "")
+                                .status(a.getStatus() != null ? a.getStatus().name() : "SCHEDULED")
+                                .patientId(isSelf ? patientId : null)
+                                .patientName(isSelf && a.getPatient() != null ? a.getPatient().getFullName() : "Reserved Slot")
+                                .build();
+                    })
+                    .collect(Collectors.toList());
 
             List<CalendarSlotInfo> availableSlots = new ArrayList<>();
             List<Doctor> doctors = doctorRepository.findAll().stream()

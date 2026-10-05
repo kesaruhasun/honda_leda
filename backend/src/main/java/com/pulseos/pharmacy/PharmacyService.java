@@ -25,6 +25,7 @@ public class PharmacyService {
 
     private final DrugRepository drugRepository;
     private final PrescriptionRepository prescriptionRepository;
+    private final com.pulseos.billing.InvoiceRepository invoiceRepository;
     private final PrescriptionItemRepository prescriptionItemRepository;
     private final DrugDispensationRepository drugDispensationRepository;
     private final DoctorRepository doctorRepository;
@@ -154,6 +155,8 @@ public class PharmacyService {
     public DispenseResponse dispensePrescription(Long prescriptionId) {
         Prescription rx = prescriptionRepository.findById(prescriptionId)
                 .orElseThrow(() -> PulseException.notFound("Prescription not found"));
+
+        // Dispense processing is decoupled from cashier checkout; pickup slip gated at patient end
 
         if ("DISPENSED".equals(rx.getStatus())) {
             throw PulseException.badRequest("Already Dispensed", "This prescription has already been dispensed");

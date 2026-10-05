@@ -17,26 +17,33 @@ public class DoctorController {
     private final DoctorService doctorService;
 
     @GetMapping
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<DoctorResponse>> getAllDoctors(
             @RequestParam(required = false) String specialization) {
         return ResponseEntity.ok(doctorService.getAllDoctors(specialization));
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<DoctorResponse> getDoctorById(@PathVariable Long id) {
         return ResponseEntity.ok(doctorService.getDoctorById(id));
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ADMIN', 'MANAGER')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ADMIN', 'MANAGER', 'RECEPTIONIST', 'DOCTOR')")
     public ResponseEntity<DoctorResponse> createDoctor(@RequestBody DoctorRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(doctorService.createDoctor(request));
     }
 
+    @PutMapping("/{id}")
+    @PatchMapping("/{id}")
+    @PreAuthorize("hasAnyRole('DOCTOR', 'SYSTEM_ADMIN', 'ADMIN', 'MANAGER', 'RECEPTIONIST')")
+    public ResponseEntity<DoctorResponse> updateDoctorProfile(
+            @PathVariable Long id,
+            @RequestBody DoctorRequest request) {
+        return ResponseEntity.ok(doctorService.updateDoctor(id, request));
+    }
+
     @PatchMapping("/{id}/availability")
-    @PreAuthorize("hasAnyRole('DOCTOR', 'SYSTEM_ADMIN', 'ADMIN', 'MANAGER')")
+    @PreAuthorize("hasAnyRole('DOCTOR', 'SYSTEM_ADMIN', 'ADMIN', 'MANAGER', 'RECEPTIONIST')")
     public ResponseEntity<DoctorResponse> updateAvailability(
             @PathVariable Long id,
             @RequestBody DoctorAvailabilityUpdateRequest request) {
@@ -44,7 +51,7 @@ public class DoctorController {
     }
 
     @PatchMapping("/{id}/fee")
-    @PreAuthorize("hasAnyRole('DOCTOR', 'SYSTEM_ADMIN', 'ADMIN', 'MANAGER')")
+    @PreAuthorize("hasAnyRole('DOCTOR', 'SYSTEM_ADMIN', 'ADMIN', 'MANAGER', 'RECEPTIONIST')")
     public ResponseEntity<DoctorResponse> updateFee(
             @PathVariable Long id,
             @RequestBody DoctorFeeUpdateRequest request) {
@@ -52,13 +59,12 @@ public class DoctorController {
     }
 
     @GetMapping("/{id}/schedules")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<DoctorScheduleResponse>> getSchedules(@PathVariable Long id) {
         return ResponseEntity.ok(doctorService.getSchedules(id));
     }
 
     @PostMapping("/{id}/schedules")
-    @PreAuthorize("hasAnyRole('DOCTOR', 'SYSTEM_ADMIN', 'ADMIN', 'MANAGER')")
+    @PreAuthorize("hasAnyRole('DOCTOR', 'SYSTEM_ADMIN', 'ADMIN', 'MANAGER', 'RECEPTIONIST')")
     public ResponseEntity<DoctorScheduleResponse> createSchedule(
             @PathVariable Long id,
             @RequestBody DoctorScheduleRequest request) {

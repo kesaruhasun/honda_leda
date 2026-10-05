@@ -21,12 +21,12 @@ export const DiagnosticReportModal: React.FC<DiagnosticReportModalProps> = ({
   const isAbnormal = Boolean(test.isAbnormal || test.flag === 'ABNORMAL');
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-200">
-      <div className="bg-white w-full max-w-3xl rounded-apple-2xl shadow-2xl border border-slate-200 overflow-hidden my-8 print:m-0 print:border-0 print:shadow-none print:w-full">
+    <div className="fixed inset-0 z-50 flex justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-200">
+      <div className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-auto h-max print:m-0 print:border-0 print:shadow-none print:w-full relative">
         {/* Modal Top Bar (Hidden on print) */}
-        <div className="px-6 py-3.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between print:hidden">
+        <div className="sticky top-0 z-10 px-6 py-3.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between print:hidden">
           <div className="flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5 text-clinical-teal-600" />
+            <ShieldCheck className="h-5 w-5 text-teal-600" />
             <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
               Verified Clinical Diagnostic Report
             </span>
@@ -38,27 +38,27 @@ export const DiagnosticReportModal: React.FC<DiagnosticReportModalProps> = ({
             {onNotifyPatient && (
               <button
                 onClick={() => onNotifyPatient(test)}
-                className="apple-btn px-3 py-1.5 text-xs font-semibold rounded-lg bg-clinical-teal-50 border border-clinical-teal-200 text-clinical-teal-800 hover:bg-clinical-teal-100 flex items-center gap-1.5"
+                className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-teal-50 border border-teal-200 text-teal-800 hover:bg-teal-100 flex items-center gap-1.5"
               >
                 <span>Dispatch Patient Alert</span>
               </button>
             )}
             <button
               onClick={handlePrint}
-              className="apple-btn px-3.5 py-1.5 text-xs font-bold rounded-lg bg-clinical-teal-600 text-white hover:bg-clinical-teal-700 flex items-center gap-1.5 shadow-xs"
+              className="px-3.5 py-1.5 text-xs font-bold rounded-lg bg-teal-600 text-white hover:bg-teal-700 flex items-center gap-1.5 shadow-sm"
             >
               <Printer className="h-4 w-4" />
-              <span>Print Official PDF</span>
+              <span>Print PDF</span>
             </button>
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition-colors"
+              className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-lg transition-colors ml-1"
             >
               <X className="h-5 w-5" />
             </button>
           </div>
         </div>
-
+              <span>Print Official PDF</span>
         {/* Printable Official Medical Report Content */}
         <div className="p-8 space-y-6 text-slate-800 font-sans print:p-0 print:space-y-4">
           {/* Hospital Official Header */}

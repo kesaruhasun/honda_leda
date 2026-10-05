@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { User, ShieldCheck, ExternalLink, PhoneCall, Menu, X } from 'lucide-react';
 import { useRole } from '../../context/RoleContext';
 
 export const PublicNavbar: React.FC = () => {
   const { setIsPatientLoginModalOpen, setIsStaffLoginModalOpen, patientSession, setCurrentView } = useRole();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const navigate = useNavigate();
 
   return (
     <header className="sticky top-0 z-40 w-full bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
@@ -39,7 +41,10 @@ export const PublicNavbar: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
         {/* Brand */}
         <div className="flex items-center gap-2.5 sm:gap-3">
-          <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl overflow-hidden bg-white border border-slate-200/80 shadow-xs flex items-center justify-center p-0.5 shrink-0">
+          <div 
+            className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl overflow-hidden bg-white border border-slate-200/80 shadow-sm flex items-center justify-center p-0.5 shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+            onClick={() => navigate('/')}
+          >
             <img src="/pulseos-logo.jpg" alt="PulseOS Logo" className="h-full w-full object-contain rounded-lg" />
           </div>
           <div>

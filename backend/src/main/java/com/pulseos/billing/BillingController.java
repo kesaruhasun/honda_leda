@@ -17,25 +17,25 @@ public class BillingController {
     private final BillingService billingService;
 
     @GetMapping("/invoices")
-    @PreAuthorize("hasAnyRole('RECEPTIONIST', 'SYSTEM_ADMIN', 'ADMIN', 'MANAGER', 'PATIENT')")
+    @PreAuthorize("hasAnyRole('RECEPTIONIST', 'SYSTEM_ADMIN', 'ADMIN', 'MANAGER', 'PATIENT', 'CASHIER_ADMIN', 'DOCTOR', 'PHARMACIST', 'LAB_TECHNICIAN')")
     public ResponseEntity<List<InvoiceResponse>> getAllInvoices() {
         return ResponseEntity.ok(billingService.getAllInvoices());
     }
 
     @GetMapping("/invoices/{id}")
-    @PreAuthorize("hasAnyRole('RECEPTIONIST', 'SYSTEM_ADMIN', 'ADMIN', 'MANAGER', 'PATIENT')")
+    @PreAuthorize("hasAnyRole('RECEPTIONIST', 'SYSTEM_ADMIN', 'ADMIN', 'MANAGER', 'PATIENT', 'CASHIER_ADMIN', 'DOCTOR', 'PHARMACIST', 'LAB_TECHNICIAN')")
     public ResponseEntity<InvoiceResponse> getInvoiceById(@PathVariable Long id) {
         return ResponseEntity.ok(billingService.getInvoiceById(id));
     }
 
     @PostMapping("/invoices/generate")
-    @PreAuthorize("hasAnyRole('RECEPTIONIST', 'SYSTEM_ADMIN', 'ADMIN', 'MANAGER', 'PATIENT')")
+    @PreAuthorize("hasAnyRole('RECEPTIONIST', 'SYSTEM_ADMIN', 'ADMIN', 'MANAGER', 'PATIENT', 'CASHIER_ADMIN', 'DOCTOR')")
     public ResponseEntity<InvoiceResponse> generateInvoice(@RequestBody InvoiceGenerateRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(billingService.generateInvoice(request));
     }
 
     @PostMapping({"/invoices/{id}/settle", "/invoices/{id}/pay"})
-    @PreAuthorize("hasAnyRole('RECEPTIONIST', 'SYSTEM_ADMIN', 'ADMIN', 'MANAGER', 'PATIENT')")
+    @PreAuthorize("hasAnyRole('RECEPTIONIST', 'SYSTEM_ADMIN', 'ADMIN', 'MANAGER', 'PATIENT', 'CASHIER_ADMIN')")
     public ResponseEntity<SettlementResponse> settleInvoice(
             @PathVariable Long id,
             @RequestBody(required = false) SettlementRequest request) {

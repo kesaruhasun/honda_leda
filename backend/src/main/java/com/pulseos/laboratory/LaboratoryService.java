@@ -27,6 +27,7 @@ public class LaboratoryService {
 
     private final LabTestRepository labTestRepository;
     private final LabTestCatalogRepository labTestCatalogRepository;
+    private final com.pulseos.billing.InvoiceRepository invoiceRepository;
     private final PatientRepository patientRepository;
     private final DoctorRepository doctorRepository;
     private final AppointmentRepository appointmentRepository;
@@ -149,6 +150,8 @@ public class LaboratoryService {
     public LabRequestResponse submitResults(Long testId, LabResultRequest req) {
         LabTest test = labTestRepository.findById(testId)
                 .orElseThrow(() -> PulseException.notFound("Lab test with ID " + testId + " not found"));
+
+        // Payment check is decoupled from technical result entry; gated at patient viewing
 
         if (req.getResultData() != null) {
             test.setResultData(req.getResultData());

@@ -79,6 +79,35 @@ public class LabDTOs {
     @NoArgsConstructor
     @AllArgsConstructor
     @Builder
+    public static class LabResultDirectRequest {
+        private Long requestId;
+        private Long testId;
+        private Double resultValue;
+        private String resultData;
+        private Long technicianEmployeeId;
+        private String clinicalRemarks;
+        private Boolean isAbnormal;
+
+        public Long getResolvedId() {
+            return requestId != null ? requestId : testId;
+        }
+
+        public LabResultRequest toResultRequest() {
+            return LabResultRequest.builder()
+                    .resultValue(resultValue)
+                    .resultData(resultData != null ? resultData : (resultValue != null ? String.valueOf(resultValue) : null))
+                    .technicianEmployeeId(technicianEmployeeId)
+                    .clinicalRemarks(clinicalRemarks)
+                    .isAbnormal(isAbnormal)
+                    .build();
+        }
+    }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public static class LabRequestResponse {
         @JsonProperty("id")

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { UserRole, UserProfile, ModuleId, AppViewMode, Patient } from '../types';
 
 export const CLINICAL_STAFF: Record<UserRole, UserProfile> = {
@@ -68,8 +68,20 @@ const RoleContext = createContext<RoleContextType | undefined>(undefined);
 
 export const RoleProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [currentView, setCurrentView] = useState<AppViewMode>('landing');
-  const [currentRole, setCurrentRole] = useState<UserRole>('RECEPTIONIST');
+  const [currentRole, setCurrentRole] = useState<UserRole>(() => {
+    if (typeof window !== 'undefined' && typeof sessionStorage !== 'undefined') {
+      const saved = sessionStorage.getItem('currentRole') as UserRole;
+      if (saved) return saved;
+    }
+    return 'RECEPTIONIST';
+  });
   const [activeModule, setActiveModule] = useState<ModuleId>("patients");
+  
+  // Update sessionStorage when role changes
+  useEffect(() => {
+    sessionStorage.setItem('currentRole', currentRole);
+  }, [currentRole]);
+
   // Initialize patient session from sessionStorage safely
   const [patientSession, setPatientSession] = useState<Patient | null>(() => {
     try {
