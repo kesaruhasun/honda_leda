@@ -343,9 +343,6 @@ export const AppointmentView: React.FC = () => {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold text-clinical-ink tracking-tight">Outpatient Consultation Scheduler</h1>
-            <span className="text-xs font-mono font-medium px-2 py-0.5 rounded bg-clinical-teal-50 text-clinical-teal-700 border border-clinical-teal-200">
-              Double-Booking Prevention Active
-            </span>
           </div>
           <p className="text-xs text-clinical-ink-muted mt-1">
             Real-time patient schedule calendar, clinical encounters, and e-prescription issuance.

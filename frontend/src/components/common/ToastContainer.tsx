@@ -8,7 +8,7 @@ export const ToastContainer: React.FC = () => {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none">
+    <div className="fixed bottom-4 right-4 z-[60] flex flex-col gap-2 max-w-sm w-full pointer-events-none px-2 sm:px-0">
       {toasts.map((toast) => {
         let Icon = Info;
         let colorClass = 'border-sky-200 bg-sky-50/95 text-sky-900';
@@ -31,16 +31,18 @@ export const ToastContainer: React.FC = () => {
         return (
           <div
             key={toast.id}
-            className={`pointer-events-auto apple-card p-3.5 flex items-start gap-3 border shadow-apple-elevated backdrop-blur-md transition-all duration-200 ${colorClass}`}
+            className={`pointer-events-auto apple-card p-3.5 flex items-start gap-3 border shadow-xl backdrop-blur-md transition-all duration-200 animate-in slide-in-from-bottom-2 ${colorClass}`}
           >
             <Icon className={`h-5 w-5 shrink-0 ${iconColor} mt-0.5`} />
-            <div className="flex-1 text-xs">
-              <h4 className="font-semibold">{toast.title}</h4>
-              <p className="mt-0.5 text-[11px] opacity-90 leading-relaxed">{toast.message}</p>
+            <div className="flex-1 text-xs min-w-0">
+              <h4 className="font-bold truncate">{toast.title}</h4>
+              <p className="mt-0.5 text-[11px] opacity-90 leading-relaxed break-words">{toast.message}</p>
             </div>
             <button
+              type="button"
               onClick={() => dismissToast(toast.id)}
-              className="text-slate-400 hover:text-slate-700 transition-colors p-0.5"
+              className="text-slate-400 hover:text-slate-700 transition-colors p-0.5 shrink-0"
+              title="Dismiss"
             >
               <X className="h-3.5 w-3.5" />
             </button>
@@ -50,3 +52,4 @@ export const ToastContainer: React.FC = () => {
     </div>
   );
 };
+export default ToastContainer;

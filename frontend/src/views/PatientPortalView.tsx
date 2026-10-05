@@ -24,6 +24,9 @@ import {
   AlertCircle,
   RefreshCw,
   Sparkles,
+  Edit3,
+  Ban,
+  Settings,
 } from 'lucide-react';
 import { useRole } from '../context/RoleContext';
 import { useToast } from '../context/ToastContext';
@@ -33,6 +36,7 @@ import {
   labApi,
   billingApi,
   doctorApi,
+  patientApi,
 } from '../services/api';
 import {
   Appointment,
@@ -44,6 +48,7 @@ import {
 } from '../types';
 import { Badge } from '../components/common/Badge';
 import { Modal } from '../components/common/Modal';
+import { ProfileSettingsModal } from '../components/common/ProfileSettingsModal';
 import { AppointmentCalendar } from '../components/appointments/AppointmentCalendar';
 import { DiagnosticReportModal } from '../components/laboratory/DiagnosticReportModal';
 
@@ -74,17 +79,13 @@ const DEFAULT_FORMULARY_DRUGS: Drug[] = [
 
 export const PatientPortalView: React.FC = () => {
   const navigate = useNavigate();
-  const { patientSession, logoutPatient } = useRole();
+  const { patientSession, logoutPatient, updatePatientSession } = useRole();
   const { showToast } = useToast();
 
   const handleSignOut = () => {
     logoutPatient();
     navigate('/');
   };
-
-  if (!patientSession) {
-    return <Navigate to="/patient/login" replace />;
-  }
 
   const [activeTab, setActiveTab] = useState<'appointments' | 'prescriptions' | 'pharmacy_store' | 'lab' | 'billing'>('appointments');
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -93,6 +94,29 @@ export const PatientPortalView: React.FC = () => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Appointment Details & Cancellation Modals
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  const [cancellingAppointment, setCancellingAppointment] = useState<Appointment | null>(null);
+  const [cancelReason, setCancelReason] = useState('');
+  const [isCancelling, setIsCancelling] = useState(false);
+
+  // Edit Profile Modal State
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+
+  const calculateProfileCompletion = () => {
+    if (!patientSession) return 0;
+    let score = 0;
+    if (patientSession.firstName && patientSession.lastName) score += 20;
+    if (patientSession.nicPassportNo) score += 20;
+    if (patientSession.contactNumber || patientSession.phoneNumber) score += 15;
+    if (patientSession.dob || patientSession.dateOfBirth) score += 10;
+    if (patientSession.bloodGroup) score += 10;
+    if (patientSession.allergies && patientSession.allergies !== '' && patientSession.allergies !== 'None reported') score += 10;
+    if (patientSession.emergencyContactName && patientSession.emergencyContactPhone) score += 15;
+    return Math.min(score, 100);
+  };
+  const profileCompletion = calculateProfileCompletion();
 
   // Avatar Upload State
   const [patientAvatar, setPatientAvatar] = useState<string | null>(() => {
@@ -128,6 +152,7 @@ export const PatientPortalView: React.FC = () => {
   const [deliveryMethod, setDeliveryMethod] = useState<'PICKUP' | 'DELIVERY'>('PICKUP');
 
   // Lab Test Order State
+  const [labCatalog, setLabCatalog] = useState<any[]>(LAB_CATALOG);
   const [isLabOrderModalOpen, setIsLabOrderModalOpen] = useState(false);
   const [selectedLabTest, setSelectedLabTest] = useState(LAB_CATALOG[0]);
   const [labUrgency, setLabUrgency] = useState<'ROUTINE' | 'URGENT'>('ROUTINE');
@@ -191,7 +216,7 @@ export const PatientPortalView: React.FC = () => {
       try {
         const parsed = JSON.parse(savedLab);
         if (parsed && (parsed.testCode || parsed.id)) {
-          const match = LAB_CATALOG.find((t) => t.testCode === parsed.testCode || t.id === parsed.id);
+          const match = labCatalog.find((t) => t.testCode === parsed.testCode || t.id === parsed.id);
           if (match) {
             setSelectedLabTest(match);
           }
@@ -209,14 +234,53 @@ export const PatientPortalView: React.FC = () => {
     const loadPatientData = async () => {
       try {
         setLoading(true);
-        const [aptRes, prsRes, labRes, invRes, docRes, drugsRes] = await Promise.all([
+        const [aptRes, prsRes, labRes, invRes, docRes, drugsRes, profileRes, catalogRes] = await Promise.all([
           appointmentApi.getAll().catch(() => ({ data: [] })),
           pharmacyApi.getPrescriptions().catch(() => ({ data: [] })),
           labApi.getTests().catch(() => ({ data: [] })),
           billingApi.getInvoices().catch(() => ({ data: [] })),
           doctorApi.getAll().catch(() => ({ data: [] })),
           pharmacyApi.getDrugs().catch(() => ({ data: [] })),
+          patientApi.getById(patientSession.id).catch(() => null),
+          labApi.getCatalog().catch(() => ({ data: [] })),
         ]);
+
+        if (catalogRes && catalogRes.data && catalogRes.data.length > 0) {
+          const mappedCatalog = catalogRes.data.map((c: any) => ({
+            id: c.id,
+            testCode: c.testCode || `LAB-${c.id}`,
+            testName: c.testName,
+            category: c.category || 'General Diagnostic',
+            standardFee: c.price != null ? Number(c.price) : 1500,
+            sampleType: c.sampleType || 'Venous Blood',
+            turnaround: c.turnaround || '4 Hours',
+          }));
+          setLabCatalog(mappedCatalog);
+          if (mappedCatalog[0]) {
+            setSelectedLabTest(mappedCatalog[0]);
+          }
+        }
+
+        if (profileRes && profileRes.data) {
+          // Sync fresh profile details with session context safely
+          const freshData = profileRes.data;
+          updatePatientSession({
+            firstName: freshData.firstName || '',
+            lastName: freshData.lastName || '',
+            fullName: freshData.fullName || `${freshData.firstName} ${freshData.lastName}`.trim(),
+            contactNumber: freshData.contactNumber || freshData.phoneNumber || '',
+            phoneNumber: freshData.contactNumber || freshData.phoneNumber || '',
+            dob: freshData.dob || freshData.dateOfBirth || '',
+            dateOfBirth: freshData.dob || freshData.dateOfBirth || '',
+            gender: freshData.gender || 'MALE',
+            bloodGroup: freshData.bloodGroup || 'O+',
+            allergies: freshData.allergies || '',
+            address: freshData.address || '',
+            emergencyContactName: freshData.emergencyContactName || '',
+            emergencyContactRelationship: freshData.emergencyContactRelationship || '',
+            emergencyContactPhone: freshData.emergencyContactPhone || '',
+          });
+        }
 
         // Filter for this patient
         const myApts = (aptRes.data || []).filter(
@@ -232,29 +296,23 @@ export const PatientPortalView: React.FC = () => {
             (p.patientName && p.patientName.toLowerCase().includes(patientFullName))
         );
 
-        // Merge backend tests with locally submitted ones
-        const storedLocalTests: LabTest[] = JSON.parse(localStorage.getItem(`local_lab_tests_${patientSession.id}`) || '[]');
         const backendTests = (labRes.data || []).filter(
           (l) =>
             l.patientId === patientSession.id ||
             (l.patientName && l.patientName.toLowerCase().includes(patientFullName))
         );
-        const combinedTests = [...storedLocalTests, ...backendTests.filter(b => !storedLocalTests.some(s => s.id === b.id))];
 
-        // Merge backend invoices with locally generated ones
-        const storedLocalInvoices: Invoice[] = JSON.parse(localStorage.getItem(`local_invoices_${patientSession.id}`) || '[]');
         const backendInvoices = (invRes.data || []).filter(
           (i) =>
             i.patientId === patientSession.id ||
             i.patientNic === patientSession.nicPassportNo ||
             (i.patientName && i.patientName.toLowerCase().includes(patientFullName))
         );
-        const combinedInvoices = [...storedLocalInvoices, ...backendInvoices.filter(b => !storedLocalInvoices.some(s => s.id === b.id))];
 
         setAppointments(myApts);
         setPrescriptions(myPrescriptions);
-        setLabTests(combinedTests);
-        setInvoices(combinedInvoices);
+        setLabTests(backendTests);
+        setInvoices(backendInvoices);
         setDoctors(docRes.data || []);
 
         if (drugsRes.data && drugsRes.data.length > 0) {
@@ -285,6 +343,30 @@ export const PatientPortalView: React.FC = () => {
     }
   };
 
+
+
+  const handleConfirmCancelAppointment = async () => {
+    if (!cancellingAppointment) return;
+    setIsCancelling(true);
+    try {
+      // Physically remove the appointment from the backend database
+      await appointmentApi.delete(cancellingAppointment.id);
+      showToast('success', 'Appointment Removed', 'Your consultation booking has been removed from the hospital records.');
+      setAppointments((prev) =>
+        prev.filter((a) => a.id !== cancellingAppointment.id)
+      );
+      if (selectedAppointment?.id === cancellingAppointment.id) {
+        setSelectedAppointment(null);
+      }
+      setCancellingAppointment(null);
+      setCancelReason('');
+    } catch (err: any) {
+      showToast('error', 'Removal Error', err.message || 'Failed to remove appointment');
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
   const handleSelectTestCard = (type: 'VISA' | 'MASTERCARD' | 'AMEX') => {
     setPayHereTestCardType(type);
     setPayHereErrorMessage(null);
@@ -305,6 +387,7 @@ export const PatientPortalView: React.FC = () => {
 
   // Handle PayHere Simulation
   const handleSimulatePayHerePayment = async (invoice: Invoice) => {
+    if (!patientSession) return;
     setPayHereErrorMessage(null);
 
     // Check decline simulation scenarios
@@ -399,6 +482,7 @@ export const PatientPortalView: React.FC = () => {
 
   // Pharmacy Order Submission
   const handlePharmacyOrderSubmit = () => {
+    if (!patientSession) return;
     if (totalCartItems === 0) {
       showToast('error', 'Cart Empty', 'Please select at least one medication to order.');
       return;
@@ -449,86 +533,56 @@ export const PatientPortalView: React.FC = () => {
   };
 
   // Lab Test Request Submission
-  const handleLabOrderSubmit = () => {
-    const testId = Date.now();
-    const reqNumber = `REQ-${testId.toString().slice(-6)}`;
-    const estimatedEta = calculateEstimatedCompletion(selectedLabTest.turnaround, labUrgency, labCollectionDate);
+  const handleLabOrderSubmit = async () => {
+    if (!patientSession) return;
+    try {
+      const orderRes = await labApi.orderTest({
+        patientId: patientSession.id,
+        doctorId: doctors[0]?.id,
+        testCatalogId: selectedLabTest.id,
+        urgency: labUrgency,
+        clinicalIndication: labIndication || 'Patient initiated screening',
+      });
 
-    const newLabTest: LabTest & { 
-      receiptImage?: string; 
-      receiptRef?: string;
-      notifySms?: boolean;
-      notificationPhone?: string;
-      estimatedReadyTime?: string;
-      turnaround?: string;
-    } = {
-      id: testId,
-      testId: testId,
-      requestNumber: reqNumber,
-      testCode: selectedLabTest.testCode,
-      testName: selectedLabTest.testName,
-      category: selectedLabTest.category,
-      sampleType: selectedLabTest.sampleType,
-      standardFee: selectedLabTest.standardFee,
-      urgency: labUrgency,
-      status: 'REQUESTED',
-      clinicalIndication: labIndication || 'Patient initiated screening',
-      patientId: patientSession.id,
-      patientName: patientSession.fullName || `${patientSession.firstName} ${patientSession.lastName}`,
-      doctorId: doctors[0]?.id || 1,
-      doctorName: doctors[0]?.fullName || 'Chief Clinical Pathologist',
-      testDate: labCollectionDate,
-      isAbnormal: false,
-      receiptImage: labReceiptFile || undefined,
-      receiptRef: labReceiptRef || undefined,
-      notifySms: notifySms,
-      notificationPhone: notifySms ? (notificationContact || patientSession.contactNumber) : undefined,
-      estimatedReadyTime: estimatedEta,
-      turnaround: selectedLabTest.turnaround,
-    };
+      const invRes = await billingApi.generateInvoice({
+        patientId: patientSession.id,
+        labFee: selectedLabTest.standardFee || 1500,
+        totalAmount: selectedLabTest.standardFee || 1500,
+      });
 
-    const newInvoice: Invoice = {
-      id: Date.now() + 1,
-      invoiceId: Date.now() + 1,
-      invoiceNumber: `INV-LAB-${testId.toString().slice(-6)}`,
-      patientId: patientSession.id,
-      patientName: patientSession.fullName || `${patientSession.firstName} ${patientSession.lastName}`,
-      patientNic: patientSession.nicPassportNo,
-      doctorFee: 0,
-      pharmacyFee: 0,
-      labFee: selectedLabTest.standardFee,
-      labTotal: selectedLabTest.standardFee,
-      totalAmount: selectedLabTest.standardFee,
-      discountAmount: 0,
-      netAmount: selectedLabTest.standardFee,
-      status: labPaymentMethod === 'PAYHERE' ? 'PENDING' : 'VERIFYING',
-      paymentStatus: 'PENDING',
-      paymentMethod: labPaymentMethod === 'PAYHERE' ? 'PayHere Sandbox' : 'Bank Transfer',
-      billingDate: new Date().toISOString().split('T')[0],
-      createdAt: new Date().toISOString(),
-    };
+      const testData = orderRes.data || {
+        ...selectedLabTest,
+        id: Date.now(),
+        testCode: selectedLabTest.testCode,
+        testName: selectedLabTest.testName,
+        status: 'REQUESTED',
+        patientId: patientSession.id,
+        patientName: patientSession.fullName,
+      };
 
-    setLabTests((prev) => {
-      const updated = [newLabTest, ...prev];
-      localStorage.setItem(`local_lab_tests_${patientSession.id}`, JSON.stringify(updated));
-      return updated;
-    });
+      const invoiceData = invRes.data || {
+        id: Date.now() + 1,
+        invoiceNumber: `INV-LAB-${Date.now().toString().slice(-6)}`,
+        patientId: patientSession.id,
+        totalAmount: selectedLabTest.standardFee || 1500,
+        paymentStatus: 'PENDING',
+      };
 
-    setInvoices((prev) => {
-      const updated = [newInvoice, ...prev];
-      localStorage.setItem(`local_invoices_${patientSession.id}`, JSON.stringify(updated));
-      return updated;
-    });
+      setLabTests((prev) => [testData, ...prev]);
+      setInvoices((prev) => [invoiceData, ...prev]);
 
-    setIsLabOrderModalOpen(false);
-    setLabReceiptFile(null);
-    setLabReceiptRef('');
+      setIsLabOrderModalOpen(false);
+      setLabReceiptFile(null);
+      setLabReceiptRef('');
 
-    if (labPaymentMethod === 'PAYHERE') {
-      setPayHereModalInvoice(newInvoice);
-      showToast('info', 'Lab Test Requested', 'Proceed to authorize payment on PayHere Sandbox.');
-    } else {
-      showToast('success', 'Lab Test Requested', 'Bank transfer receipt submitted. Sample collection scheduled.');
+      if (labPaymentMethod === 'PAYHERE') {
+        setPayHereModalInvoice(invoiceData);
+        showToast('info', 'Lab Test Requested', 'Proceed to authorize payment on PayHere Sandbox.');
+      } else {
+        showToast('success', 'Lab Test Requested', 'Bank transfer receipt submitted. Sample collection scheduled.');
+      }
+    } catch (err: any) {
+      showToast('error', 'Booking Failed', err.message || 'Could not record lab order');
     }
   };
 
@@ -541,6 +595,10 @@ export const PatientPortalView: React.FC = () => {
   });
 
   const drugCategories: string[] = ['ALL', ...Array.from(new Set(availableDrugs.map((d) => d.category).filter((c): c is string => Boolean(c))))];
+
+  if (!patientSession) {
+    return <Navigate to="/patient/login" replace />;
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 text-clinical-ink flex flex-col font-sans">
@@ -629,8 +687,52 @@ export const PatientPortalView: React.FC = () => {
               </div>
             </div>
 
-            {/* Quick Stats Pill & Action */}
+            {/* Quick Stats Pill, Profile Completion & Action */}
             <div className="flex items-center gap-3 flex-wrap">
+              {/* Circular Profile Completion Meter */}
+              <div
+                onClick={() => setIsEditProfileOpen(true)}
+                className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 hover:border-clinical-teal-300 hover:shadow-xs transition-all cursor-pointer group"
+                title="Click to complete or update your health profile"
+              >
+                <div className="relative h-9 w-9 flex items-center justify-center">
+                  <svg className="h-9 w-9 -rotate-90 transform" viewBox="0 0 36 36">
+                    <circle
+                      cx="18"
+                      cy="18"
+                      r="15"
+                      fill="none"
+                      stroke="#e2e8f0"
+                      strokeWidth="3"
+                    />
+                    <circle
+                      cx="18"
+                      cy="18"
+                      r="15"
+                      fill="none"
+                      stroke={profileCompletion >= 80 ? '#0d9488' : profileCompletion >= 50 ? '#f59e0b' : '#ef4444'}
+                      strokeWidth="3"
+                      strokeDasharray="94.2"
+                      strokeDashoffset={94.2 - (94.2 * profileCompletion) / 100}
+                      strokeLinecap="round"
+                      className="transition-all duration-700 ease-out"
+                    />
+                  </svg>
+                  <span className="absolute text-[10px] font-bold font-mono text-slate-800">
+                    {profileCompletion}%
+                  </span>
+                </div>
+                <div className="text-left">
+                  <div className="flex items-center gap-1">
+                    <span className="text-[10px] uppercase font-bold text-slate-400">Profile</span>
+                    <Edit3 className="h-3 w-3 text-clinical-teal-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                  <span className="text-xs font-semibold text-clinical-teal-700 block -mt-0.5">
+                    {profileCompletion === 100 ? 'Complete' : 'Edit Info'}
+                  </span>
+                </div>
+              </div>
+
               <div className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-center">
                 <span className="text-[10px] uppercase font-bold text-slate-400 block">Blood Type</span>
                 <span className="text-xs font-mono font-bold text-rose-600">{patientSession.bloodGroup}</span>
@@ -639,6 +741,13 @@ export const PatientPortalView: React.FC = () => {
                 <span className="text-[10px] uppercase font-bold text-slate-400 block">Triage Status</span>
                 <span className="text-xs font-semibold text-clinical-teal-700">{patientSession.triagePriority}</span>
               </div>
+              <button
+                onClick={() => setIsEditProfileOpen(true)}
+                className="apple-btn inline-flex items-center gap-1.5 px-3 py-2 rounded-apple-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-all"
+              >
+                <Settings className="h-3.5 w-3.5" />
+                <span>Profile Settings</span>
+              </button>
               <button
                 onClick={() => setIsBookModalOpen(true)}
                 className="apple-btn inline-flex items-center gap-2 px-4 py-2.5 rounded-apple-xl bg-clinical-teal-600 hover:bg-clinical-teal-700 text-white text-xs font-semibold shadow-sm transition-all"
@@ -661,7 +770,7 @@ export const PatientPortalView: React.FC = () => {
             </div>
             <div>
               <span className="text-[10px] text-slate-400 block font-medium">PHONE NUMBER</span>
-              <span className="font-mono text-slate-700">{patientSession.contactNumber || '077 123 4567'}</span>
+              <span className="font-mono text-slate-700">{patientSession.contactNumber || patientSession.phoneNumber || '077 123 4567'}</span>
             </div>
             <div>
               <span className="text-[10px] text-slate-400 block font-medium">KNOWN ALLERGIES</span>
@@ -680,6 +789,21 @@ export const PatientPortalView: React.FC = () => {
                 <span className="font-semibold text-slate-500 text-xs">None Reported</span>
               )}
             </div>
+            {patientSession.address && (
+              <div className="col-span-2">
+                <span className="text-[10px] text-slate-400 block font-medium">ADDRESS</span>
+                <span className="text-slate-700">{patientSession.address}</span>
+              </div>
+            )}
+            {patientSession.emergencyContactName && (
+              <div className="col-span-2">
+                <span className="text-[10px] text-slate-400 block font-medium">EMERGENCY CONTACT</span>
+                <span className="text-slate-700">
+                  {patientSession.emergencyContactName} ({patientSession.emergencyContactRelationship || 'Contact'}) &bull;{' '}
+                  <span className="font-mono">{patientSession.emergencyContactPhone}</span>
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -787,7 +911,7 @@ export const PatientPortalView: React.FC = () => {
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {appointments.map((apt) => (
                   <div key={apt.id} className="apple-card p-5 space-y-3">
                     <div className="flex items-start justify-between">
@@ -813,7 +937,7 @@ export const PatientPortalView: React.FC = () => {
                       </Badge>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2 text-xs p-3 rounded-xl bg-slate-50 border border-slate-200/70 font-mono">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs p-3 rounded-xl bg-slate-50 border border-slate-200/70 font-mono">
                       <div>
                         <span className="text-slate-400 block text-[10px]">DATE & TIME</span>
                         <span className="font-bold text-slate-800">
@@ -831,6 +955,31 @@ export const PatientPortalView: React.FC = () => {
                         Reason for Consultation
                       </span>
                       <p className="italic">"{apt.reasonForVisit}"</p>
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedAppointment(apt)}
+                        className="text-clinical-teal-700 hover:text-clinical-teal-800 font-bold flex items-center gap-1 transition-colors"
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                        <span>View Details</span>
+                      </button>
+
+                      {(apt.status === 'SCHEDULED' || apt.status === 'CONFIRMED') && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCancellingAppointment(apt);
+                          }}
+                          className="px-2.5 py-1 text-xs font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-lg border border-rose-200 transition-colors flex items-center gap-1"
+                        >
+                          <Ban className="h-3.5 w-3.5" />
+                          <span>Cancel</span>
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -1183,7 +1332,7 @@ export const PatientPortalView: React.FC = () => {
 
                       {isCompleted && (
                         <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 text-xs space-y-3">
-                          <div className="grid grid-cols-2 gap-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                               <span className="text-[10px] text-slate-400 block font-semibold">QUANTITATIVE RESULT</span>
                               <span className={`text-sm font-bold font-mono ${test.isAbnormal ? 'text-rose-600' : 'text-slate-900'}`}>
@@ -1393,7 +1542,7 @@ export const PatientPortalView: React.FC = () => {
             {/* Delivery Option */}
             <div className="space-y-1.5">
               <label className="font-bold text-slate-700 block text-[11px]">Collection / Delivery Method</label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => setDeliveryMethod('PICKUP')}
@@ -1427,7 +1576,7 @@ export const PatientPortalView: React.FC = () => {
             {/* Payment Method */}
             <div className="space-y-1.5">
               <label className="font-bold text-slate-700 block text-[11px]">Payment Option</label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <button
                   type="button"
                   onClick={() => setPharmacyPaymentMethod('PAYHERE')}
@@ -1544,12 +1693,12 @@ export const PatientPortalView: React.FC = () => {
               <select
                 value={selectedLabTest.id}
                 onChange={(e) => {
-                  const found = LAB_CATALOG.find((t) => t.id === Number(e.target.value));
+                  const found = labCatalog.find((t) => t.id === Number(e.target.value));
                   if (found) setSelectedLabTest(found);
                 }}
                 className="w-full p-2.5 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-medium focus:ring-2 focus:ring-clinical-teal-500"
               >
-                {LAB_CATALOG.map((t) => (
+                {labCatalog.map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.testCode} - {t.testName} (LKR {t.standardFee.toFixed(2)})
                   </option>
@@ -1565,14 +1714,14 @@ export const PatientPortalView: React.FC = () => {
                   LKR {selectedLabTest.standardFee.toFixed(2)}
                 </span>
               </div>
-              <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-500 pt-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-slate-500 pt-1">
                 <div>Sample: <span className="font-semibold text-slate-700">{selectedLabTest.sampleType}</span></div>
                 <div>Turnaround: <span className="font-semibold text-slate-700">{selectedLabTest.turnaround}</span></div>
               </div>
             </div>
 
             {/* Urgency & Date */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <label className="font-bold text-slate-700 block text-[11px]">Urgency</label>
                 <select
@@ -1663,7 +1812,7 @@ export const PatientPortalView: React.FC = () => {
             {/* Payment Method Selector */}
             <div className="space-y-1.5">
               <label className="font-bold text-slate-700 block text-[11px]">Payment Method</label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => setLabPaymentMethod('PAYHERE')}
@@ -1821,7 +1970,7 @@ export const PatientPortalView: React.FC = () => {
                 </span>
               </div>
 
-              <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-slate-800">
                 <div>
                   <span className="text-slate-400 text-[10px] block font-mono">PAYABLE AMOUNT</span>
                   <span className="text-2xl font-bold font-mono text-emerald-400">
@@ -1968,7 +2117,7 @@ export const PatientPortalView: React.FC = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-[11px] font-bold text-slate-700 block">EXPIRATION (MM/YY)</label>
                   <input
@@ -2145,6 +2294,168 @@ export const PatientPortalView: React.FC = () => {
         <DiagnosticReportModal
           test={selectedReportTest}
           onClose={() => setSelectedReportTest(null)}
+        />
+      )}
+
+      {/* Selected Appointment Details Modal */}
+      {selectedAppointment && (
+        <Modal
+          isOpen={true}
+          onClose={() => setSelectedAppointment(null)}
+          title={`Consultation Details: ${selectedAppointment.appointmentNumber || selectedAppointment.appointmentId || `APT-${selectedAppointment.id}`}`}
+          subtitle={`Consultant: ${selectedAppointment.doctorName} (${selectedAppointment.specialization})`}
+          maxWidth="md"
+        >
+          <div className="space-y-4 text-xs font-sans">
+            <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+              <div>
+                <span className="text-[10px] text-slate-400 block font-mono">STATUS</span>
+                <Badge
+                  variant={
+                    selectedAppointment.status === 'CONFIRMED'
+                      ? 'success'
+                      : selectedAppointment.status === 'SCHEDULED'
+                      ? 'warning'
+                      : selectedAppointment.status === 'COMPLETED'
+                      ? 'neutral'
+                      : 'emergency'
+                  }
+                >
+                  {selectedAppointment.status}
+                </Badge>
+              </div>
+              <div className="text-right">
+                <span className="text-[10px] text-slate-400 block font-mono">CONSULTATION FEE</span>
+                <span className="font-bold text-slate-900 font-mono text-sm">
+                  LKR {Number(selectedAppointment.consultationFee || 2500).toFixed(2)}
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 bg-slate-50 rounded-xl border border-slate-200 font-mono">
+              <div>
+                <span className="text-[10px] text-slate-400 block">DATE</span>
+                <span className="font-bold text-slate-800">{selectedAppointment.appointmentDate}</span>
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 block">TIME SLOT</span>
+                <span className="font-bold text-slate-800">{selectedAppointment.appointmentTime}</span>
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 block">CLINIC ROOM</span>
+                <span className="text-slate-800 font-semibold">{selectedAppointment.roomNumber || 'Room 204'}</span>
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 block">SPECIALIST</span>
+                <span className="text-slate-800 font-semibold">{selectedAppointment.doctorName}</span>
+              </div>
+            </div>
+
+            <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+              <span className="text-[10px] text-slate-400 block font-bold uppercase tracking-wider">
+                Clinical Reason for Visit:
+              </span>
+              <p className="text-slate-700 italic">
+                "{selectedAppointment.reasonForVisit || 'Regular health follow-up and clinical consultation'}"
+              </p>
+            </div>
+
+            {selectedAppointment.cancellationReason && (
+              <div className="p-3 bg-rose-50 rounded-xl border border-rose-200 text-rose-800">
+                <span className="font-bold block text-[11px]">Cancellation Note:</span>
+                <p className="text-xs mt-0.5">{selectedAppointment.cancellationReason}</p>
+              </div>
+            )}
+
+            <div className="flex justify-between items-center pt-2 border-t border-slate-100">
+              {(selectedAppointment.status === 'SCHEDULED' ||
+                selectedAppointment.status === 'CONFIRMED') ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCancellingAppointment(selectedAppointment);
+                  }}
+                  className="px-3 py-1.5 text-xs font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-lg border border-rose-200 transition-colors flex items-center gap-1.5"
+                >
+                  <Ban className="h-3.5 w-3.5" />
+                  <span>Cancel Appointment</span>
+                </button>
+              ) : (
+                <div />
+              )}
+              <button
+                type="button"
+                onClick={() => setSelectedAppointment(null)}
+                className="px-4 py-2 text-xs font-semibold bg-slate-800 hover:bg-slate-900 text-white rounded-lg transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Cancel Appointment Confirmation Modal */}
+      {cancellingAppointment && (
+        <Modal
+          isOpen={true}
+          onClose={() => setCancellingAppointment(null)}
+          title="Remove Consultation Booking"
+          subtitle={`Are you sure you want to remove your appointment with ${cancellingAppointment.doctorName}?`}
+          maxWidth="md"
+        >
+          <div className="space-y-4 text-xs font-sans">
+            <div className="p-3.5 bg-amber-50 rounded-xl border border-amber-200 text-amber-900 space-y-1">
+              <span className="font-bold block text-xs">⚠️ Removal Notice:</span>
+              <p className="text-[11px] text-amber-800">
+                Removing this booking will free up the time slot on {cancellingAppointment.appointmentDate} at {cancellingAppointment.appointmentTime} for other waiting patients and delete it from the backend.
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                Reason for cancellation / removal (optional):
+              </label>
+              <textarea
+                rows={2}
+                placeholder="e.g. Schedule conflict, feeling better, rescheduling later..."
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-rose-500"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setCancellingAppointment(null)}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg"
+              >
+                Keep Booking
+              </button>
+              <button
+                type="button"
+                disabled={isCancelling}
+                onClick={handleConfirmCancelAppointment}
+                className="px-4 py-2 text-xs font-bold bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white rounded-lg transition-colors flex items-center gap-1.5 shadow-sm"
+              >
+                {isCancelling ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Ban className="h-3.5 w-3.5" />}
+                <span>Confirm Removal</span>
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Profile Settings Modal */}
+      {isEditProfileOpen && patientSession && (
+        <ProfileSettingsModal
+          isOpen={true}
+          onClose={() => setIsEditProfileOpen(false)}
+          patient={patientSession}
+          onSuccess={(updatedPatient) => {
+            updatePatientSession(updatedPatient);
+          }}
         />
       )}
     </div>

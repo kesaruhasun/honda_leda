@@ -1,102 +1,182 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Activity, ChevronLeft, TestTube, Cross, HeartPulse, Microscope } from 'lucide-react';
+import { Activity, ChevronLeft, TestTube, Pill, HeartPulse, Microscope, ArrowRight, ShieldCheck } from 'lucide-react';
 
 export const ServicesView: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
-      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-200/80 apple-glass-nav">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors">
-            <ChevronLeft className="h-5 w-5" />
-            <span className="font-semibold text-sm tracking-tight">Back to Home</span>
+      <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 h-16 flex items-center justify-between gap-2">
+          <Link to="/" className="flex items-center gap-1.5 sm:gap-2 text-slate-600 hover:text-slate-900 transition-colors text-xs sm:text-sm font-semibold shrink-0">
+            <ChevronLeft className="h-4 w-4" />
+            <span className="hidden sm:inline">Return to Hospital Core</span>
+            <span className="sm:hidden">Back</span>
           </Link>
-          <div className="flex items-center gap-2 text-clinical-teal-800">
-            <Activity className="h-5 w-5" />
-            <span className="font-bold tracking-tight">Hospital Services</span>
+          <div className="flex items-center gap-2 text-teal-800">
+            <Activity className="h-4 sm:h-5 w-4 sm:w-5 text-teal-600 shrink-0" />
+            <span className="font-bold tracking-tight text-slate-900 text-xs sm:text-base">Hospital Clinical Services</span>
           </div>
-          <div className="w-20"></div>
+          <Link to="/patient/portal" className="text-xs font-semibold px-2.5 sm:px-3 py-1.5 rounded-lg bg-teal-600 text-white hover:bg-teal-700 transition-colors shrink-0 whitespace-nowrap">
+            Book Appointment
+          </Link>
         </div>
       </header>
 
-      <main className="flex-1 max-w-5xl mx-auto px-4 sm:px-6 py-12 w-full">
-        <div className="text-center space-y-4 mb-16">
-          <h1 className="text-3xl sm:text-4xl font-bold text-slate-900 tracking-tight">Clinical & Diagnostic Services</h1>
-          <p className="text-slate-500 max-w-2xl mx-auto text-sm sm:text-base">
-            Comprehensive medical facilities backed by state-of-the-art technology and expert professionals.
+      <main className="flex-1 max-w-6xl mx-auto px-4 sm:px-6 py-10 w-full space-y-12">
+        <div className="text-center space-y-3 max-w-2xl mx-auto">
+          <div className="flex items-center justify-center gap-2 text-xs font-medium text-teal-800">
+            <ShieldCheck className="h-4 w-4 text-teal-600" />
+            <span>Integrated Tertiary Care Architecture</span>
+          </div>
+          <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">Clinical & Diagnostic Divisions</h1>
+          <p className="text-slate-600 text-sm leading-relaxed">
+            From emergency trauma resuscitation to robotic pathology pipelines, PulseOS coordinates every clinical touchpoint with zero diagnostic latency.
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Pharmacy */}
-          <div className="bg-white rounded-apple-2xl border border-slate-200 overflow-hidden shadow-sm">
-            <div className="h-48 overflow-hidden bg-slate-100">
-              <img src="https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&q=80&w=800" alt="Pharmacy" className="w-full h-full object-cover" />
+          <div className="bg-white rounded-2xl border border-slate-200/90 overflow-hidden shadow-2xs hover:shadow-xs transition-shadow">
+            <div className="h-52 overflow-hidden bg-slate-900 relative">
+              <img
+                src="/images/pharmacy_dispensary_vault_1791192547575.jpg"
+                alt="Hospital Pharmacy Dispensary Cleanroom and Automated Medication Storage"
+                className="w-full h-full object-cover opacity-85 hover:scale-102 transition-transform duration-500"
+                referrerPolicy="no-referrer"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
+              <div className="absolute bottom-3 left-4 text-white text-xs font-medium">
+                Hospital Dispensary & Closed-Loop Fulfillment
+              </div>
             </div>
             <div className="p-6 md:p-8 space-y-4">
               <div className="flex items-center gap-3">
-                <div className="bg-emerald-100 p-2 rounded-lg text-emerald-700">
-                  <Cross className="w-5 h-5" />
+                <div className="bg-emerald-50 text-emerald-700 p-2.5 rounded-xl border border-emerald-100">
+                  <Pill className="w-5 h-5" />
                 </div>
-                <h2 className="text-xl font-bold text-slate-900">24/7 Central Pharmacy</h2>
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900">24/7 Outpatient & Inpatient Pharmacy</h2>
+                  <p className="text-xs text-slate-500">Formulary inventory & automated dispensary queue</p>
+                </div>
               </div>
-              <p className="text-sm text-slate-600 leading-relaxed">
-                Our in-house pharmacy ensures immediate access to prescribed medications. Integrated directly with our clinical systems, your prescriptions are ready for pickup immediately after your consultation.
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                Directly connected to physician consultation stations for electronic medication dispensing. Ensures zero transcription errors, allergy contraindication alerts, and rapid prescription fulfillment.
               </p>
+              <div className="pt-2 flex items-center justify-between text-xs border-t border-slate-100">
+                <span className="text-slate-500">Availability: <strong className="text-emerald-700">24 Hours / 365 Days</strong></span>
+                <Link to="/patient/portal" className="text-teal-700 font-semibold hover:text-teal-800 flex items-center gap-1">
+                  <span>Order Medication Refills</span>
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </div>
             </div>
           </div>
 
           {/* Laboratory */}
-          <div className="bg-white rounded-apple-2xl border border-slate-200 overflow-hidden shadow-sm">
-            <div className="h-48 overflow-hidden bg-slate-100">
-              <img src="https://images.unsplash.com/photo-1579154204601-01588f351e67?auto=format&fit=crop&q=80&w=800" alt="Laboratory" className="w-full h-full object-cover" />
+          <div className="bg-white rounded-2xl border border-slate-200/90 overflow-hidden shadow-2xs hover:shadow-xs transition-shadow">
+            <div className="h-52 overflow-hidden bg-slate-900 relative">
+              <img
+                src="/images/pathology_laboratory_suite_1791192175243.jpg"
+                alt="Diagnostic Pathology Laboratory Suite"
+                className="w-full h-full object-cover opacity-85 hover:scale-102 transition-transform duration-500"
+                referrerPolicy="no-referrer"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
+              <div className="absolute bottom-3 left-4 text-white text-xs font-medium">
+                Certified Automated Clinical Diagnostics
+              </div>
             </div>
             <div className="p-6 md:p-8 space-y-4">
               <div className="flex items-center gap-3">
-                <div className="bg-blue-100 p-2 rounded-lg text-blue-700">
+                <div className="bg-indigo-50 text-indigo-700 p-2.5 rounded-xl border border-indigo-100">
                   <Microscope className="w-5 h-5" />
                 </div>
-                <h2 className="text-xl font-bold text-slate-900">Diagnostic Laboratory</h2>
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900">Central Diagnostic Pathology</h2>
+                  <p className="text-xs text-slate-500">Hematology, Biochemistry, Endocrinology & Serology</p>
+                </div>
               </div>
-              <p className="text-sm text-slate-600 leading-relaxed">
-                Advanced pathology and diagnostic services. Test results are automatically synced to your electronic health record and accessible via the patient portal for both you and your physician.
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                Automated specimen barcoding with numerical reference range validation. Certified digital reports are uploaded directly to the patient health portal with physician notification flags.
               </p>
+              <div className="pt-2 flex items-center justify-between text-xs border-t border-slate-100">
+                <span className="text-slate-500">Turnaround: <strong className="text-indigo-700">1 to 4 Hours</strong></span>
+                <Link to="/patient/portal" className="text-teal-700 font-semibold hover:text-teal-800 flex items-center gap-1">
+                  <span>View Diagnostic Catalog</span>
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </div>
             </div>
           </div>
 
           {/* OPD */}
-          <div className="bg-white rounded-apple-2xl border border-slate-200 overflow-hidden shadow-sm">
-            <div className="h-48 overflow-hidden bg-slate-100">
-              <img src="https://images.unsplash.com/photo-1516549655169-df83a0774514?auto=format&fit=crop&q=80&w=800" alt="OPD" className="w-full h-full object-cover" />
+          <div className="bg-white rounded-2xl border border-slate-200/90 overflow-hidden shadow-2xs hover:shadow-xs transition-shadow">
+            <div className="h-52 overflow-hidden bg-slate-900 relative">
+              <img
+                src="/images/doctor_consultation_suite_1791192163441.jpg"
+                alt="Physician Consultation Suite"
+                className="w-full h-full object-cover opacity-85 hover:scale-102 transition-transform duration-500"
+                referrerPolicy="no-referrer"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
+              <div className="absolute bottom-3 left-4 text-white text-xs font-medium">
+                Multi-Disciplinary Specialist Clinics
+              </div>
             </div>
             <div className="p-6 md:p-8 space-y-4">
               <div className="flex items-center gap-3">
-                <div className="bg-clinical-teal-100 p-2 rounded-lg text-clinical-teal-700">
+                <div className="bg-teal-50 text-teal-700 p-2.5 rounded-xl border border-teal-100">
                   <TestTube className="w-5 h-5" />
                 </div>
-                <h2 className="text-xl font-bold text-slate-900">Outpatient Department</h2>
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900">Outpatient Consultant Clinics</h2>
+                  <p className="text-xs text-slate-500">Scheduled specialist appointments & health screening</p>
+                </div>
               </div>
-              <p className="text-sm text-slate-600 leading-relaxed">
-                Consult with top specialists across multiple disciplines. Our streamlined booking and queuing system minimizes wait times and ensures dedicated attention from your physician.
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                Consult with top clinical specialists across cardiology, endocrinology, neurology, and pediatrics. Real-time queue telemetry minimizes waiting time and maximizes physician attention.
               </p>
+              <div className="pt-2 flex items-center justify-between text-xs border-t border-slate-100">
+                <span className="text-slate-500">Rooms: <strong className="text-teal-700">Suite 201 – 208</strong></span>
+                <Link to="/physicians" className="text-teal-700 font-semibold hover:text-teal-800 flex items-center gap-1">
+                  <span>Browse Physicians</span>
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </div>
             </div>
           </div>
 
-          {/* Emergency */}
-          <div className="bg-white rounded-apple-2xl border border-slate-200 overflow-hidden shadow-sm">
-            <div className="h-48 overflow-hidden bg-slate-100">
-              <img src="https://images.unsplash.com/photo-1586773860418-d37222d8fce3?auto=format&fit=crop&q=80&w=800" alt="Emergency" className="w-full h-full object-cover" />
+          {/* Emergency & Trauma */}
+          <div className="bg-white rounded-2xl border border-slate-200/90 overflow-hidden shadow-2xs hover:shadow-xs transition-shadow">
+            <div className="h-52 overflow-hidden bg-slate-900 relative">
+              <img
+                src="/images/emergency_triage_bay_1791192573694.jpg"
+                alt="Trauma and Emergency Resuscitation Bay"
+                className="w-full h-full object-cover opacity-85 hover:scale-102 transition-transform duration-500"
+                referrerPolicy="no-referrer"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
+              <div className="absolute bottom-3 left-4 text-white text-xs font-medium">
+                Level 1 Trauma & Emergency Resuscitation Center
+              </div>
             </div>
             <div className="p-6 md:p-8 space-y-4">
               <div className="flex items-center gap-3">
-                <div className="bg-rose-100 p-2 rounded-lg text-rose-700">
+                <div className="bg-rose-50 text-rose-700 p-2.5 rounded-xl border border-rose-100">
                   <HeartPulse className="w-5 h-5" />
                 </div>
-                <h2 className="text-xl font-bold text-slate-900">Trauma & Emergency</h2>
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900">Emergency & Acute Trauma Care</h2>
+                  <p className="text-xs text-slate-500">Priority triage with Manchester & ESI protocols</p>
+                </div>
               </div>
-              <p className="text-sm text-slate-600 leading-relaxed">
-                Our 24/7 emergency unit is equipped to handle critical care situations with priority triage processing and immediate access to life-saving diagnostic facilities and specialists.
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                Dedicated emergency resuscitation teams equipped with instant point-of-care diagnostics, critical care stabilization, and immediate surgical suite access.
               </p>
+              <div className="pt-2 flex items-center justify-between text-xs border-t border-slate-100">
+                <span className="text-slate-500">Hotline: <strong className="text-rose-700">+94 (11) 234-5678</strong></span>
+                <span className="text-rose-700 font-semibold">Immediate Walk-in</span>
+              </div>
             </div>
           </div>
         </div>

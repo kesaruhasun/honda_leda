@@ -64,9 +64,10 @@ public class PatientService {
     @Transactional
     public PatientResponse createPatient(PatientRequest req) {
         String nic = req.getResolvedNic();
-        if (nic == null || nic.isBlank() || req.getFirstName() == null || req.getFirstName().isBlank() ||
-            req.getLastName() == null || req.getLastName().isBlank()) {
-            throw PulseException.badRequest("Validation Failed", "Mandatory fields missing");
+        String fName = req.getResolvedFirstName();
+        String lName = req.getResolvedLastName();
+        if (nic == null || nic.isBlank() || fName.isBlank() || lName.isBlank()) {
+            throw PulseException.badRequest("Validation Failed", "Mandatory fields missing (NIC, firstName, and lastName are required)");
         }
 
         LocalDate dob = LocalDate.of(1990, 1, 1);
@@ -90,8 +91,8 @@ public class PatientService {
 
         Patient patient = new Patient();
         patient.setNicPassportNo(nic);
-        patient.setFirstName(req.getFirstName().trim());
-        patient.setLastName(req.getLastName().trim());
+        patient.setFirstName(fName);
+        patient.setLastName(lName);
         patient.setEmail(req.getEmail() != null ? req.getEmail() : "");
         patient.setStreet(req.getAddress() != null ? req.getAddress() : "Colombo");
         patient.setCity("Colombo");
@@ -147,11 +148,13 @@ public class PatientService {
         Patient patient = patientRepository.findById(id)
                 .orElseThrow(() -> PulseException.notFound("Patient with ID " + id + " not found"));
 
-        if (req.getFirstName() != null && !req.getFirstName().isBlank()) {
-            patient.setFirstName(req.getFirstName().trim());
+        String fName = req.getResolvedFirstName();
+        if (fName != null && !fName.isBlank()) {
+            patient.setFirstName(fName);
         }
-        if (req.getLastName() != null && !req.getLastName().isBlank()) {
-            patient.setLastName(req.getLastName().trim());
+        String lName = req.getResolvedLastName();
+        if (lName != null && !lName.isBlank()) {
+            patient.setLastName(lName);
         }
         if (req.getAddress() != null) {
             patient.setStreet(req.getAddress());
@@ -163,6 +166,24 @@ public class PatientService {
         if (req.getEmail() != null) {
             patient.setEmail(req.getEmail());
         }
+        if (req.getGender() != null && !req.getGender().isBlank()) {
+            try {
+                patient.setGender(Gender.valueOf(req.getGender().toUpperCase()));
+            } catch (Exception ignored) {}
+        }
+        if (req.getBloodGroup() != null && !req.getBloodGroup().isBlank()) {
+            try {
+                String bgClean = req.getBloodGroup().replace("+", "_POSITIVE").replace("-", "_NEGATIVE").toUpperCase();
+                patient.setBloodGroup(BloodGroup.valueOf(bgClean));
+            } catch (Exception ignored) {}
+        }
+        String dobStr = req.getResolvedDob();
+        if (dobStr != null && !dobStr.isBlank()) {
+            try {
+                LocalDate dob = LocalDate.parse(dobStr);
+                patient.setDateOfBirth(dob);
+            } catch (Exception ignored) {}
+        }
         if (req.getAllergies() != null) {
             patient.setAllergies(req.getAllergies());
         }
@@ -171,6 +192,9 @@ public class PatientService {
         }
         if (req.getEmergencyContactPhone() != null) {
             patient.setEmergencyContactPhone(req.getEmergencyContactPhone());
+        }
+        if (req.getEmergencyContactRelationship() != null) {
+            patient.setEmergencyContactRelation(req.getEmergencyContactRelationship());
         }
         if (req.getTriagePriority() != null) {
             try {

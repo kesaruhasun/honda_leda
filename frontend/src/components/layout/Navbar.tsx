@@ -1,9 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from "react-router-dom";
-import { Clock, ShieldCheck, Globe, LogOut } from 'lucide-react';
+import { Clock, ShieldCheck, Globe, LogOut, Menu, X } from 'lucide-react';
 import { useRole } from '../../context/RoleContext';
 
-export const Navbar: React.FC = () => {
+interface NavbarProps {
+  onToggleMobileMenu?: () => void;
+  isMobileMenuOpen?: boolean;
+}
+
+export const Navbar: React.FC<NavbarProps> = ({ onToggleMobileMenu, isMobileMenuOpen = false }) => {
   const navigate = useNavigate();
   const { currentUser, logoutStaff } = useRole();
   const [currentTime, setCurrentTime] = useState<string>('');
@@ -32,11 +37,22 @@ export const Navbar: React.FC = () => {
 
   return (
     <header className="liquid-glass sticky top-0 z-30 h-16 w-full px-4 lg:px-6 flex items-center justify-between border-b border-slate-200">
-      {/* Left: Brand & Facility Indicator */}
-      <div className="flex items-center gap-3">
+      {/* Left: Hamburger & Brand & Facility Indicator */}
+      <div className="flex items-center gap-2 sm:gap-3">
+        {onToggleMobileMenu && (
+          <button
+            type="button"
+            onClick={onToggleMobileMenu}
+            className="md:hidden p-2 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 transition-colors shadow-2xs"
+            title="Toggle Navigation Menu"
+          >
+            {isMobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+          </button>
+        )}
+
         <button
           onClick={() => navigate("/")}
-          className="flex items-center gap-3 text-left focus:outline-none group"
+          className="flex items-center gap-2.5 sm:gap-3 text-left focus:outline-none group"
           title="Return to Public Hospital Site"
         >
           <div className="h-10 w-10 rounded-xl overflow-hidden bg-white border border-slate-200/80 shadow-xs flex items-center justify-center p-0.5 group-hover:scale-105 transition-transform">
@@ -76,7 +92,7 @@ export const Navbar: React.FC = () => {
         {/* Current Clinician Pill */}
         <div className="flex items-center gap-2.5 pl-2 border-l border-slate-200">
           <div className="h-9 w-9 rounded-full bg-slate-800 text-white font-mono text-xs font-bold flex items-center justify-center shadow-inner">
-            {currentUser.name
+            {currentUser?.name
               ? currentUser.name
                   .split(' ')
                   .map((n) => n[0])
@@ -86,13 +102,13 @@ export const Navbar: React.FC = () => {
           </div>
           <div className="hidden md:block text-left">
             <div className="flex items-center gap-1.5">
-              <span className="text-xs font-semibold text-clinical-ink leading-tight">{currentUser.name}</span>
+              <span className="text-xs font-semibold text-clinical-ink leading-tight">{currentUser?.name || 'Staff User'}</span>
               <ShieldCheck className="h-3.5 w-3.5 text-clinical-teal-600" />
             </div>
             <div className="flex items-center gap-1">
-              <span className="text-[10px] font-semibold text-clinical-teal-700">{currentUser.roleTitle}</span>
+              <span className="text-[10px] font-semibold text-clinical-teal-700">{currentUser?.roleTitle || 'Clinical Staff'}</span>
               <span className="text-[10px] text-slate-300">&bull;</span>
-              <span className="text-[10px] text-slate-400 truncate max-w-[130px]">{currentUser.department}</span>
+              <span className="text-[10px] text-slate-400 truncate max-w-[130px]">{currentUser?.department || 'Outpatient Services'}</span>
             </div>
           </div>
 

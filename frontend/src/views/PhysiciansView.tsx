@@ -1,18 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Activity, Search, Calendar, ChevronLeft } from 'lucide-react';
+import { Activity, Search, Calendar, ChevronLeft, Stethoscope, ShieldCheck } from 'lucide-react';
 import { doctorApi } from '../services/api';
 import { Doctor } from '../types';
-
-// Mock images for doctors if they don't have one
-const DOCTOR_AVATARS = [
-  "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=300&h=300",
-  "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&q=80&w=300&h=300",
-  "https://images.unsplash.com/photo-1594824476967-48c8b964273f?auto=format&fit=crop&q=80&w=300&h=300",
-  "https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&q=80&w=300&h=300",
-  "https://images.unsplash.com/photo-1614608682850-e0d6ed316d47?auto=format&fit=crop&q=80&w=300&h=300",
-  "https://images.unsplash.com/photo-1537368910025-700350fe46c7?auto=format&fit=crop&q=80&w=300&h=300"
-];
 
 export const PhysiciansView: React.FC = () => {
   const [doctors, setDoctors] = useState<Doctor[]>([]);
@@ -41,105 +31,113 @@ export const PhysiciansView: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
-      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-200/80 apple-glass-nav">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors">
-            <ChevronLeft className="h-5 w-5" />
-            <span className="font-semibold text-sm tracking-tight">Back to Home</span>
+      <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 h-16 flex items-center justify-between gap-2">
+          <Link to="/" className="flex items-center gap-1.5 sm:gap-2 text-slate-600 hover:text-slate-900 transition-colors text-xs sm:text-sm font-semibold shrink-0">
+            <ChevronLeft className="h-4 w-4" />
+            <span className="hidden sm:inline">Return to Hospital Core</span>
+            <span className="sm:hidden">Back</span>
           </Link>
-          <div className="flex items-center gap-2 text-clinical-teal-800">
-            <Activity className="h-5 w-5" />
-            <span className="font-bold tracking-tight">Physician Directory</span>
+          <div className="flex items-center gap-2 text-teal-800">
+            <Activity className="h-4 sm:h-5 w-4 sm:w-5 text-teal-600 shrink-0" />
+            <span className="font-bold tracking-tight text-slate-900 text-xs sm:text-base">Physician Directory</span>
           </div>
-          <div className="w-20"></div> {/* Spacer */}
+          <Link to="/patient/portal" className="text-xs font-semibold px-2.5 sm:px-3 py-1.5 rounded-lg bg-teal-600 text-white hover:bg-teal-700 transition-colors shrink-0 whitespace-nowrap">
+            Book Appointment
+          </Link>
         </div>
       </header>
 
-      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 py-10 w-full">
-        <div className="mb-10 text-center space-y-4">
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Our Specialists</h1>
-          <p className="text-slate-500 max-w-xl mx-auto text-sm">
-            Browse our directory of board-certified physicians and specialists available for consultation.
-          </p>
-          
-          <div className="max-w-md mx-auto relative mt-6">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="h-4 w-4 text-slate-400" />
+      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 w-full space-y-6 sm:space-y-8">
+        {/* Banner with Authentic Clinical Photography */}
+        <div className="relative rounded-2xl overflow-hidden border border-slate-200 shadow-sm min-h-[160px] sm:min-h-[220px] bg-slate-900">
+          <img
+            src="/images/doctor_consultation_suite_1791192163441.jpg"
+            alt="Physician Consultation Suite"
+            className="absolute inset-0 w-full h-full object-cover opacity-80"
+            referrerPolicy="no-referrer"
+          />
+          <div className="relative z-10 bg-gradient-to-r from-slate-950/95 via-slate-950/80 to-transparent flex items-center p-5 sm:p-8 md:p-12">
+            <div className="max-w-xl text-white space-y-2 sm:space-y-3">
+              <div className="flex items-center gap-2 text-[11px] sm:text-xs font-medium text-teal-400 flex-wrap">
+                <ShieldCheck className="h-3.5 sm:h-4 w-3.5 sm:w-4 shrink-0" />
+                <span>SLMC Certified Specialists</span>
+                <span aria-hidden="true" className="text-slate-500">·</span>
+                <span>Evidence-Based Outpatient Care</span>
+              </div>
+              <h1 className="text-xl sm:text-3xl font-bold tracking-tight">Consultant Medical Staff</h1>
+              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                Connect directly with board-certified clinical specialists across Cardiology, General Medicine, Neurology, Pediatrics, and Orthopedics.
+              </p>
             </div>
-            <input
-              type="text"
-              placeholder="Search by name or specialty..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="apple-input block w-full pl-10 pr-3 py-3 border border-slate-200 rounded-full text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-clinical-teal-500/20 focus:border-clinical-teal-500 transition-all bg-white shadow-sm"
-            />
           </div>
+        </div>
+
+        {/* Search Bar */}
+        <div className="max-w-md mx-auto relative">
+          <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+            <Search className="h-4 w-4 text-slate-400" />
+          </div>
+          <input
+            type="text"
+            placeholder="Search by physician name or specialty (e.g. Cardiology)..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="block w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl text-xs placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all bg-white shadow-2xs"
+          />
         </div>
 
         {loading ? (
           <div className="flex justify-center py-20">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-clinical-teal-600"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600"></div>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredDoctors.map((doc, idx) => (
-              <div key={doc.id} className="bg-white rounded-apple-2xl border border-slate-200/80 shadow-sm overflow-hidden flex flex-col hover:shadow-md transition-shadow">
+            {filteredDoctors.map((doc) => (
+              <div key={doc.id} className="bg-white rounded-xl border border-slate-200/90 shadow-2xs overflow-hidden flex flex-col hover:border-slate-300 transition-all">
                 <div className="p-6 flex gap-4 items-start border-b border-slate-100">
-                  <div className="w-16 h-16 rounded-full overflow-hidden bg-slate-100 shrink-0 border border-slate-200">
-                    <img 
-                      src={DOCTOR_AVATARS[idx % DOCTOR_AVATARS.length]} 
-                      alt={doc.fullName}
-                      className="w-full h-full object-cover"
-                    />
+                  <div className="w-14 h-14 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center font-bold text-lg border border-teal-100 shrink-0">
+                    <Stethoscope className="h-6 w-6" />
                   </div>
-                  <div>
-                    <h3 className="font-bold text-slate-900 text-lg leading-tight">{doc.fullName || `Dr. ${doc.firstName} ${doc.lastName}`}</h3>
-                    <p className="text-clinical-teal-600 font-medium text-sm mt-0.5">{doc.specialization}</p>
-                    <div className="mt-2 flex items-center gap-2">
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                        doc.isAvailable
-                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                          : 'bg-slate-100 text-slate-500 border border-slate-200'
-                      }`}>
-                        {doc.isAvailable ? 'Available' : 'On Rounds'}
-                      </span>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-bold text-slate-900 text-base leading-tight truncate">
+                      {doc.fullName || `Dr. ${doc.firstName} ${doc.lastName}`}
+                    </h3>
+                    <p className="text-teal-700 font-medium text-xs mt-0.5">{doc.specialization}</p>
+                    <div className="mt-2 text-[11px] text-slate-500 flex items-center gap-1.5">
+                      <span className={`inline-block h-2 w-2 rounded-full ${doc.isAvailable ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                      <span>{doc.isAvailable ? 'Active On-Duty' : 'On Rounds / Off-Duty'}</span>
                     </div>
                   </div>
                 </div>
                 
-                <div className="p-6 bg-slate-50/50 flex-1 flex flex-col">
-                  <div className="grid grid-cols-2 gap-4 mb-6">
-                    <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Room</span>
-                      <span className="text-sm font-semibold text-slate-700">{doc.roomNumber || 'TBA'}</span>
+                <div className="p-6 bg-slate-50/50 flex-1 flex flex-col justify-between space-y-4">
+                  <div className="space-y-1.5 text-xs text-slate-600">
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Consultation Suite:</span>
+                      <span className="font-semibold text-slate-800">{doc.roomNumber || 'Room 204'}</span>
                     </div>
-                    <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Standard Fee</span>
-                      <span className="text-sm font-semibold text-slate-700">
-                        LKR {Number(doc.consultationFee || 2500).toLocaleString()}
-                      </span>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Standard Consultation Fee:</span>
+                      <span className="font-bold text-slate-900 font-mono tabular-nums">LKR {doc.consultationFee || 2500}</span>
                     </div>
                   </div>
-                  
-                  <Link 
-                    to="/patient/login"
-                    className="mt-auto w-full apple-btn py-2.5 bg-white border border-slate-200 rounded-xl text-center text-sm font-semibold text-slate-700 hover:bg-clinical-teal-50 hover:border-clinical-teal-200 hover:text-clinical-teal-700 transition-all flex justify-center items-center gap-2 shadow-sm"
+
+                  <Link
+                    to="/patient/portal"
+                    className="w-full py-2.5 px-4 text-center rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold shadow-xs transition-colors flex items-center justify-center gap-2"
                   >
-                    <Calendar className="w-4 h-4" />
-                    Book Consultation
+                    <Calendar className="h-3.5 w-3.5" />
+                    <span>Book Consultation Session</span>
                   </Link>
                 </div>
               </div>
             ))}
-            
-            {filteredDoctors.length === 0 && (
-              <div className="col-span-full text-center py-20 text-slate-500">
-                No physicians found matching your search.
-              </div>
-            )}
           </div>
         )}
       </main>
     </div>
   );
 };
+
+export default PhysiciansView;

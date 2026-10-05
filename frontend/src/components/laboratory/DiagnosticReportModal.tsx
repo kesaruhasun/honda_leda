@@ -3,6 +3,7 @@ import { Printer, X, ShieldCheck, CheckCircle2, AlertTriangle } from 'lucide-rea
 import { LabTest } from '../../types';
 
 interface DiagnosticReportModalProps {
+  isOpen?: boolean;
   test: LabTest;
   onClose: () => void;
   onNotifyPatient?: (test: LabTest) => void;

@@ -38,6 +38,16 @@ export interface Patient {
   allergies?: string;
   registrationDate: string;
   isArchived: boolean;
+  address?: string;
+  email?: string;
+  password?: string;
+  phoneNumber?: string;
+  dateOfBirth?: string;
+  medicalNotes?: string;
+  vitalsHeartRate?: number;
+  vitalsBloodPressure?: string;
+  vitalsSpO2?: number;
+  vitalsTemperature?: string;
 }
 
 // M2: Doctor Entity & DTO
@@ -76,6 +86,8 @@ export interface Appointment {
   status: AppointmentStatus;
   reasonForVisit: string;
   roomNumber: string;
+  consultationFee?: number;
+  cancellationReason?: string;
   createdAt?: string;
 }
 

@@ -76,13 +76,31 @@ const ROLE_PRIMARY_MODULE: Record<UserRole, ModuleId> = {
   CASHIER_ADMIN: 'manager',
 };
 
-export const Sidebar: React.FC = () => {
+interface SidebarProps {
+  isMobile?: boolean;
+  onNavigate?: () => void;
+}
+
+export const Sidebar: React.FC<SidebarProps> = ({ isMobile = false, onNavigate }) => {
   const { currentRole, setRole, setActiveModule } = useRole();
   const [collapsed, setCollapsed] = useState(false);
   const [isStationMenuOpen, setIsStationMenuOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const location = useLocation();
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 768 && window.innerWidth < 1024) {
+        setCollapsed(true);
+      } else if (window.innerWidth >= 1024) {
+        setCollapsed(false);
+      }
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -102,12 +120,14 @@ export const Sidebar: React.FC = () => {
       const target = ROLE_PRIMARY_MODULE[newRole] || 'patients';
       setActiveModule(target);
       navigate(`/dashboard/${target}`);
+      if (onNavigate) onNavigate();
     }
   };
 
   const handleNavigation = (id: ModuleId) => {
     setActiveModule(id);
     navigate(`/dashboard/${id}`);
+    if (onNavigate) onNavigate();
   };
 
   const allowedModules = ROLE_ALLOWED_MODULES[currentRole] || [];
@@ -116,17 +136,23 @@ export const Sidebar: React.FC = () => {
     items: group.items.filter((item) => allowedModules.includes(item.id)),
   })).filter((group) => group.items.length > 0);
 
+  const isActuallyCollapsed = !isMobile && collapsed;
+
   return (
     <aside
-      className={`relative h-[calc(100vh-4rem)] border-r border-slate-200/80 bg-white transition-all duration-200 ease-out flex flex-col justify-between shrink-0 select-none ${
-        collapsed ? 'w-20' : 'w-64'
-      }`}
+      className={
+        isMobile
+          ? 'relative h-full w-full bg-white flex flex-col justify-between select-none'
+          : `relative h-[calc(100vh-4rem)] border-r border-slate-200/80 bg-white transition-all duration-200 ease-out flex flex-col justify-between shrink-0 select-none ${
+              collapsed ? 'w-20' : 'w-64'
+            }`
+      }
     >
       {/* Top Section: Workstation Switcher & Module Navigation */}
       <div className="p-3 space-y-4 overflow-y-auto custom-scrollbar">
         {/* Workstation Profile Selector */}
         <div className="space-y-1.5">
-          {!collapsed && (
+          {!isActuallyCollapsed && (
             <div className="flex items-center justify-between px-1">
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                 Clinical Station
@@ -138,7 +164,7 @@ export const Sidebar: React.FC = () => {
           )}
 
           <div className="relative" ref={dropdownRef}>
-            {collapsed ? (
+            {isActuallyCollapsed ? (
               <button
                 type="button"
                 onClick={() => setCollapsed(false)}
@@ -282,39 +308,41 @@ export const Sidebar: React.FC = () => {
 
       {/* Bottom Section: Operational Status & Collapse Toggle */}
       <div className="p-3 border-t border-slate-200/80 space-y-2">
-        {!collapsed && (
+        {!isActuallyCollapsed && (
           <div className="px-2.5 py-2 rounded-xl bg-slate-50 border border-slate-200/70 text-[10px] text-slate-500 space-y-0.5">
             <div className="flex items-center gap-1.5 font-bold text-slate-800">
               <Activity className="h-3 w-3 text-clinical-teal-600" />
               <span>PulseOS HIS Core</span>
             </div>
             <p className="text-[9px] text-slate-400 font-mono">
-              Inpatient & OPD Sync Active
+              Inpatient &amp; OPD Sync Active
             </p>
           </div>
         )}
 
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className={`apple-btn w-full flex items-center rounded-xl text-xs font-medium text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-all ${
-            collapsed ? 'justify-center p-2' : 'justify-between px-3 py-2'
-          }`}
-          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        >
-          {collapsed ? (
-            <ChevronRight className="h-4 w-4" />
-          ) : (
-            <>
-              <div className="flex items-center gap-2">
-                <ChevronLeft className="h-4 w-4 text-slate-400 group-hover:text-slate-700" />
-                <span>Collapse Sidebar</span>
-              </div>
-              <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
-                Sidebar
-              </span>
-            </>
-          )}
-        </button>
+        {!isMobile && (
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            className={`apple-btn w-full flex items-center rounded-xl text-xs font-medium text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-all ${
+              collapsed ? 'justify-center p-2' : 'justify-between px-3 py-2'
+            }`}
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {collapsed ? (
+              <ChevronRight className="h-4 w-4" />
+            ) : (
+              <>
+                <div className="flex items-center gap-2">
+                  <ChevronLeft className="h-4 w-4 text-slate-400 group-hover:text-slate-700" />
+                  <span>Collapse Sidebar</span>
+                </div>
+                <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                  Sidebar
+                </span>
+              </>
+            )}
+          </button>
+        )}
       </div>
     </aside>
   );

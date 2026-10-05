@@ -34,6 +34,7 @@ public class BillingService {
     private final PrescriptionRepository prescriptionRepository;
     private final LabTestRepository labTestRepository;
     private final PaymentRepository paymentRepository;
+    private final PatientRepository patientRepository;
     private final PayHereSecurityUtil payHereSecurityUtil;
     private final PayHereConfig payHereConfig;
     private final NotificationService notificationService;
@@ -54,43 +55,59 @@ public class BillingService {
 
     @Transactional
     public InvoiceResponse generateInvoice(InvoiceGenerateRequest req) {
-        if (req.getAppointmentId() == null) {
-            throw PulseException.badRequest("Validation Error", "Appointment ID is required");
+        if (req.getAppointmentId() == null && req.getPatientId() == null) {
+            throw PulseException.badRequest("Validation Error", "Appointment ID or Patient ID is required");
         }
 
-        Appointment appointment = appointmentRepository.findById(req.getAppointmentId())
-                .orElseThrow(() -> PulseException.notFound("Appointment not found"));
-
-        Patient patient = appointment.getPatient();
-        Doctor doctor = appointment.getDoctor();
-
-        // Doctor consultation fee
-        BigDecimal doctorFee = doctor.getConsultationFee() != null ? doctor.getConsultationFee() : BigDecimal.ZERO;
-
-        // Sum pharmacy fees from prescriptions linked to this appointment
+        Patient patient = null;
+        Appointment appointment = null;
+        BigDecimal doctorFee = BigDecimal.ZERO;
         BigDecimal pharmacyFee = BigDecimal.ZERO;
-        List<Prescription> prescriptions = prescriptionRepository.findByAppointmentAppointmentId(appointment.getAppointmentId());
-        for (Prescription rx : prescriptions) {
-            for (PrescriptionItem item : rx.getItems()) {
-                if (item.getDrug() != null && item.getQuantity() != null) {
-                    BigDecimal itemTotal = item.getDrug().getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
-                    pharmacyFee = pharmacyFee.add(itemTotal);
+        BigDecimal labFee = BigDecimal.ZERO;
+
+        if (req.getAppointmentId() != null) {
+            appointment = appointmentRepository.findById(req.getAppointmentId())
+                    .orElseThrow(() -> PulseException.notFound("Appointment not found"));
+            patient = appointment.getPatient();
+            Doctor doctor = appointment.getDoctor();
+
+            doctorFee = (doctor != null && doctor.getConsultationFee() != null) ? doctor.getConsultationFee() : BigDecimal.ZERO;
+
+            List<Prescription> prescriptions = prescriptionRepository.findByAppointmentAppointmentId(appointment.getAppointmentId());
+            for (Prescription rx : prescriptions) {
+                for (PrescriptionItem item : rx.getItems()) {
+                    if (item.getDrug() != null && item.getQuantity() != null) {
+                        BigDecimal itemTotal = item.getDrug().getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
+                        pharmacyFee = pharmacyFee.add(itemTotal);
+                    }
                 }
             }
-        }
 
-        // Sum lab test fees
-        BigDecimal labFee = BigDecimal.ZERO;
-        List<LabTest> labTests = labTestRepository.findByAppointmentAppointmentId(appointment.getAppointmentId());
-        for (LabTest test : labTests) {
-            if (test.getStandardFee() != null) {
-                labFee = labFee.add(test.getStandardFee());
+            List<LabTest> labTests = labTestRepository.findByAppointmentAppointmentId(appointment.getAppointmentId());
+            for (LabTest test : labTests) {
+                if (test.getStandardFee() != null) {
+                    labFee = labFee.add(test.getStandardFee());
+                }
             }
+        } else {
+            patient = patientRepository.findById(req.getPatientId())
+                    .orElseThrow(() -> PulseException.notFound("Patient with ID " + req.getPatientId() + " not found"));
+            if (req.getDoctorFee() != null) doctorFee = req.getDoctorFee();
+            if (req.getPharmacyFee() != null) pharmacyFee = req.getPharmacyFee();
+            if (req.getLabFee() != null) labFee = req.getLabFee();
         }
 
         BigDecimal discountAmount = req.getDiscountAmount() != null ? req.getDiscountAmount() : BigDecimal.ZERO;
-        BigDecimal totalAmount = doctorFee.add(pharmacyFee).add(labFee);
+        BigDecimal computedTotal = doctorFee.add(pharmacyFee).add(labFee);
+        BigDecimal totalAmount = req.getTotalAmount() != null ? req.getTotalAmount() : (req.getAmount() != null ? req.getAmount() : computedTotal);
         BigDecimal netAmount = totalAmount.subtract(discountAmount);
+
+        PaymentStatus status = PaymentStatus.PENDING;
+        if (req.getPaymentStatus() != null) {
+            try {
+                status = PaymentStatus.valueOf(req.getPaymentStatus().toUpperCase());
+            } catch (Exception ignored) {}
+        }
 
         Invoice invoice = new Invoice();
         invoice.setPatient(patient);
@@ -105,7 +122,7 @@ public class BillingService {
         invoice.setDiscountAmount(discountAmount);
         invoice.setTotalAmount(totalAmount);
         invoice.setNetAmount(netAmount);
-        invoice.setPaymentStatus(PaymentStatus.PENDING);
+        invoice.setPaymentStatus(status);
 
         Invoice saved = invoiceRepository.save(invoice);
         log.info("Generated invoice: ID={}, Total={}", saved.getInvoiceId(), saved.getTotalAmount());

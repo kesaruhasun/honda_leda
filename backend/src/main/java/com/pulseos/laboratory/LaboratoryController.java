@@ -30,7 +30,7 @@ public class LaboratoryController {
     }
 
     @PostMapping("/tests")
-    @PreAuthorize("hasAnyRole('DOCTOR', 'SYSTEM_ADMIN', 'ADMIN', 'MANAGER')")
+    @PreAuthorize("hasAnyRole('DOCTOR', 'SYSTEM_ADMIN', 'ADMIN', 'MANAGER', 'PATIENT')")
     public ResponseEntity<LabRequestResponse> createTest(@RequestBody LabOrderRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(laboratoryService.createTest(request));
     }

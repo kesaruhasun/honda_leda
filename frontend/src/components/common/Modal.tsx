@@ -48,9 +48,17 @@ export const Modal: React.FC<ModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-slate-900/50 backdrop-blur-sm transition-opacity overflow-y-auto">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-slate-900/50 backdrop-blur-sm transition-opacity overflow-y-auto"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+    >
       <div
         className={`w-full ${widthStyles[maxWidth] || 'max-w-md'} bg-white rounded-apple-2xl border border-slate-200/80 shadow-apple-modal overflow-hidden animate-in fade-in zoom-in-95 duration-150 my-auto`}
+        onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-slate-100 bg-white sticky top-0 z-10">
           <div>

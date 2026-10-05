@@ -29,16 +29,23 @@ public class BillingController {
     }
 
     @PostMapping("/invoices/generate")
-    @PreAuthorize("hasAnyRole('RECEPTIONIST', 'SYSTEM_ADMIN', 'ADMIN', 'MANAGER')")
+    @PreAuthorize("hasAnyRole('RECEPTIONIST', 'SYSTEM_ADMIN', 'ADMIN', 'MANAGER', 'PATIENT')")
     public ResponseEntity<InvoiceResponse> generateInvoice(@RequestBody InvoiceGenerateRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(billingService.generateInvoice(request));
     }
 
-    @PostMapping("/invoices/{id}/settle")
-    @PreAuthorize("hasAnyRole('RECEPTIONIST', 'SYSTEM_ADMIN', 'ADMIN', 'MANAGER')")
+    @PostMapping({"/invoices/{id}/settle", "/invoices/{id}/pay"})
+    @PreAuthorize("hasAnyRole('RECEPTIONIST', 'SYSTEM_ADMIN', 'ADMIN', 'MANAGER', 'PATIENT')")
     public ResponseEntity<SettlementResponse> settleInvoice(
             @PathVariable Long id,
-            @RequestBody SettlementRequest request) {
+            @RequestBody(required = false) SettlementRequest request) {
+        if (request == null) {
+            request = new SettlementRequest();
+            request.setPaymentMethod("CARD");
+            request.setTransactionRef("PAY-" + System.currentTimeMillis());
+        } else if (request.getPaymentMethod() == null) {
+            request.setPaymentMethod("CARD");
+        }
         return ResponseEntity.ok(billingService.settleInvoice(id, request));
     }
 }

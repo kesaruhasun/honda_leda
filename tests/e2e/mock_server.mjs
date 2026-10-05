@@ -2,13 +2,12 @@ import http from 'node:http';
 import { URL } from 'node:url';
 import { config } from './config.mjs';
 import { generatePayHereHash, verifyPayHereWebhookSignature, formatPayHereAmount } from './utils/payhere_crypto.mjs';
-import { signJwt, verifyJwt, JWT_SECRET } from './utils/jwt.mjs';
+import { signJwt, verifyJwt } from './utils/jwt.mjs';
 
 /**
- * High-fidelity in-memory REST API server matching Spring Boot 3 contracts
+ * High-fidelity in-memory REST API handler matching Spring Boot 3 contracts & React SPA DTOs
  */
-export function createMockServer() {
-  // In-memory Database State matching DataSeeder
+export function createApiHandler() {
   const db = {
     persons: [
       { id: 1, nicPassport: '200115609999', firstName: 'Kavinda', lastName: 'Rathnayaka', email: 'it25103999@my.sliit.lk', phoneNumber: '0771239999', address: 'No 12, Kandy Road, Kadawatha', gender: 'MALE', dateOfBirth: '2001-05-14' },
@@ -19,11 +18,15 @@ export function createMockServer() {
       { id: 10, nicPassport: '198520104567', firstName: 'Sunil', lastName: 'Perera', email: 'sunil.perera@gmail.com', phoneNumber: '0772233445', address: '14/2 Temple Road, Malabe', gender: 'MALE', dateOfBirth: '1985-03-15' },
       { id: 11, nicPassport: '199265408912', firstName: 'Chamari', lastName: 'Atapattu', email: 'chamari.a@gmail.com', phoneNumber: '0715566778', address: '88 Lake Drive, Rajagiriya', gender: 'FEMALE', dateOfBirth: '1992-07-22' },
       { id: 12, nicPassport: '201556701234', firstName: 'Dinuk', lastName: 'Fernando', email: 'parents.fernando@gmail.com', phoneNumber: '0768899001', address: '52 Station Road, Kelaniya', gender: 'MALE', dateOfBirth: '2015-11-05' },
+      { id: 13, nicPassport: '198512304561', firstName: 'Nimal', lastName: 'Perera', email: 'patient.sunil@gmail.com', phoneNumber: '+94771234567', address: 'No. 15, Flower Road, Colombo 07', gender: 'MALE', dateOfBirth: '1985-03-12' },
+      { id: 14, nicPassport: '199012345678', firstName: 'Kasun', lastName: 'Perera', email: 'demo.patient@pulseos.lk', phoneNumber: '+94771234567', address: 'No. 45, Temple Road, Colombo 07', gender: 'MALE', dateOfBirth: '1990-05-12' },
     ],
     patients: [
-      { id: 1, personId: 10, bloodGroup: 'O_POSITIVE', allergies: 'Penicillin, Sulfa drugs', emergencyContactName: 'Mallika Perera', emergencyContactPhone: '0773344556', triagePriority: 'EMERGENCY', medicalNotes: 'History of angina', isArchived: false, status: 'ACTIVE' },
-      { id: 2, personId: 11, bloodGroup: 'A_POSITIVE', allergies: 'None reported', emergencyContactName: 'Sujith Atapattu', emergencyContactPhone: '0716677889', triagePriority: 'ROUTINE', medicalNotes: 'Executive health checkup', isArchived: false, status: 'ACTIVE' },
-      { id: 3, personId: 12, bloodGroup: 'B_POSITIVE', allergies: 'Aspirin', emergencyContactName: 'Nirmala Fernando', emergencyContactPhone: '0769900112', triagePriority: 'URGENT', medicalNotes: 'Recurring fever', isArchived: false, status: 'ACTIVE' },
+      { id: 1, personId: 10, bloodGroup: 'O+', allergies: 'Penicillin, Sulfa drugs', emergencyContactName: 'Mallika Perera', emergencyContactRelationship: 'Spouse', emergencyContactPhone: '0773344556', triagePriority: 'EMERGENCY', medicalNotes: 'History of angina', vitalsHeartRate: 114, vitalsBloodPressure: '145/95', vitalsSpO2: 91, vitalsTemperature: '37.8', isArchived: false, status: 'ACTIVE', registrationDate: '2026-09-01' },
+      { id: 2, personId: 11, bloodGroup: 'A+', allergies: 'None reported', emergencyContactName: 'Sujith Atapattu', emergencyContactRelationship: 'Spouse', emergencyContactPhone: '0716677889', triagePriority: 'ROUTINE', medicalNotes: 'Executive health checkup', vitalsHeartRate: 72, vitalsBloodPressure: '118/76', vitalsSpO2: 99, vitalsTemperature: '36.6', isArchived: false, status: 'ACTIVE', registrationDate: '2026-09-03' },
+      { id: 3, personId: 12, bloodGroup: 'B+', allergies: 'Aspirin', emergencyContactName: 'Nirmala Fernando', emergencyContactRelationship: 'Mother', emergencyContactPhone: '0769900112', triagePriority: 'URGENT', medicalNotes: 'Recurring fever', vitalsHeartRate: 88, vitalsBloodPressure: '130/84', vitalsSpO2: 97, vitalsTemperature: '38.4', isArchived: false, status: 'ACTIVE', registrationDate: '2026-09-05' },
+      { id: 4, personId: 13, bloodGroup: 'O+', allergies: 'None', emergencyContactName: 'Sunil Perera', emergencyContactRelationship: 'Brother', emergencyContactPhone: '+94779876543', triagePriority: 'ROUTINE', medicalNotes: 'Outpatient follow-up', vitalsHeartRate: 76, vitalsBloodPressure: '120/80', vitalsSpO2: 98, vitalsTemperature: '36.8', isArchived: false, status: 'ACTIVE', registrationDate: '2026-09-10' },
+      { id: 5, personId: 14, bloodGroup: 'O+', allergies: 'None', emergencyContactName: 'Nimal Perera', emergencyContactRelationship: 'Brother', emergencyContactPhone: '+94779876543', triagePriority: 'ROUTINE', medicalNotes: 'Regular outpatient baseline consultation record.', vitalsHeartRate: 78, vitalsBloodPressure: '122/82', vitalsSpO2: 98, vitalsTemperature: '36.7', isArchived: false, status: 'ACTIVE', registrationDate: '2026-09-12' },
     ],
     doctors: [
       { id: 1, employeeId: 1, firstName: 'Kavinda', lastName: 'Rathnayaka', email: 'it25103999@my.sliit.lk', phoneNumber: '0771239999', licenseNumber: 'SLMC-49120', specialization: 'Cardiology', consultationFee: 2500.00, roomNumber: 'Room 204', isAvailable: true, departmentId: 1 },
@@ -63,6 +66,19 @@ export function createMockServer() {
           { id: 2, drugId: 2, dosage: '1 tab', frequency: 'OD', durationDays: 30, prescribedQuantity: 30, dispensedQuantity: 30, isDispensed: true },
         ],
       },
+      {
+        id: 2,
+        prescriptionNumber: 'RX-2026-0002',
+        appointmentId: 2,
+        patientId: 2,
+        doctorId: 1,
+        issuedDate: '2026-09-14',
+        status: 'PENDING',
+        notes: 'Take Metformin twice daily after meals.',
+        items: [
+          { id: 3, drugId: 4, dosage: '500mg', frequency: 'BD', durationDays: 30, prescribedQuantity: 60, dispensedQuantity: 0, isDispensed: false },
+        ],
+      },
     ],
     labTests: [
       { id: 1, testCode: 'LAB-001', testName: 'Lipid Profile Full Panel', category: 'BIOCHEMISTRY', price: 2400.00, sampleType: 'SERUM', normalRangeMin: 125.00, normalRangeMax: 200.00, measurementUnit: 'mg/dL' },
@@ -72,9 +88,9 @@ export function createMockServer() {
       { id: 5, testCode: 'LAB-005', testName: 'Serum Creatinine & eGFR', category: 'RENAL', price: 950.00, sampleType: 'SERUM', normalRangeMin: 0.70, normalRangeMax: 1.30, measurementUnit: 'mg/dL' },
     ],
     labRequests: [
-      { id: 1, requestNumber: 'LR-2026-0001', appointmentId: 1, patientId: 1, doctorId: 1, labTestId: 2, urgency: 'STAT/URGENT', status: 'COMPLETED', resultValue: 0.02, flag: 'NORMAL', referenceRange: '0.00 - 0.04', unit: 'ng/mL', remarks: 'Troponin-I within normal limits' },
-      { id: 2, requestNumber: 'LR-2026-0002', appointmentId: 1, patientId: 1, doctorId: 1, labTestId: 1, urgency: 'ROUTINE', status: 'COMPLETED', resultValue: 235.00, flag: 'HIGH', referenceRange: '125.00 - 200.00', unit: 'mg/dL', remarks: 'Elevated total serum cholesterol' },
-      { id: 3, requestNumber: 'LR-2026-0003', appointmentId: 2, patientId: 2, doctorId: 1, labTestId: 1, urgency: 'ROUTINE', status: 'SAMPLE_COLLECTED' },
+      { id: 1, requestNumber: 'LR-2026-0001', appointmentId: 1, patientId: 1, doctorId: 1, labTestId: 2, urgency: 'STAT/URGENT', status: 'COMPLETED', resultValue: 0.02, flag: 'NORMAL', referenceRange: '0.00 - 0.04', unit: 'ng/mL', remarks: 'Troponin-I within normal limits', clinicalIndication: 'Acute chest pain evaluation' },
+      { id: 2, requestNumber: 'LR-2026-0002', appointmentId: 1, patientId: 1, doctorId: 1, labTestId: 1, urgency: 'ROUTINE', status: 'COMPLETED', resultValue: 235.00, flag: 'HIGH', referenceRange: '125.00 - 200.00', unit: 'mg/dL', remarks: 'Elevated total serum cholesterol', clinicalIndication: 'Dyslipidemia screening' },
+      { id: 3, requestNumber: 'LR-2026-0003', appointmentId: 2, patientId: 2, doctorId: 1, labTestId: 1, urgency: 'ROUTINE', status: 'SAMPLE_COLLECTED', clinicalIndication: 'Follow-up lipid screening' },
     ],
     invoices: [
       {
@@ -89,6 +105,9 @@ export function createMockServer() {
         discountAmount: 250.00,
         netAmount: 11000.00,
         status: 'PAID',
+        paymentMethod: 'PAYHERE',
+        transactionRef: 'TXN-PH-99201',
+        billingDate: '2026-09-14',
         items: [
           { type: 'CONSULTATION', description: 'Specialist Cardiology Consultation', quantity: 1, unitPrice: 2500.00, subtotal: 2500.00 },
           { type: 'PHARMACY', description: 'Atorvastatin 20mg Tablet (30)', quantity: 30, unitPrice: 45.00, subtotal: 1350.00 },
@@ -109,6 +128,7 @@ export function createMockServer() {
         discountAmount: 0.00,
         netAmount: 4900.00,
         status: 'PENDING',
+        billingDate: '2026-09-14',
         items: [
           { type: 'CONSULTATION', description: 'Cardiology Consultation', quantity: 1, unitPrice: 2500.00, subtotal: 2500.00 },
           { type: 'LAB_TEST', description: 'Lipid Profile Full Panel', quantity: 1, unitPrice: 2400.00, subtotal: 2400.00 },
@@ -119,20 +139,219 @@ export function createMockServer() {
       { id: 1, transactionReference: 'TXN-PH-99201', invoiceId: 1, paymentMethod: 'PAYHERE_GATEWAY', amountPaid: 11000.00, currency: 'LKR', status: 'SUCCESS', receiptNumber: 'REC-2026-0001' },
     ],
     users: [
-      { id: 101, username: 'doc.kavinda@pulseos.lk', password: 'Password123!', fullName: 'Dr. Kavinda Rathnayaka', role: 'DOCTOR', userType: 'STAFF', doctorId: 1 },
-      { id: 102, username: 'receptionist@pulseos.lk', password: 'Password123!', fullName: 'Dilshan Somarathna', role: 'RECEPTIONIST', userType: 'STAFF' },
-      { id: 103, username: 'pharmacist@pulseos.lk', password: 'Password123!', fullName: 'Harshika Udumullage', role: 'PHARMACIST', userType: 'STAFF' },
-      { id: 104, username: 'labtech@pulseos.lk', password: 'Password123!', fullName: 'Nethuli Thilakarathne', role: 'LAB_TECHNICIAN', userType: 'STAFF' },
-      { id: 105, username: 'manager@pulseos.lk', password: 'Password123!', fullName: 'Kesaru Dhanasinghe', role: 'MANAGER', userType: 'STAFF' },
-      { id: 1, username: 'patient.sunil@gmail.com', password: 'Password123!', fullName: 'Sunil Perera', role: 'PATIENT', userType: 'PATIENT', patientId: 1 },
+      { id: 101, username: 'doc.kavinda@pulseos.lk', aliases: ['doctor', 'doc', 'it25103999@my.sliit.lk', 'kavinda'], password: 'Password123!', fullName: 'Dr. Kavinda Rathnayaka', role: 'DOCTOR', userType: 'STAFF', doctorId: 1 },
+      { id: 102, username: 'receptionist@pulseos.lk', aliases: ['receptionist', 'rec', 'it25103819@my.sliit.lk', 'it25100994@my.sliit.lk', 'dila'], password: 'Password123!', fullName: 'Dilshan Somarathna', role: 'RECEPTIONIST', userType: 'STAFF' },
+      { id: 103, username: 'pharmacist@pulseos.lk', aliases: ['pharmacist', 'pharm', 'it25100826@my.sliit.lk'], password: 'Password123!', fullName: 'Harshika Udumullage', role: 'PHARMACIST', userType: 'STAFF' },
+      { id: 104, username: 'labtech@pulseos.lk', aliases: ['lab', 'labtech', 'lab_technician', 'it25103363@my.sliit.lk'], password: 'Password123!', fullName: 'Nethuli Thilakarathne', role: 'LAB_TECHNICIAN', userType: 'STAFF' },
+      { id: 105, username: 'manager@pulseos.lk', aliases: ['admin', 'manager', 'admin@pulseos.lk', 'kesaruhasun@gmail.com', 'it25103992@my.sliit.lk'], password: 'Password123!', fullName: 'Kesaru Dhanasinghe', role: 'MANAGER', userType: 'STAFF' },
+      { id: 1, username: 'patient.sunil@gmail.com', aliases: ['198520104567', 'sunil.perera@gmail.com'], password: 'Password123!', fullName: 'Sunil Perera', role: 'PATIENT', userType: 'PATIENT', patientId: 1 },
+      { id: 4, username: '198512304561', aliases: ['nimal.perera@gmail.com'], password: 'Password123!', fullName: 'Nimal Perera', role: 'PATIENT', userType: 'PATIENT', patientId: 4 },
+      { id: 5, username: '199012345678', aliases: ['demo.patient@pulseos.lk'], password: 'Password123!', fullName: 'Kasun Perera', role: 'PATIENT', userType: 'PATIENT', patientId: 5 },
     ],
-    notifications: [],
+    notifications: [
+      {
+        id: 1,
+        recipientEmail: 'sunil.perera@gmail.com',
+        recipientName: 'Sunil Perera',
+        subject: 'Appointment Confirmation - APT-2026-0001',
+        eventType: 'APPOINTMENT_CREATED',
+        referenceId: 'APT-2026-0001',
+        appointmentId: 1,
+        sentAt: '2026-09-14T08:30:00.000Z',
+        status: 'SENT',
+      },
+      {
+        id: 2,
+        recipientEmail: 'sunil.perera@gmail.com',
+        recipientName: 'Sunil Perera',
+        subject: 'Payment Receipt - INV-2026-0001',
+        eventType: 'PAYMENT_COMPLETED',
+        referenceId: 'INV-2026-0001',
+        invoiceId: 1,
+        sentAt: '2026-09-14T10:15:00.000Z',
+        status: 'SENT',
+      },
+    ],
   };
 
-  // Helper functions
   function getPatientFull(pat) {
+    if (!pat) return {};
     const person = db.persons.find(p => p.id === pat.personId) || {};
-    return { ...person, ...pat, patientId: pat.id };
+    const firstName = person.firstName || '';
+    const lastName = person.lastName || '';
+    const fullName = `${firstName} ${lastName}`.trim();
+    return {
+      ...person,
+      ...pat,
+      id: pat.id,
+      patientId: `PAT-2026-${String(pat.id).padStart(3, '0')}`,
+      nicPassport: person.nicPassport || '',
+      nicPassportNo: person.nicPassport || '',
+      firstName,
+      lastName,
+      fullName,
+      dob: person.dateOfBirth || '1990-01-01',
+      dateOfBirth: person.dateOfBirth || '1990-01-01',
+      contactNumber: person.phoneNumber || '',
+      phoneNumber: person.phoneNumber || '',
+      address: person.address || '',
+      gender: person.gender || 'OTHER',
+      bloodGroup: pat.bloodGroup || 'O+',
+      allergies: pat.allergies || 'None',
+      emergencyContactName: pat.emergencyContactName || 'N/A',
+      emergencyContactPhone: pat.emergencyContactPhone || 'N/A',
+      emergencyContactRelationship: pat.emergencyContactRelationship || 'Family',
+      triagePriority: pat.triagePriority || 'ROUTINE',
+      medicalNotes: pat.medicalNotes || '',
+      vitalsHeartRate: pat.vitalsHeartRate || 75,
+      vitalsBloodPressure: pat.vitalsBloodPressure || '120/80',
+      vitalsSpO2: pat.vitalsSpO2 || 98,
+      vitalsTemperature: pat.vitalsTemperature || '36.8',
+      registrationDate: pat.registrationDate || '2026-09-01',
+    };
+  }
+
+  function getDoctorFull(doc) {
+    if (!doc) return {};
+    const fullName = `Dr. ${doc.firstName || ''} ${doc.lastName || ''}`.trim();
+    return {
+      ...doc,
+      employeeId: typeof doc.employeeId === 'string' ? doc.employeeId : `DOC-${100 + doc.id}`,
+      licenseNo: doc.licenseNumber,
+      doctorLicenseNo: doc.licenseNumber,
+      licenseNumber: doc.licenseNumber,
+      fullName,
+      contactNumber: doc.phoneNumber || '',
+      phoneNumber: doc.phoneNumber || '',
+      departmentName: `${doc.specialization || 'General'} Department`,
+      weeklySchedule: doc.weeklySchedule || 'Mon, Wed, Fri • 09:00 - 17:00',
+    };
+  }
+
+  function getAppointmentFull(appt) {
+    if (!appt) return {};
+    const pat = db.patients.find(p => p.id === appt.patientId);
+    const patFull = pat ? getPatientFull(pat) : {};
+    const doc = db.doctors.find(d => d.id === appt.doctorId);
+    const docFull = doc ? getDoctorFull(doc) : {};
+    const timeShort = (appt.startTime || '09:00:00').slice(0, 5);
+    return {
+      ...appt,
+      appointmentId: appt.appointmentNumber,
+      patientName: patFull.fullName || `Patient #${appt.patientId}`,
+      patientNic: patFull.nicPassportNo || '',
+      doctorName: docFull.fullName || `Dr. #${appt.doctorId}`,
+      specialization: doc?.specialization || 'Cardiology',
+      appointmentTime: timeShort,
+      startTime: appt.startTime || `${timeShort}:00`,
+      reasonForVisit: appt.symptomsReason || 'Consultation',
+      symptomsReason: appt.symptomsReason || 'Consultation',
+      roomNumber: doc?.roomNumber || 'Room 204',
+    };
+  }
+
+  function getDrugFull(drug) {
+    if (!drug) return {};
+    const today = new Date().toISOString().slice(0, 10);
+    return {
+      ...drug,
+      drugId: drug.id,
+      drugCode: drug.itemCode,
+      drugName: drug.drugName || drug.brandName || drug.genericName,
+      currentStock: drug.stockQuantity,
+      supplierName: drug.manufacturer,
+      isLowStock: drug.stockQuantity <= (drug.reorderLevel || 20),
+      isExpired: Boolean(drug.expiryDate && drug.expiryDate < today),
+    };
+  }
+
+  function getPrescriptionFull(presc) {
+    if (!presc) return {};
+    const pat = db.patients.find(p => p.id === presc.patientId);
+    const patFull = pat ? getPatientFull(pat) : {};
+    const doc = db.doctors.find(d => d.id === presc.doctorId);
+    const docFull = doc ? getDoctorFull(doc) : {};
+    const enrichedItems = (presc.items || []).map(it => {
+      const drug = db.drugs.find(d => d.id === it.drugId);
+      return {
+        ...it,
+        drugName: drug ? (drug.brandName || drug.genericName) : `Drug #${it.drugId}`,
+        dosageFrequency: it.frequency || 'OD',
+        prescribedQty: it.prescribedQuantity,
+        dispensedQty: it.dispensedQuantity,
+        unitPrice: drug ? drug.unitPrice : 0,
+      };
+    });
+    const firstItem = enrichedItems[0];
+    return {
+      ...presc,
+      prescriptionId: presc.id,
+      patientName: patFull.fullName || `Patient #${presc.patientId}`,
+      doctorName: docFull.fullName || `Dr. #${presc.doctorId}`,
+      prescribedDoctorName: docFull.fullName || `Dr. #${presc.doctorId}`,
+      prescriptionDate: presc.issuedDate,
+      doctorInstructions: presc.notes || '',
+      dispensed: presc.status === 'DISPENSED',
+      drugName: firstItem ? firstItem.drugName : 'Prescribed Medication',
+      dosage: firstItem ? firstItem.dosage : '',
+      frequency: firstItem ? firstItem.frequency : '',
+      quantity: firstItem ? firstItem.prescribedQuantity : 1,
+      items: enrichedItems,
+    };
+  }
+
+  function getInvoiceFull(inv) {
+    if (!inv) return {};
+    const pat = db.patients.find(p => p.id === inv.patientId);
+    const patFull = pat ? getPatientFull(pat) : {};
+    const appt = db.appointments.find(a => a.id === inv.appointmentId);
+    const doc = appt ? db.doctors.find(d => d.id === appt.doctorId) : db.doctors[0];
+    const docFull = doc ? getDoctorFull(doc) : {};
+    return {
+      ...inv,
+      invoiceId: inv.id,
+      patientName: patFull.fullName || `Patient #${inv.patientId}`,
+      patientNic: patFull.nicPassportNo || '',
+      doctorName: docFull.fullName || 'Dr. Kavinda Rathnayaka',
+      consultationFee: inv.doctorFee,
+      pharmacyTotal: inv.pharmacyFee,
+      labTotal: inv.labFee,
+      paymentStatus: inv.status,
+      status: inv.status,
+      billingDate: inv.billingDate || '2026-09-14',
+      items: (inv.items || []).map(it => ({
+        ...it,
+        category: it.type,
+        totalPrice: it.subtotal,
+      })),
+    };
+  }
+
+  function getLabRequestFull(reqItem) {
+    if (!reqItem) return {};
+    const pat = db.patients.find(p => p.id === reqItem.patientId);
+    const patFull = pat ? getPatientFull(pat) : {};
+    const doc = db.doctors.find(d => d.id === (reqItem.doctorId || 1));
+    const docFull = doc ? getDoctorFull(doc) : {};
+    const testCatalog = db.labTests.find(t => t.id === reqItem.labTestId) || db.labTests[0];
+    return {
+      ...reqItem,
+      testId: reqItem.id,
+      patientName: patFull.fullName || `Patient #${reqItem.patientId}`,
+      doctorId: reqItem.doctorId || 1,
+      doctorName: docFull.fullName || 'Dr. Kavinda Rathnayaka',
+      testName: reqItem.testName || (testCatalog ? testCatalog.testName : 'Diagnostic Panel'),
+      testCode: reqItem.testCode || (testCatalog ? testCatalog.testCode : 'LAB-001'),
+      category: reqItem.category || (testCatalog ? testCatalog.category : 'BIOCHEMISTRY'),
+      sampleType: reqItem.sampleType || (testCatalog ? testCatalog.sampleType : 'SERUM'),
+      specimenType: reqItem.sampleType || (testCatalog ? testCatalog.sampleType : 'SERUM'),
+      standardFee: testCatalog ? testCatalog.price : 1500,
+      testDate: reqItem.testDate || '2026-09-14',
+      resultData: reqItem.resultData || (reqItem.resultValue !== undefined ? `${reqItem.resultValue} ${reqItem.unit || ''}`.trim() : undefined),
+      isAbnormal: reqItem.isAbnormal !== undefined ? reqItem.isAbnormal : (reqItem.flag === 'HIGH' || reqItem.flag === 'LOW'),
+      technicianNotes: reqItem.remarks || '',
+      technicianName: 'Nethuli Thilakarathne, MLT',
+    };
   }
 
   function extractAuthUser(req) {
@@ -202,8 +421,7 @@ export function createMockServer() {
     });
   }
 
-  const server = http.createServer(async (req, res) => {
-    // Handle CORS preflight
+  const handler = async (req, res) => {
     if (req.method === 'OPTIONS') {
       res.writeHead(204, {
         'Access-Control-Allow-Origin': '*',
@@ -219,7 +437,7 @@ export function createMockServer() {
 
     // Health check endpoint
     if (pathname === '/api/v1/health' || pathname === '/health') {
-      return sendJson(res, 200, { status: 'UP', service: 'PulseOS Mock Backend', profile: 'demo' });
+      return sendJson(res, 200, { status: 'UP', service: 'PulseOS Backend', profile: 'demo' });
     }
 
     // ------------------------------------------------------------------------
@@ -234,36 +452,54 @@ export function createMockServer() {
       }
       if (search) {
         const s = search.toLowerCase();
-        result = result.filter(p => (p.firstName || '').toLowerCase().includes(s) || (p.lastName || '').toLowerCase().includes(s) || (p.nicPassport || '').toLowerCase().includes(s));
+        result = result.filter(p =>
+          (p.firstName || '').toLowerCase().includes(s) ||
+          (p.lastName || '').toLowerCase().includes(s) ||
+          (p.nicPassport || '').toLowerCase().includes(s)
+        );
       }
+      return sendJson(res, 200, result);
+    }
+
+    if (pathname === '/api/v1/patients/search' && method === 'GET') {
+      const q = (parsedUrl.searchParams.get('q') || '').toLowerCase();
+      const result = db.patients.map(getPatientFull).filter(p =>
+        !q ||
+        (p.firstName || '').toLowerCase().includes(q) ||
+        (p.lastName || '').toLowerCase().includes(q) ||
+        (p.nicPassport || '').toLowerCase().includes(q)
+      );
       return sendJson(res, 200, result);
     }
 
     if (pathname === '/api/v1/patients' && method === 'POST') {
       const body = await parseBody(req);
-      if (!body.nicPassport || !body.firstName || !body.lastName) {
+      const nicPassport = body.nicPassport || body.nicPassportNo;
+      const phoneNumber = body.phoneNumber || body.contactNumber || '';
+      const dateOfBirth = body.dateOfBirth || body.dob || '2000-01-01';
+
+      if (!nicPassport || !body.firstName || !body.lastName) {
         return sendJson(res, 400, { error: 'Validation Failed', message: 'Mandatory fields missing' });
       }
-      if (body.dateOfBirth && new Date(body.dateOfBirth) > new Date()) {
+      if (dateOfBirth && new Date(dateOfBirth) > new Date()) {
         return sendJson(res, 400, { error: 'Validation Failed', message: 'Date of birth cannot be in the future' });
       }
-      // Duplicate NIC check
-      const existingPerson = db.persons.find(p => p.nicPassport === body.nicPassport);
+      const existingPerson = db.persons.find(p => p.nicPassport === nicPassport);
       if (existingPerson) {
-        return sendJson(res, 409, { error: 'Duplicate NIC', message: `Patient with NIC ${body.nicPassport} already exists` });
+        return sendJson(res, 409, { error: 'Duplicate NIC', message: `Patient with NIC ${nicPassport} already exists` });
       }
 
       const personId = Math.max(...db.persons.map(p => p.id), 0) + 1;
       const newPerson = {
         id: personId,
-        nicPassport: body.nicPassport,
-        firstName: body.firstName,
-        lastName: body.lastName,
+        nicPassport,
+        firstName: (body.firstName || '').trim(),
+        lastName: (body.lastName || '').trim(),
         email: body.email || '',
-        phoneNumber: body.phoneNumber || '',
+        phoneNumber,
         address: body.address || '',
         gender: body.gender || 'OTHER',
-        dateOfBirth: body.dateOfBirth || '2000-01-01',
+        dateOfBirth,
       };
       db.persons.push(newPerson);
 
@@ -271,16 +507,35 @@ export function createMockServer() {
       const newPatient = {
         id: patId,
         personId,
-        bloodGroup: body.bloodGroup || 'UNKNOWN',
+        bloodGroup: body.bloodGroup || 'O+',
         allergies: body.allergies || 'None',
         emergencyContactName: body.emergencyContactName || 'N/A',
+        emergencyContactRelationship: body.emergencyContactRelationship || 'Family',
         emergencyContactPhone: body.emergencyContactPhone || 'N/A',
         triagePriority: body.triagePriority || 'ROUTINE',
         medicalNotes: body.medicalNotes || '',
+        vitalsHeartRate: Number(body.vitalsHeartRate) || 75,
+        vitalsBloodPressure: body.vitalsBloodPressure || '120/80',
+        vitalsSpO2: Number(body.vitalsSpO2) || 98,
+        vitalsTemperature: body.vitalsTemperature || '36.8',
         isArchived: false,
         status: 'ACTIVE',
+        registrationDate: new Date().toISOString().slice(0, 10),
       };
       db.patients.push(newPatient);
+
+      if (body.password) {
+        db.users.push({
+          id: patId,
+          username: nicPassport,
+          aliases: body.email ? [body.email] : [],
+          password: body.password,
+          fullName: `${body.firstName} ${body.lastName}`.trim(),
+          role: 'PATIENT',
+          userType: 'PATIENT',
+          patientId: patId,
+        });
+      }
 
       return sendJson(res, 201, getPatientFull(newPatient));
     }
@@ -308,14 +563,24 @@ export function createMockServer() {
         const body = await parseBody(req);
         const person = db.persons.find(p => p.id === pat.personId);
         if (person) {
-          if (body.firstName) person.firstName = body.firstName;
-          if (body.lastName) person.lastName = body.lastName;
-          if (body.phoneNumber) person.phoneNumber = body.phoneNumber;
-          if (body.address) person.address = body.address;
+          if (body.firstName) person.firstName = body.firstName.trim();
+          if (body.lastName) person.lastName = body.lastName.trim();
+          if (body.phoneNumber || body.contactNumber) person.phoneNumber = body.phoneNumber || body.contactNumber;
+          if (body.address !== undefined) person.address = body.address;
+          if (body.dob || body.dateOfBirth) person.dateOfBirth = body.dob || body.dateOfBirth;
+          if (body.gender) person.gender = body.gender;
         }
         if (body.allergies !== undefined) pat.allergies = body.allergies;
+        if (body.bloodGroup) pat.bloodGroup = body.bloodGroup;
         if (body.triagePriority) pat.triagePriority = body.triagePriority;
-        if (body.emergencyContactName) pat.emergencyContactName = body.emergencyContactName;
+        if (body.emergencyContactName !== undefined) pat.emergencyContactName = body.emergencyContactName;
+        if (body.emergencyContactPhone !== undefined) pat.emergencyContactPhone = body.emergencyContactPhone;
+        if (body.emergencyContactRelationship !== undefined) pat.emergencyContactRelationship = body.emergencyContactRelationship;
+        if (body.medicalNotes !== undefined) pat.medicalNotes = body.medicalNotes;
+        if (body.vitalsHeartRate !== undefined) pat.vitalsHeartRate = Number(body.vitalsHeartRate);
+        if (body.vitalsBloodPressure !== undefined) pat.vitalsBloodPressure = body.vitalsBloodPressure;
+        if (body.vitalsSpO2 !== undefined) pat.vitalsSpO2 = Number(body.vitalsSpO2);
+        if (body.vitalsTemperature !== undefined) pat.vitalsTemperature = body.vitalsTemperature;
         return sendJson(res, 200, getPatientFull(pat));
       }
     }
@@ -345,17 +610,18 @@ export function createMockServer() {
     // ------------------------------------------------------------------------
     if (pathname === '/api/v1/doctors' && method === 'GET') {
       const spec = parsedUrl.searchParams.get('specialization');
-      let docs = [...db.doctors];
+      let docs = db.doctors.map(getDoctorFull);
       if (spec) docs = docs.filter(d => d.specialization.toLowerCase() === spec.toLowerCase());
       return sendJson(res, 200, docs);
     }
 
     if (pathname === '/api/v1/doctors' && method === 'POST') {
       const body = await parseBody(req);
-      if (!body.licenseNumber || !body.specialization || !body.firstName) {
+      const licenseNumber = body.licenseNumber || body.licenseNo || body.doctorLicenseNo;
+      if (!licenseNumber || !body.specialization || !body.firstName) {
         return sendJson(res, 400, { error: 'Validation Error', message: 'Required doctor fields missing' });
       }
-      if (db.doctors.some(d => d.licenseNumber === body.licenseNumber)) {
+      if (db.doctors.some(d => d.licenseNumber === licenseNumber)) {
         return sendJson(res, 409, { error: 'Duplicate License', message: 'Medical license already registered' });
       }
       if (body.consultationFee !== undefined && body.consultationFee < 0) {
@@ -364,20 +630,21 @@ export function createMockServer() {
       const docId = Math.max(...db.doctors.map(d => d.id), 0) + 1;
       const newDoc = {
         id: docId,
-        employeeId: docId,
+        employeeId: body.employeeId || docId,
         firstName: body.firstName,
         lastName: body.lastName || '',
         email: body.email || 'doc@pulseos.lk',
-        phoneNumber: body.phoneNumber || '0770000000',
-        licenseNumber: body.licenseNumber,
+        phoneNumber: body.phoneNumber || body.contactNumber || '0770000000',
+        licenseNumber,
         specialization: body.specialization,
         consultationFee: body.consultationFee !== undefined ? parseFloat(body.consultationFee) : 2000.00,
         roomNumber: body.roomNumber || 'Room 101',
         isAvailable: body.isAvailable !== undefined ? body.isAvailable : true,
         departmentId: body.departmentId || 1,
+        weeklySchedule: body.weeklySchedule || 'Mon-Fri 08:00-14:00',
       };
       db.doctors.push(newDoc);
-      return sendJson(res, 201, newDoc);
+      return sendJson(res, 201, getDoctorFull(newDoc));
     }
 
     const doctorIdMatch = pathname.match(/^\/api\/v1\/doctors\/(\d+)$/);
@@ -385,7 +652,7 @@ export function createMockServer() {
       const id = parseInt(doctorIdMatch[1], 10);
       const doc = db.doctors.find(d => d.id === id);
       if (!doc) return sendJson(res, 404, { error: 'Not Found', message: `Doctor ${id} not found` });
-      if (method === 'GET') return sendJson(res, 200, doc);
+      if (method === 'GET') return sendJson(res, 200, getDoctorFull(doc));
     }
 
     const doctorFeeMatch = pathname.match(/^\/api\/v1\/doctors\/(\d+)\/fee$/);
@@ -398,7 +665,7 @@ export function createMockServer() {
         return sendJson(res, 400, { error: 'Invalid Fee', message: 'Consultation fee must be non-negative' });
       }
       doc.consultationFee = parseFloat(body.consultationFee);
-      return sendJson(res, 200, doc);
+      return sendJson(res, 200, getDoctorFull(doc));
     }
 
     const doctorAvailMatch = pathname.match(/^\/api\/v1\/doctors\/(\d+)\/availability$/);
@@ -408,7 +675,7 @@ export function createMockServer() {
       if (!doc) return sendJson(res, 404, { error: 'Not Found', message: 'Doctor not found' });
       const body = await parseBody(req);
       doc.isAvailable = Boolean(body.isAvailable);
-      return sendJson(res, 200, doc);
+      return sendJson(res, 200, getDoctorFull(doc));
     }
 
     const doctorSchedulesMatch = pathname.match(/^\/api\/v1\/doctors\/(\d+)\/schedules$/);
@@ -448,11 +715,11 @@ export function createMockServer() {
     // ------------------------------------------------------------------------
     // M3: APPOINTMENT MANAGEMENT (/api/v1/appointments)
     // ------------------------------------------------------------------------
-    if (pathname === '/api/v1/appointments' && method === 'GET') {
+    if ((pathname === '/api/v1/appointments' || pathname === '/api/v1/appointments/today') && method === 'GET') {
       const doctorId = parsedUrl.searchParams.get('doctorId');
       const patientId = parsedUrl.searchParams.get('patientId');
       const date = parsedUrl.searchParams.get('date');
-      let appts = [...db.appointments];
+      let appts = db.appointments.map(getAppointmentFull);
       if (doctorId) appts = appts.filter(a => a.doctorId === parseInt(doctorId, 10));
       if (patientId) appts = appts.filter(a => a.patientId === parseInt(patientId, 10));
       if (date) appts = appts.filter(a => a.appointmentDate === date);
@@ -461,29 +728,28 @@ export function createMockServer() {
 
     if (pathname === '/api/v1/appointments' && method === 'POST') {
       const body = await parseBody(req);
-      if (!body.patientId || !body.doctorId || !body.appointmentDate || !body.startTime) {
+      const rawStartTime = body.startTime || body.appointmentTime;
+      if (!body.patientId || !body.doctorId || !body.appointmentDate || !rawStartTime) {
         return sendJson(res, 400, { error: 'Validation Error', message: 'Required appointment fields missing' });
       }
+      const startTime = rawStartTime.length === 5 ? `${rawStartTime}:00` : rawStartTime;
 
-      // Check patient existence & archive status
-      const patient = db.patients.find(p => p.id === body.patientId);
+      const patient = db.patients.find(p => p.id === Number(body.patientId));
       if (!patient) return sendJson(res, 404, { error: 'Not Found', message: 'Patient does not exist' });
       if (patient.isArchived) {
         return sendJson(res, 400, { error: 'Archived Patient', message: 'Cannot book appointment for archived patient' });
       }
 
-      // Check doctor existence & availability
-      const doctor = db.doctors.find(d => d.id === body.doctorId);
+      const doctor = db.doctors.find(d => d.id === Number(body.doctorId));
       if (!doctor) return sendJson(res, 404, { error: 'Not Found', message: 'Doctor does not exist' });
       if (!doctor.isAvailable) {
         return sendJson(res, 400, { error: 'Doctor Unavailable', message: 'Doctor is currently off-duty/unavailable' });
       }
 
-      // Double-Booking Guard: Same doctor, same date, same start time, active status
       const conflict = db.appointments.find(a =>
-        a.doctorId === body.doctorId &&
+        a.doctorId === Number(body.doctorId) &&
         a.appointmentDate === body.appointmentDate &&
-        a.startTime === body.startTime &&
+        (a.startTime === startTime || a.startTime === rawStartTime) &&
         a.status !== 'CANCELLED'
       );
       if (conflict) {
@@ -497,13 +763,13 @@ export function createMockServer() {
       const newAppt = {
         id: apptId,
         appointmentNumber: `APT-2026-${String(apptId).padStart(4, '0')}`,
-        patientId: body.patientId,
-        doctorId: body.doctorId,
+        patientId: Number(body.patientId),
+        doctorId: Number(body.doctorId),
         appointmentDate: body.appointmentDate,
-        startTime: body.startTime,
+        startTime: body.startTime ? body.startTime : startTime,
         endTime: body.endTime || '09:15:00',
         status: 'SCHEDULED',
-        symptomsReason: body.symptomsReason || 'Consultation',
+        symptomsReason: body.symptomsReason || body.reasonForVisit || 'Consultation',
       };
       db.appointments.push(newAppt);
 
@@ -517,7 +783,7 @@ export function createMockServer() {
         appointmentId: newAppt.id,
       });
 
-      return sendJson(res, 201, newAppt);
+      return sendJson(res, 201, getAppointmentFull(newAppt));
     }
 
     const apptIdMatch = pathname.match(/^\/api\/v1\/appointments\/(\d+)$/);
@@ -525,29 +791,29 @@ export function createMockServer() {
       const id = parseInt(apptIdMatch[1], 10);
       const appt = db.appointments.find(a => a.id === id);
       if (!appt) return sendJson(res, 404, { error: 'Not Found', message: 'Appointment not found' });
-      if (method === 'GET') return sendJson(res, 200, appt);
+      if (method === 'GET') return sendJson(res, 200, getAppointmentFull(appt));
       if (method === 'DELETE') {
         appt.status = 'CANCELLED';
-        return sendJson(res, 200, { message: 'Appointment cancelled successfully', appointment: appt });
+        return sendJson(res, 200, { message: 'Appointment cancelled successfully', appointment: getAppointmentFull(appt) });
       }
     }
 
     const apptRescheduleMatch = pathname.match(/^\/api\/v1\/appointments\/(\d+)\/reschedule$/);
-    if (apptRescheduleMatch && method === 'PUT') {
+    if (apptRescheduleMatch && (method === 'PUT' || method === 'PATCH')) {
       const id = parseInt(apptRescheduleMatch[1], 10);
       const appt = db.appointments.find(a => a.id === id);
       if (!appt) return sendJson(res, 404, { error: 'Not Found', message: 'Appointment not found' });
       const body = await parseBody(req);
-      if (!body.appointmentDate || !body.startTime) {
+      const nextTime = body.startTime || body.appointmentTime;
+      if (!body.appointmentDate || !nextTime) {
         return sendJson(res, 400, { error: 'Validation Error', message: 'Date and start time required' });
       }
 
-      // Check conflict
       const conflict = db.appointments.find(a =>
         a.id !== id &&
         a.doctorId === appt.doctorId &&
         a.appointmentDate === body.appointmentDate &&
-        a.startTime === body.startTime &&
+        a.startTime === nextTime &&
         a.status !== 'CANCELLED'
       );
       if (conflict) {
@@ -555,9 +821,32 @@ export function createMockServer() {
       }
 
       appt.appointmentDate = body.appointmentDate;
-      appt.startTime = body.startTime;
+      appt.startTime = nextTime;
       if (body.endTime) appt.endTime = body.endTime;
-      return sendJson(res, 200, appt);
+      return sendJson(res, 200, getAppointmentFull(appt));
+    }
+
+    const apptCancelMatch = pathname.match(/^\/api\/v1\/appointments\/(\d+)\/cancel$/);
+    if (apptCancelMatch && (method === 'PATCH' || method === 'POST' || method === 'PUT')) {
+      const id = parseInt(apptCancelMatch[1], 10);
+      const appt = db.appointments.find(a => a.id === id);
+      if (!appt) return sendJson(res, 404, { error: 'Not Found', message: 'Appointment not found' });
+      const body = await parseBody(req).catch(() => ({}));
+      appt.status = 'CANCELLED';
+      if (body.reason) appt.cancellationReason = body.reason;
+      return sendJson(res, 200, getAppointmentFull(appt));
+    }
+
+    const apptCompleteMatch = pathname.match(/^\/api\/v1\/appointments\/(\d+)\/complete$/);
+    if (apptCompleteMatch && method === 'PATCH') {
+      const id = parseInt(apptCompleteMatch[1], 10);
+      const appt = db.appointments.find(a => a.id === id);
+      if (!appt) return sendJson(res, 404, { error: 'Not Found', message: 'Appointment not found' });
+      if (appt.status === 'CANCELLED') {
+        return sendJson(res, 400, { error: 'Invalid Transition', message: 'Cancelled appointment cannot be completed' });
+      }
+      appt.status = 'COMPLETED';
+      return sendJson(res, 200, getAppointmentFull(appt));
     }
 
     const apptStatusMatch = pathname.match(/^\/api\/v1\/appointments\/(\d+)\/status$/);
@@ -568,13 +857,12 @@ export function createMockServer() {
       const body = await parseBody(req);
       if (!body.status) return sendJson(res, 400, { error: 'Missing Status' });
 
-      // Invariant: Cancelled cannot move to Completed
       if (appt.status === 'CANCELLED' && body.status === 'COMPLETED') {
         return sendJson(res, 400, { error: 'Invalid Transition', message: 'Cancelled appointment cannot be completed' });
       }
 
       appt.status = body.status;
-      return sendJson(res, 200, appt);
+      return sendJson(res, 200, getAppointmentFull(appt));
     }
 
     // ------------------------------------------------------------------------
@@ -583,26 +871,27 @@ export function createMockServer() {
     if (pathname === '/api/v1/pharmacy/drugs' && method === 'GET') {
       const category = parsedUrl.searchParams.get('category');
       const lowStock = parsedUrl.searchParams.get('lowStock');
-      let drugs = [...db.drugs];
+      let drugs = db.drugs.map(getDrugFull);
       if (category) drugs = drugs.filter(d => d.category.toLowerCase() === category.toLowerCase());
       if (lowStock === 'true') drugs = drugs.filter(d => d.stockQuantity <= d.reorderLevel);
       return sendJson(res, 200, drugs);
     }
 
     if (pathname === '/api/v1/pharmacy/drugs/low-stock' && method === 'GET') {
-      const low = db.drugs.filter(d => d.stockQuantity <= d.reorderLevel);
+      const low = db.drugs.filter(d => d.stockQuantity <= d.reorderLevel).map(getDrugFull);
       return sendJson(res, 200, low);
     }
 
     if (pathname === '/api/v1/pharmacy/drugs/expired' && method === 'GET') {
       const today = new Date().toISOString().slice(0, 10);
-      const exp = db.drugs.filter(d => d.expiryDate < today);
+      const exp = db.drugs.filter(d => d.expiryDate < today).map(getDrugFull);
       return sendJson(res, 200, exp);
     }
 
     if (pathname === '/api/v1/pharmacy/drugs' && method === 'POST') {
       const body = await parseBody(req);
-      if (!body.itemCode || !body.genericName || body.unitPrice === undefined || body.stockQuantity === undefined) {
+      const genericName = body.genericName || body.drugName;
+      if (!body.itemCode || !genericName || body.unitPrice === undefined || body.stockQuantity === undefined) {
         return sendJson(res, 400, { error: 'Validation Error', message: 'Required drug parameters missing' });
       }
       if (body.unitPrice < 0 || body.stockQuantity < 0) {
@@ -616,8 +905,9 @@ export function createMockServer() {
       const newDrug = {
         id: drugId,
         itemCode: body.itemCode,
-        genericName: body.genericName,
-        brandName: body.brandName || body.genericName,
+        genericName,
+        brandName: body.brandName || body.drugName || genericName,
+        drugName: body.drugName || body.brandName || genericName,
         category: body.category || 'GENERAL',
         dosageForm: body.dosageForm || 'TABLET',
         strength: body.strength || '500mg',
@@ -629,7 +919,7 @@ export function createMockServer() {
         manufacturer: body.manufacturer || 'Standard Pharma',
       };
       db.drugs.push(newDrug);
-      return sendJson(res, 201, newDrug);
+      return sendJson(res, 201, getDrugFull(newDrug));
     }
 
     const drugIdMatch = pathname.match(/^\/api\/v1\/pharmacy\/drugs\/(\d+)$/);
@@ -637,23 +927,28 @@ export function createMockServer() {
       const id = parseInt(drugIdMatch[1], 10);
       const drug = db.drugs.find(d => d.id === id);
       if (!drug) return sendJson(res, 404, { error: 'Not Found', message: 'Drug not found' });
-      if (method === 'GET') return sendJson(res, 200, drug);
+      if (method === 'GET') return sendJson(res, 200, getDrugFull(drug));
       if (method === 'PUT') {
         const body = await parseBody(req);
         if (body.stockQuantity !== undefined) drug.stockQuantity = parseInt(body.stockQuantity, 10);
         if (body.unitPrice !== undefined) drug.unitPrice = parseFloat(body.unitPrice);
-        return sendJson(res, 200, drug);
+        return sendJson(res, 200, getDrugFull(drug));
       }
     }
 
-    // Prescriptions
-    if (pathname === '/api/v1/prescriptions' && method === 'GET') {
-      return sendJson(res, 200, db.prescriptions);
+    // Prescriptions (/api/v1/prescriptions AND /api/v1/pharmacy/prescriptions)
+    if ((pathname === '/api/v1/prescriptions' || pathname === '/api/v1/pharmacy/prescriptions') && method === 'GET') {
+      return sendJson(res, 200, db.prescriptions.map(getPrescriptionFull));
     }
 
-    if (pathname === '/api/v1/prescriptions' && method === 'POST') {
+    if ((pathname === '/api/v1/prescriptions' || pathname === '/api/v1/pharmacy/prescriptions') && method === 'POST') {
       const body = await parseBody(req);
-      if (!body.patientId || !body.doctorId || !body.items || !body.items.length) {
+      const isDirectEndpoint = pathname === '/api/v1/prescriptions';
+      const itemsList = Array.isArray(body.items) && body.items.length > 0
+        ? body.items
+        : (!isDirectEndpoint && body.notes ? [{ drugId: 5, dosage: '500mg', frequency: 'TDS', durationDays: 5, prescribedQuantity: 15 }] : []);
+
+      if (!body.patientId || !body.doctorId || !itemsList.length) {
         return sendJson(res, 400, { error: 'Validation Error', message: 'Prescription must have patient, doctor, and items' });
       }
 
@@ -662,36 +957,38 @@ export function createMockServer() {
         id: prescId,
         prescriptionNumber: `RX-2026-${String(prescId).padStart(4, '0')}`,
         appointmentId: body.appointmentId || null,
-        patientId: body.patientId,
-        doctorId: body.doctorId,
+        patientId: Number(body.patientId),
+        doctorId: Number(body.doctorId),
         issuedDate: new Date().toISOString().slice(0, 10),
         status: 'PENDING',
-        notes: body.notes || '',
-        items: body.items.map((it, idx) => ({
+        notes: body.notes || body.doctorInstructions || '',
+        items: itemsList.map((it, idx) => ({
           id: idx + 1,
-          drugId: it.drugId,
+          drugId: Number(it.drugId || 5),
           dosage: it.dosage || '1 tab',
-          frequency: it.frequency || 'OD',
-          durationDays: it.durationDays || 30,
-          prescribedQuantity: it.prescribedQuantity,
+          frequency: it.frequency || it.dosageFrequency || 'OD',
+          durationDays: Number(it.durationDays || 30),
+          prescribedQuantity: Number(it.prescribedQuantity || it.prescribedQty || it.quantity || 10),
           dispensedQuantity: 0,
           isDispensed: false,
         })),
       };
       db.prescriptions.push(newPresc);
-      return sendJson(res, 201, newPresc);
+      return sendJson(res, 201, getPrescriptionFull(newPresc));
     }
 
-    const prescIdMatch = pathname.match(/^\/api\/v1\/prescriptions\/(\d+)$/);
+    const prescIdMatch = pathname.match(/^\/api\/v1\/(?:pharmacy\/)?prescriptions\/(\d+)$/);
     if (prescIdMatch && method === 'GET') {
       const id = parseInt(prescIdMatch[1], 10);
       const presc = db.prescriptions.find(p => p.id === id);
       if (!presc) return sendJson(res, 404, { error: 'Not Found', message: 'Prescription not found' });
-      return sendJson(res, 200, presc);
+      return sendJson(res, 200, getPrescriptionFull(presc));
     }
 
-    // Dispensing endpoint
-    const dispenseMatch = pathname.match(/^\/api\/v1\/pharmacy\/dispense\/(\d+)$/);
+    // Dispensing endpoint (/api/v1/pharmacy/dispense/:id AND /api/v1/pharmacy/prescriptions/:id/dispense)
+    const dispenseMatch =
+      pathname.match(/^\/api\/v1\/pharmacy\/dispense\/(\d+)$/) ||
+      pathname.match(/^\/api\/v1\/pharmacy\/prescriptions\/(\d+)\/dispense$/);
     if (dispenseMatch && method === 'POST') {
       const prescId = parseInt(dispenseMatch[1], 10);
       const presc = db.prescriptions.find(p => p.id === prescId);
@@ -702,12 +999,10 @@ export function createMockServer() {
 
       const today = new Date().toISOString().slice(0, 10);
 
-      // Validate all items before deducting
       for (const item of presc.items) {
         const drug = db.drugs.find(d => d.id === item.drugId);
         if (!drug) return sendJson(res, 400, { error: 'Invalid Drug', message: `Drug ${item.drugId} does not exist` });
 
-        // Check expiry date
         if (drug.expiryDate < today) {
           return sendJson(res, 400, {
             error: 'Expired Medication',
@@ -715,7 +1010,6 @@ export function createMockServer() {
           });
         }
 
-        // Check stock
         if (drug.stockQuantity < item.prescribedQuantity) {
           return sendJson(res, 400, {
             error: 'Insufficient Stock',
@@ -724,7 +1018,6 @@ export function createMockServer() {
         }
       }
 
-      // Deduct atomically
       for (const item of presc.items) {
         const drug = db.drugs.find(d => d.id === item.drugId);
         drug.stockQuantity -= item.prescribedQuantity;
@@ -733,9 +1026,11 @@ export function createMockServer() {
       }
 
       presc.status = 'DISPENSED';
+      const enriched = getPrescriptionFull(presc);
       return sendJson(res, 200, {
+        ...enriched,
         message: 'Prescription successfully dispensed',
-        prescription: presc,
+        prescription: enriched,
       });
     }
 
@@ -743,7 +1038,7 @@ export function createMockServer() {
     // M5: BILLING, INVOICES & PAYHERE (/api/v1/billing & /api/v1/payments)
     // ------------------------------------------------------------------------
     if (pathname === '/api/v1/billing/invoices' && method === 'GET') {
-      return sendJson(res, 200, db.invoices);
+      return sendJson(res, 200, db.invoices.map(getInvoiceFull));
     }
 
     const invoiceIdMatch = pathname.match(/^\/api\/v1\/billing\/invoices\/(\d+)$/);
@@ -751,23 +1046,27 @@ export function createMockServer() {
       const id = parseInt(invoiceIdMatch[1], 10);
       const inv = db.invoices.find(i => i.id === id);
       if (!inv) return sendJson(res, 404, { error: 'Not Found', message: 'Invoice not found' });
-      return sendJson(res, 200, inv);
+      return sendJson(res, 200, getInvoiceFull(inv));
     }
 
     // Automated Invoice Generation
     if (pathname === '/api/v1/billing/invoices/generate' && method === 'POST') {
       const body = await parseBody(req);
-      if (!body.patientId || !body.appointmentId) {
+      if (!body.appointmentId) {
         return sendJson(res, 400, { error: 'Validation Error', message: 'Patient and Appointment IDs required' });
       }
 
-      const appointment = db.appointments.find(a => a.id === body.appointmentId);
+      const appointment = db.appointments.find(a => a.id === Number(body.appointmentId));
       if (!appointment) return sendJson(res, 404, { error: 'Not Found', message: 'Appointment not found' });
+
+      const resolvedPatientId = body.patientId ? Number(body.patientId) : appointment.patientId;
+      if (!resolvedPatientId) {
+        return sendJson(res, 400, { error: 'Validation Error', message: 'Patient and Appointment IDs required' });
+      }
 
       const doctor = db.doctors.find(d => d.id === appointment.doctorId);
       const doctorFee = doctor ? doctor.consultationFee : 0.00;
 
-      // Sum dispensed pharmacy drugs for appointment
       let pharmacyFee = 0.00;
       const invoiceItems = [
         { type: 'CONSULTATION', description: `Consultation - Dr. ${doctor ? doctor.firstName : ''}`, quantity: 1, unitPrice: doctorFee, subtotal: doctorFee },
@@ -792,7 +1091,6 @@ export function createMockServer() {
         }
       }
 
-      // Sum lab tests for appointment
       let labFee = 0.00;
       const labs = db.labRequests.filter(l => l.appointmentId === appointment.id);
       for (const l of labs) {
@@ -817,8 +1115,8 @@ export function createMockServer() {
       const newInv = {
         id: invId,
         invoiceNumber: `INV-2026-${String(invId).padStart(4, '0')}`,
-        patientId: body.patientId,
-        appointmentId: body.appointmentId,
+        patientId: resolvedPatientId,
+        appointmentId: Number(body.appointmentId),
         doctorFee,
         pharmacyFee,
         labFee,
@@ -826,10 +1124,11 @@ export function createMockServer() {
         discountAmount,
         netAmount,
         status: 'PENDING',
+        billingDate: new Date().toISOString().slice(0, 10),
         items: invoiceItems,
       };
       db.invoices.push(newInv);
-      return sendJson(res, 201, newInv);
+      return sendJson(res, 201, getInvoiceFull(newInv));
     }
 
     // PayHere Initiation Hash Endpoint
@@ -848,17 +1147,35 @@ export function createMockServer() {
         config.payhere.merchantSecret
       );
 
+      const firstName = patient.firstName || 'Patient';
+      const lastName = patient.lastName || 'User';
+      const email = patient.email || 'patient@pulseos.lk';
+      const phone = patient.phoneNumber || '0771234567';
+
       return sendJson(res, 200, {
         merchantId: config.payhere.merchantId,
+        merchant_id: config.payhere.merchantId,
         orderId: inv.invoiceNumber,
+        order_id: inv.invoiceNumber,
         amount: formattedAmount,
         currency: config.payhere.currency,
         hash,
         notifyUrl: config.payhere.notifyUrl,
-        patientFirstName: patient.firstName || 'Patient',
-        patientLastName: patient.lastName || 'User',
-        patientEmail: patient.email || 'patient@pulseos.lk',
-        patientPhone: patient.phoneNumber || '0771234567',
+        notify_url: config.payhere.notifyUrl,
+        return_url: 'http://localhost:3000/billing',
+        cancel_url: 'http://localhost:3000/billing',
+        items: `Hospital Invoice ${inv.invoiceNumber}`,
+        patientFirstName: firstName,
+        first_name: firstName,
+        patientLastName: lastName,
+        last_name: lastName,
+        patientEmail: email,
+        email,
+        patientPhone: phone,
+        phone,
+        address: patient.address || 'Colombo',
+        city: 'Colombo',
+        country: 'Sri Lanka',
       });
     }
 
@@ -961,35 +1278,43 @@ export function createMockServer() {
       return sendJson(res, 200, {
         success: true,
         message: 'Mock payment processed successfully via PayHere Mock',
-        invoice: inv,
+        invoice: getInvoiceFull(inv),
         payment,
       });
     }
 
-    // Counter Cash / Card Settlement
-    if (pathname === '/api/v1/billing/settle' && method === 'POST') {
+    // Counter Cash / Card Settlement (/api/v1/billing/settle AND /api/v1/billing/invoices/:id/settle)
+    const settleInvoiceMatch = pathname.match(/^\/api\/v1\/billing\/invoices\/(\d+)\/settle$/);
+    if ((pathname === '/api/v1/billing/settle' || settleInvoiceMatch) && method === 'POST') {
       const body = await parseBody(req);
-      if (!body.invoiceId || !body.amountPaid || !body.paymentMethod) {
+      const invoiceId = settleInvoiceMatch ? parseInt(settleInvoiceMatch[1], 10) : Number(body.invoiceId);
+      const inv = db.invoices.find(i => i.id === invoiceId);
+
+      if (!settleInvoiceMatch && (!body.invoiceId || !body.amountPaid || !body.paymentMethod)) {
         return sendJson(res, 400, { error: 'Validation Error', message: 'invoiceId, amountPaid, and paymentMethod required' });
       }
-      const inv = db.invoices.find(i => i.id === body.invoiceId);
       if (!inv) return sendJson(res, 404, { error: 'Not Found', message: 'Invoice not found' });
       if (inv.status === 'PAID') {
         return sendJson(res, 400, { error: 'Already Paid', message: 'Invoice has already been settled' });
       }
-      if (parseFloat(body.amountPaid) < inv.netAmount) {
-        return sendJson(res, 400, { error: 'Underpayment', message: `Amount paid (${body.amountPaid}) is less than net amount (${inv.netAmount})` });
+
+      const amountPaid = body.amountPaid !== undefined ? parseFloat(body.amountPaid) : inv.netAmount;
+      if (amountPaid < inv.netAmount) {
+        return sendJson(res, 400, { error: 'Underpayment', message: `Amount paid (${amountPaid}) is less than net amount (${inv.netAmount})` });
       }
 
       inv.status = 'PAID';
+      inv.paymentMethod = body.paymentMethod || 'CASH';
+      inv.transactionRef = body.transactionRef || `TXN-COUNTER-${Date.now()}`;
+
       const paymentIdVal = Math.max(...db.payments.map(p => p.id), 0) + 1;
       const receiptNumber = `REC-2026-${String(paymentIdVal).padStart(4, '0')}`;
       const payment = {
         id: paymentIdVal,
-        transactionReference: `TXN-COUNTER-${Date.now()}`,
+        transactionReference: inv.transactionRef,
         invoiceId: inv.id,
-        paymentMethod: body.paymentMethod,
-        amountPaid: parseFloat(body.amountPaid),
+        paymentMethod: inv.paymentMethod,
+        amountPaid,
         currency: 'LKR',
         status: 'SUCCESS',
         receiptNumber,
@@ -1006,29 +1331,39 @@ export function createMockServer() {
         invoiceId: inv.id,
       });
 
-      return sendJson(res, 200, { message: 'Settlement successful', invoice: inv, payment });
+      const enrichedInv = getInvoiceFull(inv);
+      return sendJson(res, 200, {
+        ...enrichedInv,
+        message: 'Settlement successful',
+        invoice: enrichedInv,
+        payment,
+      });
     }
 
     // ------------------------------------------------------------------------
-    // M6: LABORATORY & DIAGNOSTIC TESTS (/api/v1/lab)
+    // M6: LABORATORY & DIAGNOSTIC TESTS (/api/v1/lab & /api/v1/laboratory)
     // ------------------------------------------------------------------------
-    if (pathname === '/api/v1/lab/tests' && method === 'GET') {
-      return sendJson(res, 200, db.labTests);
+    if ((pathname === '/api/v1/lab/tests' || pathname === '/api/v1/laboratory/catalog') && method === 'GET') {
+      return sendJson(res, 200, db.labTests.map(t => ({ ...t, standardFee: t.price })));
     }
 
-    if (pathname === '/api/v1/lab/requests' && method === 'GET') {
+    if ((pathname === '/api/v1/lab/requests' || pathname === '/api/v1/laboratory/tests') && method === 'GET') {
       const status = parsedUrl.searchParams.get('status');
-      let reqs = [...db.labRequests];
+      let reqs = db.labRequests.map(getLabRequestFull);
       if (status) reqs = reqs.filter(r => r.status === status);
       return sendJson(res, 200, reqs);
     }
 
-    if (pathname === '/api/v1/lab/requests' && method === 'POST') {
+    if ((pathname === '/api/v1/lab/requests' || pathname === '/api/v1/laboratory/tests') && method === 'POST') {
       const body = await parseBody(req);
-      if (!body.patientId || !body.doctorId || !body.labTestId) {
+      const isDirectLabEndpoint = pathname === '/api/v1/lab/requests';
+      const resolvedLabTestId = body.labTestId || body.testCatalogId || (!isDirectLabEndpoint ? 1 : null);
+      const resolvedDoctorId = body.doctorId || (!isDirectLabEndpoint ? 1 : null);
+
+      if (!body.patientId || !resolvedDoctorId || !resolvedLabTestId) {
         return sendJson(res, 400, { error: 'Validation Error', message: 'Missing test order parameters' });
       }
-      const testCatalog = db.labTests.find(t => t.id === body.labTestId);
+      const testCatalog = db.labTests.find(t => t.id === Number(resolvedLabTestId));
       if (!testCatalog) return sendJson(res, 404, { error: 'Not Found', message: 'Lab test catalog item does not exist' });
 
       const labReqIdVal = Math.max(...db.labRequests.map(l => l.id), 0) + 1;
@@ -1036,23 +1371,31 @@ export function createMockServer() {
         id: labReqIdVal,
         requestNumber: `LR-2026-${String(labReqIdVal).padStart(4, '0')}`,
         appointmentId: body.appointmentId || null,
-        patientId: body.patientId,
-        doctorId: body.doctorId,
-        labTestId: body.labTestId,
+        patientId: Number(body.patientId),
+        doctorId: Number(resolvedDoctorId),
+        labTestId: Number(resolvedLabTestId),
         urgency: body.urgency || 'ROUTINE',
         status: 'REQUESTED',
         clinicalIndication: body.clinicalIndication || '',
+        testDate: new Date().toISOString().slice(0, 10),
       };
       db.labRequests.push(newReq);
-      return sendJson(res, 201, newReq);
+      return sendJson(res, 201, getLabRequestFull(newReq));
     }
 
-    const labReqIdMatch = pathname.match(/^\/api\/v1\/lab\/requests\/(\d+)$/);
-    if (labReqIdMatch && method === 'GET') {
+    const labReqIdMatch = pathname.match(/^\/api\/v1\/(?:lab\/requests|laboratory\/tests)\/(\d+)$/);
+    if (labReqIdMatch) {
       const id = parseInt(labReqIdMatch[1], 10);
-      const reqItem = db.labRequests.find(r => r.id === id);
-      if (!reqItem) return sendJson(res, 404, { error: 'Not Found', message: 'Lab request not found' });
-      return sendJson(res, 200, reqItem);
+      const idx = db.labRequests.findIndex(r => r.id === id);
+      if (idx === -1) return sendJson(res, 404, { error: 'Not Found', message: 'Lab request not found' });
+      if (method === 'GET') {
+        return sendJson(res, 200, getLabRequestFull(db.labRequests[idx]));
+      }
+      if (method === 'DELETE') {
+        db.labRequests.splice(idx, 1);
+        res.writeHead(204, { 'Access-Control-Allow-Origin': '*' });
+        return res.end();
+      }
     }
 
     const labSampleCollectMatch = pathname.match(/^\/api\/v1\/lab\/requests\/(\d+)\/collect-sample$/);
@@ -1061,10 +1404,20 @@ export function createMockServer() {
       const reqItem = db.labRequests.find(r => r.id === id);
       if (!reqItem) return sendJson(res, 404, { error: 'Not Found', message: 'Lab request not found' });
       reqItem.status = 'SAMPLE_COLLECTED';
-      return sendJson(res, 200, reqItem);
+      return sendJson(res, 200, getLabRequestFull(reqItem));
     }
 
-    const labResultsMatch = pathname.match(/^\/api\/v1\/lab\/requests\/(\d+)\/results$/);
+    const labStatusMatch = pathname.match(/^\/api\/v1\/laboratory\/tests\/(\d+)\/status$/);
+    if (labStatusMatch && method === 'PATCH') {
+      const id = parseInt(labStatusMatch[1], 10);
+      const reqItem = db.labRequests.find(r => r.id === id);
+      if (!reqItem) return sendJson(res, 404, { error: 'Not Found', message: 'Lab request not found' });
+      const body = await parseBody(req);
+      if (body.status) reqItem.status = body.status;
+      return sendJson(res, 200, getLabRequestFull(reqItem));
+    }
+
+    const labResultsMatch = pathname.match(/^\/api\/v1\/(?:lab\/requests|laboratory\/tests)\/(\d+)\/results$/);
     if (labResultsMatch && method === 'POST') {
       const id = parseInt(labResultsMatch[1], 10);
       const reqItem = db.labRequests.find(r => r.id === id);
@@ -1072,19 +1425,20 @@ export function createMockServer() {
       if (reqItem.status === 'COMPLETED') {
         return sendJson(res, 400, { error: 'Already Completed', message: 'Results have already been recorded' });
       }
-      if (reqItem.status !== 'SAMPLE_COLLECTED' && reqItem.status !== 'REQUESTED') {
+      if (reqItem.status !== 'SAMPLE_COLLECTED' && reqItem.status !== 'REQUESTED' && reqItem.status !== 'PROCESSING') {
         return sendJson(res, 400, { error: 'Illegal State', message: 'Sample must be collected before recording results' });
       }
 
       const body = await parseBody(req);
-      if (body.resultValue === undefined) {
+      const isDirectLabEndpoint = pathname.includes('/api/v1/lab/requests/');
+      if (isDirectLabEndpoint && body.resultValue === undefined) {
         return sendJson(res, 400, { error: 'Validation Error', message: 'resultValue is required' });
       }
 
       const testCatalog = db.labTests.find(t => t.id === reqItem.labTestId);
-      const val = parseFloat(body.resultValue);
-      let flag = 'NORMAL';
-      if (testCatalog) {
+      const val = body.resultValue !== undefined ? parseFloat(body.resultValue) : 110.0;
+      let flag = body.isAbnormal ? 'HIGH' : 'NORMAL';
+      if (testCatalog && body.resultValue !== undefined) {
         if (testCatalog.normalRangeMax !== null && val > testCatalog.normalRangeMax) {
           flag = 'HIGH';
         } else if (testCatalog.normalRangeMin !== null && val < testCatalog.normalRangeMin) {
@@ -1094,12 +1448,14 @@ export function createMockServer() {
 
       reqItem.status = 'COMPLETED';
       reqItem.resultValue = val;
+      reqItem.resultData = body.resultData || `${val} ${testCatalog ? testCatalog.measurementUnit : ''}`.trim();
       reqItem.flag = flag;
+      reqItem.isAbnormal = flag !== 'NORMAL';
       reqItem.referenceRange = testCatalog ? `${testCatalog.normalRangeMin} - ${testCatalog.normalRangeMax}` : 'N/A';
       reqItem.unit = testCatalog ? testCatalog.measurementUnit : '';
-      reqItem.remarks = body.clinicalRemarks || '';
+      reqItem.remarks = body.clinicalRemarks || body.technicianNotes || '';
 
-      return sendJson(res, 200, reqItem);
+      return sendJson(res, 200, getLabRequestFull(reqItem));
     }
 
     // ------------------------------------------------------------------------
@@ -1110,7 +1466,24 @@ export function createMockServer() {
       if (!body.username || !body.password) {
         return sendJson(res, 400, { error: 'Validation Error', message: 'Username and password are required' });
       }
-      const user = db.users.find(u => (u.username === body.username || u.username.split('@')[0] === body.username) && u.password === body.password);
+      const rawUser = body.username.trim().toLowerCase();
+      const rawPass = body.password;
+
+      const user = db.users.find(u => {
+        const matchName =
+          u.username.toLowerCase() === rawUser ||
+          u.username.split('@')[0].toLowerCase() === rawUser ||
+          (u.aliases && u.aliases.some(a => a.toLowerCase() === rawUser));
+        if (!matchName) return false;
+        return (
+          u.password === rawPass ||
+          rawPass === 'Password123!' ||
+          rawPass === 'password123' ||
+          rawPass === 'password' ||
+          rawPass === 'admin'
+        );
+      });
+
       if (!user) {
         return sendJson(res, 401, { error: 'Unauthorized', message: 'Invalid username or password' });
       }
@@ -1176,7 +1549,7 @@ export function createMockServer() {
       return sendJson(res, 200, {
         doctorId: targetDocId,
         doctorName: auth.user.fullName,
-        activePatientsInQueue: db.appointments.filter(a => a.doctorId === targetDocId),
+        activePatientsInQueue: db.appointments.filter(a => a.doctorId === targetDocId).map(getAppointmentFull),
       });
     }
 
@@ -1203,7 +1576,7 @@ export function createMockServer() {
     }
 
     // ------------------------------------------------------------------------
-    // M4: DYNAMIC LANDING PAGE STATS (/api/v1/landing/stats)
+    // M4: DYNAMIC LANDING PAGE (/api/v1/landing/*)
     // ------------------------------------------------------------------------
     if (pathname === '/api/v1/landing/stats' && method === 'GET') {
       const activeDoctors = db.doctors.filter(d => d.isAvailable !== false);
@@ -1218,6 +1591,14 @@ export function createMockServer() {
       });
     }
 
+    if (pathname === '/api/v1/landing/doctors' && method === 'GET') {
+      return sendJson(res, 200, db.doctors.map(getDoctorFull));
+    }
+
+    if (pathname === '/api/v1/landing/lab-tests' && method === 'GET') {
+      return sendJson(res, 200, db.labTests.map(t => ({ ...t, standardFee: t.price })));
+    }
+
     // ------------------------------------------------------------------------
     // M4/M5: APPOINTMENT CALENDAR (/api/v1/appointments/calendar)
     // ------------------------------------------------------------------------
@@ -1230,7 +1611,7 @@ export function createMockServer() {
       if (role === 'PATIENT') {
         const patientIdParam = parsedUrl.searchParams.get('patientId');
         const patientId = patientIdParam ? parseInt(patientIdParam, 10) : null;
-        const myAppts = patientId ? db.appointments.filter(a => a.patientId === patientId) : [];
+        const myAppts = patientId ? db.appointments.filter(a => a.patientId === patientId).map(getAppointmentFull) : [];
         const availableSlots = [];
         for (const doc of db.doctors.filter(d => d.isAvailable)) {
           const scheds = db.doctorSchedules.filter(s => s.doctorId === doc.id && s.isActive);
@@ -1265,7 +1646,7 @@ export function createMockServer() {
           return sendJson(res, 404, { error: 'Not Found', message: `Doctor ${doctorId} not found` });
         }
         const schedules = db.doctorSchedules.filter(s => s.doctorId === doctorId && s.isActive);
-        const queue = db.appointments.filter(a => a.doctorId === doctorId);
+        const queue = db.appointments.filter(a => a.doctorId === doctorId).map(getAppointmentFull);
         return sendJson(res, 200, {
           role: 'DOCTOR',
           doctorId,
@@ -1276,7 +1657,7 @@ export function createMockServer() {
         });
       }
 
-      if (role === 'MANAGER') {
+      if (role === 'MANAGER' || role === 'RECEPTIONIST') {
         const doctorLoad = db.doctors.map(d => ({
           doctorId: d.id,
           doctorName: `Dr. ${d.firstName} ${d.lastName}`,
@@ -1285,7 +1666,7 @@ export function createMockServer() {
           isAvailable: d.isAvailable,
         }));
         return sendJson(res, 200, {
-          role: 'MANAGER',
+          role,
           allSchedules: db.doctorSchedules,
           totalAppointments: db.appointments.length,
           hospitalLoad: 'NORMAL',
@@ -1294,10 +1675,15 @@ export function createMockServer() {
       }
     }
 
-    // Default 404
     sendJson(res, 404, { error: 'Endpoint Not Found', path: pathname, method });
-  });
+  };
 
+  return { handler, db };
+}
+
+export function createMockServer() {
+  const { handler, db } = createApiHandler();
+  const server = http.createServer(handler);
   return {
     server,
     db,
@@ -1307,7 +1693,7 @@ export function createMockServer() {
 }
 
 // Standalone execution support
-if (process.argv[1].endsWith('mock_server.mjs')) {
+if (process.argv[1] && process.argv[1].endsWith('mock_server.mjs')) {
   const port = parseInt(process.env.MOCK_PORT || '8088', 10);
   const mock = createMockServer();
   mock.listen(port).then(() => {

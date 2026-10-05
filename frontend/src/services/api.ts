@@ -22,9 +22,15 @@ const api = axios.create({
 
 // Request interceptor to attach JWT token if present
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  try {
+    const token =
+      (typeof localStorage !== 'undefined' && localStorage.getItem('token')) ||
+      (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('token'));
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  } catch {
+    // Ignore restricted iframe storage errors
   }
   return config;
 });
@@ -83,6 +89,8 @@ export const appointmentApi = {
     api.patch<Appointment>(`/appointments/${id}/reschedule`, { appointmentDate: date, appointmentTime: time }),
   cancel: (id: number, reason: string) =>
     api.patch<Appointment>(`/appointments/${id}/cancel`, { reason }),
+  delete: (id: number) =>
+    api.delete<void>(`/appointments/${id}`),
   complete: (id: number) =>
     api.patch<Appointment>(`/appointments/${id}/complete`),
 };
@@ -102,10 +110,30 @@ export const pharmacyApi = {
 export const billingApi = {
   getInvoices: () => api.get<Invoice[]>('/billing/invoices'),
   getInvoiceById: (id: number) => api.get<Invoice>(`/billing/invoices/${id}`),
-  generateInvoice: (appointmentId: number) =>
-    api.post<Invoice>('/billing/invoices/generate', { appointmentId }),
+  generateInvoice: (
+    payload:
+      | number
+      | {
+          appointmentId?: number;
+          patientId?: number;
+          totalAmount?: number;
+          amount?: number;
+          pharmacyFee?: number;
+          labFee?: number;
+          discountAmount?: number;
+          paymentStatus?: string;
+        }
+  ) => {
+    const body = typeof payload === 'number' ? { appointmentId: payload } : payload;
+    return api.post<Invoice>('/billing/invoices/generate', body);
+  },
   initiatePayHere: (invoiceId: number) =>
     api.get<PayHereParams>(`/payments/payhere/initiate?invoiceId=${invoiceId}`),
+  payInvoice: (id: number, paymentMethod: 'CASH' | 'CARD' = 'CARD', transactionRef?: string) =>
+    api.post<Invoice>(`/billing/invoices/${id}/pay`, {
+      paymentMethod,
+      transactionRef: transactionRef || `PAY-${Date.now()}`,
+    }),
   settleCashCard: (invoiceId: number, paymentMethod: 'CASH' | 'CARD', transactionRef?: string) =>
     api.post<Invoice>(`/billing/invoices/${invoiceId}/settle`, {
       paymentMethod,

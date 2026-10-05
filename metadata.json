@@ -1,0 +1,5 @@
+{
+  "name": "PulseOS — Hospital Management System",
+  "description": "Web-based hospital management system for outpatient triage, physician consultations, appointment scheduling, laboratory diagnostics, pharmacy inventory, and integrated billing.",
+  "requestFramePermissions": []
+}

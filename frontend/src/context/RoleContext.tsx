@@ -54,6 +54,7 @@ interface RoleContextType {
   setActiveModule: (module: ModuleId) => void;
   patientSession: Patient | null;
   setPatientSession: (patient: Patient | null) => void;
+  updatePatientSession: (updated: Partial<Patient>) => void;
   isStaffLoginModalOpen: boolean;
   setIsStaffLoginModalOpen: (open: boolean) => void;
   isPatientLoginModalOpen: boolean;
@@ -69,32 +70,41 @@ export const RoleProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [currentView, setCurrentView] = useState<AppViewMode>('landing');
   const [currentRole, setCurrentRole] = useState<UserRole>('RECEPTIONIST');
   const [activeModule, setActiveModule] = useState<ModuleId>("patients");
-  // Initialize patient session from sessionStorage
+  // Initialize patient session from sessionStorage safely
   const [patientSession, setPatientSession] = useState<Patient | null>(() => {
-    const savedId = sessionStorage.getItem('currentPatientId');
-    const savedNic = sessionStorage.getItem('currentPatientNic');
-    const savedName = sessionStorage.getItem('currentPatientName');
-    
-    if (savedId && savedNic) {
-      // Return a partial Patient object that satisfies the UI needs
-      return {
-        id: Number(savedId),
-        patientId: `PAT-${savedId}`,
-        nicPassportNo: savedNic,
-        firstName: savedName ? savedName.split(' ')[0] : 'Patient',
-        lastName: savedName ? savedName.split(' ').slice(1).join(' ') : '',
-        fullName: savedName || 'Patient',
-        dob: '',
-        gender: 'OTHER',
-        bloodGroup: 'O+',
-        contactNumber: '',
-        emergencyContactName: '',
-        emergencyContactRelationship: '',
-        emergencyContactPhone: '',
-        triagePriority: 'ROUTINE',
-        registrationDate: '',
-        isArchived: false
-      } as Patient;
+    try {
+      if (typeof window === 'undefined' || typeof sessionStorage === 'undefined') return null;
+      const fullData = sessionStorage.getItem('currentPatientData');
+      if (fullData) {
+        return JSON.parse(fullData) as Patient;
+      }
+      const savedId = sessionStorage.getItem('currentPatientId');
+      const savedNic = sessionStorage.getItem('currentPatientNic');
+      const savedName = sessionStorage.getItem('currentPatientName');
+      
+      if (savedId && savedNic) {
+        // Return a partial Patient object that satisfies the UI needs
+        return {
+          id: Number(savedId),
+          patientId: `PAT-${savedId}`,
+          nicPassportNo: savedNic,
+          firstName: savedName ? savedName.split(' ')[0] : 'Patient',
+          lastName: savedName ? savedName.split(' ').slice(1).join(' ') : '',
+          fullName: savedName || 'Patient',
+          dob: '',
+          gender: 'OTHER',
+          bloodGroup: 'O+',
+          contactNumber: '',
+          emergencyContactName: '',
+          emergencyContactRelationship: '',
+          emergencyContactPhone: '',
+          triagePriority: 'ROUTINE',
+          registrationDate: '',
+          isArchived: false
+        } as Patient;
+      }
+    } catch {
+      // Storage access may fail in restricted iframes
     }
     return null;
   });
@@ -123,26 +133,61 @@ export const RoleProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const loginPatient = (patient: Patient) => {
+    try {
+      sessionStorage.setItem('currentPatientId', String(patient.id));
+      sessionStorage.setItem('currentPatientNic', patient.nicPassportNo);
+      sessionStorage.setItem('currentPatientName', patient.fullName || `${patient.firstName} ${patient.lastName}`);
+      sessionStorage.setItem('currentPatientData', JSON.stringify(patient));
+    } catch {
+      // Ignore storage restrictions
+    }
     setPatientSession(patient);
     setCurrentView('patient_portal');
     setIsPatientLoginModalOpen(false);
   };
 
+  const updatePatientSession = (updated: Partial<Patient>) => {
+    setPatientSession((prev) => {
+      if (!prev) return null;
+      const next = { ...prev, ...updated };
+      try {
+        sessionStorage.setItem('currentPatientData', JSON.stringify(next));
+        if (next.fullName || next.firstName) {
+          sessionStorage.setItem('currentPatientName', next.fullName || `${next.firstName} ${next.lastName}`);
+        }
+      } catch {
+        // Ignore storage restrictions
+      }
+      return next;
+    });
+  };
+
   const logoutPatient = () => {
-    localStorage.removeItem('token');
-    sessionStorage.removeItem('token');
-    sessionStorage.removeItem('currentPatientId');
-    sessionStorage.removeItem('currentPatientNic');
-    sessionStorage.removeItem('currentPatientName');
+    try {
+      localStorage.removeItem('token');
+      sessionStorage.removeItem('token');
+      sessionStorage.removeItem('currentPatientId');
+      sessionStorage.removeItem('currentPatientNic');
+      sessionStorage.removeItem('currentPatientName');
+      sessionStorage.removeItem('currentPatientData');
+    } catch {
+      // Ignore storage restrictions
+    }
     setPatientSession(null);
     setCurrentView('landing');
   };
 
   const logoutStaff = () => {
-    localStorage.removeItem('token');
-    sessionStorage.removeItem('token');
+    try {
+      localStorage.removeItem('token');
+      sessionStorage.removeItem('token');
+    } catch {
+      // Ignore storage restrictions
+    }
     setCurrentView('landing');
   };
+
+  const currentUser = CLINICAL_STAFF[currentRole] || CLINICAL_STAFF.RECEPTIONIST;
 
   return (
     <RoleContext.Provider
@@ -150,12 +195,13 @@ export const RoleProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         currentView,
         setCurrentView,
         currentRole,
-        currentUser: CLINICAL_STAFF[currentRole],
+        currentUser,
         setRole: handleSetRole,
         activeModule,
         setActiveModule,
         patientSession,
         setPatientSession,
+        updatePatientSession,
         isStaffLoginModalOpen,
         setIsStaffLoginModalOpen,
         isPatientLoginModalOpen,

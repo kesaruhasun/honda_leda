@@ -140,6 +140,14 @@ public class AppointmentService {
     }
 
     @Transactional
+    public void deleteAppointment(Long id) {
+        Appointment a = appointmentRepository.findById(id)
+                .orElseThrow(() -> PulseException.notFound("Appointment not found"));
+        appointmentRepository.delete(a);
+        log.info("Physically deleted appointment with ID: {}", id);
+    }
+
+    @Transactional
     public AppointmentResponse completeAppointment(Long id) {
         Appointment a = appointmentRepository.findById(id)
                 .orElseThrow(() -> PulseException.notFound("Appointment not found"));

@@ -62,6 +62,13 @@ public class AppointmentController {
         return ResponseEntity.ok(appointmentService.cancelAppointment(id));
     }
 
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('PATIENT', 'RECEPTIONIST', 'DOCTOR', 'SYSTEM_ADMIN', 'ADMIN', 'MANAGER')")
+    public ResponseEntity<Void> deleteAppointment(@PathVariable Long id) {
+        appointmentService.deleteAppointment(id);
+        return ResponseEntity.noContent().build();
+    }
+
     @PatchMapping("/{id}/complete")
     @PreAuthorize("hasAnyRole('DOCTOR', 'RECEPTIONIST', 'SYSTEM_ADMIN', 'ADMIN', 'MANAGER')")
     public ResponseEntity<AppointmentResponse> completeAppointment(@PathVariable Long id) {

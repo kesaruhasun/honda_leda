@@ -20,6 +20,13 @@ public class BillingDTOs {
         private Long patientId;
         private Long appointmentId;
         private BigDecimal discountAmount;
+        private BigDecimal totalAmount;
+        private BigDecimal amount;
+        private BigDecimal doctorFee;
+        private BigDecimal pharmacyFee;
+        private BigDecimal labFee;
+        private String description;
+        private String paymentStatus;
     }
 
     @Getter

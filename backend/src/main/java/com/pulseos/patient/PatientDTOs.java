@@ -21,6 +21,11 @@ public class PatientDTOs {
 
         private String firstName;
         private String lastName;
+
+        @JsonProperty("fullName")
+        @JsonAlias({"name"})
+        private String fullName;
+
         private String email;
         private String password;
 
@@ -47,6 +52,28 @@ public class PatientDTOs {
         public String getResolvedNic() { return nicPassportNo; }
         public String getResolvedPhone() { return contactNumber; }
         public String getResolvedDob() { return dateOfBirth; }
+
+        public String getResolvedFirstName() {
+            if (firstName != null && !firstName.isBlank()) {
+                return firstName.trim();
+            }
+            if (fullName != null && !fullName.isBlank()) {
+                String[] parts = fullName.trim().split("\\s+", 2);
+                return parts[0];
+            }
+            return "";
+        }
+
+        public String getResolvedLastName() {
+            if (lastName != null && !lastName.isBlank()) {
+                return lastName.trim();
+            }
+            if (fullName != null && !fullName.isBlank()) {
+                String[] parts = fullName.trim().split("\\s+", 2);
+                return parts.length > 1 ? parts[1] : parts[0];
+            }
+            return "";
+        }
     }
 
     @Getter
