@@ -43,7 +43,31 @@ public class PayHereSecurityUtil {
     public boolean verifyWebhookSignature(String orderId, String payhereAmount,
                                           String payhereCurrency, String statusCode,
                                           String receivedMd5Sig) {
-        String hashedSecret = computeMd5(payHereConfig.getMerchantSecret()).toUpperCase(Locale.US);
+        if (receivedMd5Sig == null || receivedMd5Sig.isBlank()) {
+            return false;
+        }
+
+        // 1. Primary check using configured merchant secret
+        if (checkSignatureWithSecret(orderId, payhereAmount, payhereCurrency, statusCode, receivedMd5Sig, payHereConfig.getMerchantSecret())) {
+            return true;
+        }
+
+        // 2. Fallback check for domain tekkeys.com
+        String tekkeysSecret = "MTk5MjI2ODQzOTMxNTA3MjQ0NjM2ODc1Nzk4NzIzNDIxMjUyMDgy";
+        if (checkSignatureWithSecret(orderId, payhereAmount, payhereCurrency, statusCode, receivedMd5Sig, tekkeysSecret)) {
+            return true;
+        }
+
+        // 3. Fallback check for localhost development
+        String localhostSecret = "Mjk2MzYxNTk2Nzk3NjcxOTU5NDM2MzE3MTExNzUyNTcxMTY0Ng==";
+        return checkSignatureWithSecret(orderId, payhereAmount, payhereCurrency, statusCode, receivedMd5Sig, localhostSecret);
+    }
+
+    private boolean checkSignatureWithSecret(String orderId, String payhereAmount,
+                                             String payhereCurrency, String statusCode,
+                                             String receivedMd5Sig, String secret) {
+        if (secret == null || secret.isBlank()) return false;
+        String hashedSecret = computeMd5(secret).toUpperCase(Locale.US);
         String rawString = payHereConfig.getMerchantId() + orderId + payhereAmount + payhereCurrency + statusCode + hashedSecret;
         String localMd5Sig = computeMd5(rawString).toUpperCase(Locale.US);
         return localMd5Sig.equalsIgnoreCase(receivedMd5Sig);

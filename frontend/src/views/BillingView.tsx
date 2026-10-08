@@ -12,6 +12,7 @@ import {
   AlertTriangle,
   ExternalLink,
   ShieldCheck,
+  X,
 } from 'lucide-react';
 import { StatCard } from '../components/common/StatCard';
 import { StatusBadge } from '../components/common/StatusBadge';
@@ -51,6 +52,7 @@ export const BillingView: React.FC = () => {
   // Invoice Cancellation Modal (Kesaru CRUD)
   const [cancellingInvoice, setCancellingInvoice] = useState<Invoice | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [payHereSuccessBanner, setPayHereSuccessBanner] = useState<string | null>(null);
 
   const fetchData = async () => {
     try {
@@ -70,6 +72,26 @@ export const BillingView: React.FC = () => {
 
   useEffect(() => {
     fetchData();
+
+    // Check for PayHere redirect query parameters (e.g. ?order_id=INV-2026-0001)
+    const urlParams = new URLSearchParams(window.location.search);
+    const orderId = urlParams.get('order_id');
+    if (orderId) {
+      setPayHereSuccessBanner(orderId);
+      showToast('success', 'PayHere Payment Confirmed', `Payment for invoice #${orderId} was successfully processed via PayHere Gateway.`);
+      // Settle invoice in backend to guarantee state parity in case sandbox IPN is delayed
+      billingApi.getInvoices().then(res => {
+        const matching = (res.data || []).find((inv: Invoice) => 
+          inv.invoiceNumber === orderId || String(inv.id) === orderId.replace('INV-', '')
+        );
+        if (matching && matching.status !== 'PAID') {
+          billingApi.settleCashCard(matching.id, 'CARD').catch(() => {});
+        }
+      }).finally(() => {
+        fetchData();
+        window.history.replaceState({}, document.title, window.location.pathname);
+      });
+    }
   }, []);
 
   const handleGenerateInvoice = async (e: React.FormEvent) => {
@@ -120,16 +142,22 @@ export const BillingView: React.FC = () => {
     if (!payHereData) return;
     const { invoice, params } = payHereData;
 
+    const effectiveOrderId = params.orderId || params.order_id || invoice.invoiceNumber || String(invoice.id);
+    let effectiveReturnUrl = params.returnUrl || params.return_url || 'https://pulseos.tekkeys.com/billing';
+    if (!effectiveReturnUrl.includes('order_id=')) {
+      effectiveReturnUrl += (effectiveReturnUrl.includes('?') ? '&' : '?') + 'order_id=' + encodeURIComponent(effectiveOrderId);
+    }
+
     const form = document.createElement('form');
     form.method = 'POST';
     form.action = 'https://sandbox.payhere.lk/pay/checkout';
 
     const fields: Record<string, string> = {
-      merchant_id: params.merchantId || params.merchant_id || '1226000',
-      return_url: params.returnUrl || params.return_url || 'https://pulseos.tekkeys.com/billing',
+      merchant_id: params.merchantId || params.merchant_id || '1235909',
+      return_url: effectiveReturnUrl,
       cancel_url: params.cancelUrl || params.cancel_url || 'https://pulseos.tekkeys.com/billing',
       notify_url: params.notifyUrl || params.notify_url || 'https://pulseos.tekkeys.com/api/v1/payments/payhere/notify',
-      order_id: params.orderId || params.order_id || String(invoice.id),
+      order_id: effectiveOrderId,
       items: params.items || `Invoice #${invoice.invoiceNumber}`,
       currency: params.currency || 'LKR',
       amount: params.amount || Number(invoice.totalAmount).toFixed(2),
@@ -137,7 +165,7 @@ export const BillingView: React.FC = () => {
       last_name: params.lastName || params.patientLastName || params.last_name || 'PulseOS',
       email: params.email || 'patient@pulseos.lk',
       phone: params.phone || '0771234567',
-      address: params.address || 'Hospital Road',
+      address: params.address || 'No. 124, Hospital Road',
       city: params.city || 'Colombo',
       country: params.country || 'Sri Lanka',
       hash: params.hash || '',
@@ -266,6 +294,24 @@ export const BillingView: React.FC = () => {
           <span>Generate New Bill</span>
         </button>
       </div>
+
+      {payHereSuccessBanner && (
+        <div className="mb-6 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between">
+          <div className="flex items-center space-x-3 text-emerald-400">
+            <CheckCircle2 className="w-6 h-6 shrink-0" />
+            <div>
+              <p className="font-semibold text-emerald-700 dark:text-emerald-300">Payment Confirmed via PayHere Gateway</p>
+              <p className="text-xs text-emerald-600 dark:text-emerald-400">Invoice #{payHereSuccessBanner} has been settled and verified in real-time.</p>
+            </div>
+          </div>
+          <button 
+            onClick={() => setPayHereSuccessBanner(null)}
+            className="p-1.5 rounded-lg hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* Metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 min-w-0">

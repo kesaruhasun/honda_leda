@@ -31,8 +31,8 @@ pulseos:
     # Token validity: 86400000 ms = 24 hours (1 day)
     expiration-ms: 86400000
   payhere:
-    merchant-id: "${PAYHERE_MERCHANT_ID:4OVzEYZKfse4JH5F6UZLZU3PS}"
-    merchant-secret: "${PAYHERE_MERCHANT_SECRET:4TnQaQO6OBP4UsgtU9waai48fsuWuaxev4vVrRSH4gKp}"
+    merchant-id: "${PAYHERE_MERCHANT_ID:1235909}"
+    merchant-secret: "${PAYHERE_MERCHANT_SECRET:MTk5MjI2ODQzOTMxNTA3MjQ0NjM2ODc1Nzk4NzIzNDIxMjUyMDgy}"
     checkout-url: "https://sandbox.payhere.lk/pay/checkout"
     notify-url: "${PAYHERE_NOTIFY_URL:https://pulseos.tekkeys.com/api/v1/payments/payhere/notify}"
     return-url: "${PAYHERE_RETURN_URL:https://pulseos.tekkeys.com/billing}"

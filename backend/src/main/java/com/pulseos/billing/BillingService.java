@@ -23,6 +23,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.stream.Collectors;
 
 @Service
@@ -194,31 +195,41 @@ public class BillingService {
         BigDecimal amount = (invoice.getNetAmount() != null && invoice.getNetAmount().compareTo(BigDecimal.ZERO) > 0)
                 ? invoice.getNetAmount()
                 : (invoice.getTotalAmount() != null ? invoice.getTotalAmount() : BigDecimal.ZERO);
-        String currency = payHereConfig.getCurrency();
+        String formattedAmount = String.format(Locale.US, "%.2f", amount);
+        String currency = payHereConfig.getCurrency() != null ? payHereConfig.getCurrency() : "LKR";
 
         String hash = payHereSecurityUtil.generatePaymentHash(orderId, amount, currency);
 
-        String phone = "";
+        String phone = "0771234567";
         if (patient.getContactNumbers() != null && !patient.getContactNumbers().isEmpty()) {
-            phone = patient.getContactNumbers().iterator().next();
+            String p = patient.getContactNumbers().iterator().next();
+            if (p != null && !p.trim().isEmpty()) {
+                phone = p.trim();
+            }
         }
+
+        String firstName = (patient.getFirstName() != null && !patient.getFirstName().isBlank()) ? patient.getFirstName() : "Patient";
+        String lastName = (patient.getLastName() != null && !patient.getLastName().isBlank()) ? patient.getLastName() : "PulseOS";
+        String email = (patient.getEmail() != null && !patient.getEmail().isBlank()) ? patient.getEmail() : "patient@pulseos.lk";
+        String address = (patient.getStreet() != null && !patient.getStreet().isBlank()) ? patient.getStreet() : "No. 124, Hospital Road";
+        String city = (patient.getCity() != null && !patient.getCity().isBlank()) ? patient.getCity() : "Colombo";
 
         return PayHereInitiateResponse.builder()
                 .merchantId(payHereConfig.getMerchantId())
                 .orderId(orderId)
-                .amount(amount.toPlainString())
+                .amount(formattedAmount)
                 .currency(currency)
                 .hash(hash)
                 .notifyUrl(payHereConfig.getNotifyUrl())
                 .returnUrl(payHereConfig.getReturnUrl())
                 .cancelUrl(payHereConfig.getCancelUrl())
                 .items("PulseOS Medical Invoice " + orderId)
-                .firstName(patient.getFirstName())
-                .lastName(patient.getLastName())
-                .email(patient.getEmail() != null ? patient.getEmail() : "patient@pulseos.lk")
+                .firstName(firstName)
+                .lastName(lastName)
+                .email(email)
                 .phone(phone)
-                .address(patient.getStreet() != null ? patient.getStreet() : "Colombo")
-                .city(patient.getCity() != null ? patient.getCity() : "Colombo")
+                .address(address)
+                .city(city)
                 .country("Sri Lanka")
                 .build();
     }
@@ -233,7 +244,17 @@ public class BillingService {
             return;
         }
 
-        Invoice invoice = invoiceRepository.findByInvoiceNumber(orderId).orElse(null);
+        Invoice invoice = invoiceRepository.findByInvoiceNumber(orderId)
+                .or(() -> {
+                    try {
+                        Long invId = Long.parseLong(orderId.replace("INV-", "").trim());
+                        return invoiceRepository.findById(invId);
+                    } catch (Exception e) {
+                        return java.util.Optional.empty();
+                    }
+                })
+                .orElse(null);
+
         if (invoice == null) {
             log.warn("Invoice not found for PayHere order: {}", orderId);
             return;
@@ -243,10 +264,11 @@ public class BillingService {
         if ("2".equals(statusCode)) {
             invoice.setPaymentStatus(PaymentStatus.PAID);
 
+            BigDecimal paidAmt = invoice.getNetAmount() != null ? invoice.getNetAmount() : invoice.getTotalAmount();
             PaymentTransaction payment = new PaymentTransaction();
             payment.setInvoice(invoice);
             payment.setPaymentDate(LocalDateTime.now());
-            payment.setAmountPaid(invoice.getNetAmount());
+            payment.setAmountPaid(paidAmt != null ? paidAmt : BigDecimal.ZERO);
             payment.setPaymentMethod(PaymentMethod.PAYHERE_GATEWAY);
             payment.setTransactionRef("PH-" + orderId + "-" + System.currentTimeMillis());
             payment.setReceiptNumber("PH-RCP-" + System.currentTimeMillis());
