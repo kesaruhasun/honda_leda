@@ -426,12 +426,36 @@ export const PatientPortalView: React.FC = () => {
       let updatedInvoice = invoice;
 
       try {
+        let settleId = invoice.id;
+        // If invoice is ephemeral or client-staged, persist it first
+        if (settleId > 1_000_000_000 || String(settleId).startsWith('179')) {
+          try {
+            const gen = await billingApi.generateInvoice({
+              patientId: patientSession?.id,
+              pharmacyFee: invoice.pharmacyFee || invoice.pharmacyTotal || 0,
+              labFee: invoice.labFee || invoice.labTotal || 0,
+              doctorFee: invoice.doctorFee || 0,
+              totalAmount: invoice.totalAmount || 1500,
+            });
+            if (gen.data?.id) {
+              settleId = gen.data.id;
+              invoice.id = gen.data.id;
+              invoice.invoiceNumber = gen.data.invoiceNumber;
+            }
+          } catch (ignored) {}
+        }
+
         const res = await billingApi.settleCashCard(
-          invoice.id,
+          settleId,
           'CARD',
           `PAYHERE-SB-${payHereTestCardType}-${Date.now().toString().slice(-6)}`
         );
-        updatedInvoice = res.data;
+        updatedInvoice = {
+          ...res.data,
+          status: 'PAID',
+          paymentStatus: 'PAID',
+          paymentMethod: `PayHere Sandbox (${payHereTestCardType})`,
+        };
       } catch (e) {
         // Fallback for locally staged invoices
         updatedInvoice = {
@@ -490,34 +514,52 @@ export const PatientPortalView: React.FC = () => {
   }, 0);
 
   // Pharmacy Order Submission
-  const handlePharmacyOrderSubmit = () => {
+  const handlePharmacyOrderSubmit = async () => {
     if (!patientSession) return;
     if (totalCartItems === 0) {
       showToast('error', 'Cart Empty', 'Please select at least one medication to order.');
       return;
     }
 
-    const orderId = `PHARM-${Date.now().toString().slice(-6)}`;
-    const newInvoice: Invoice = {
-      id: Date.now(),
-      invoiceId: Date.now(),
-      invoiceNumber: `INV-${orderId}`,
-      patientId: patientSession.id,
-      patientName: patientSession.fullName || `${patientSession.firstName} ${patientSession.lastName}`,
-      patientNic: patientSession.nicPassportNo,
-      doctorFee: 0,
-      pharmacyFee: totalCartPrice,
-      labFee: 0,
-      pharmacyTotal: totalCartPrice,
-      totalAmount: totalCartPrice,
-      discountAmount: 0,
-      netAmount: totalCartPrice,
-      status: pharmacyPaymentMethod === 'PAYHERE' ? 'PENDING' : pharmacyPaymentMethod === 'BANK_RECEIPT' ? 'VERIFYING' : 'PENDING_CASH',
-      paymentStatus: pharmacyPaymentMethod === 'PAYHERE' ? 'PENDING' : 'PENDING',
-      paymentMethod: pharmacyPaymentMethod === 'PAYHERE' ? 'PayHere Sandbox' : pharmacyPaymentMethod === 'BANK_RECEIPT' ? 'Bank Transfer' : 'Counter Cash',
-      billingDate: new Date().toISOString().split('T')[0],
-      createdAt: new Date().toISOString(),
-    };
+    let newInvoice: Invoice;
+    try {
+      const invRes = await billingApi.generateInvoice({
+        patientId: patientSession.id,
+        pharmacyFee: totalCartPrice,
+        totalAmount: totalCartPrice,
+        description: `Patient Pharmacy Order (${totalCartItems} items)`,
+      });
+      newInvoice = {
+        ...invRes.data,
+        patientName: patientSession.fullName || `${patientSession.firstName} ${patientSession.lastName}`,
+        patientNic: patientSession.nicPassportNo,
+        pharmacyTotal: totalCartPrice,
+        status: pharmacyPaymentMethod === 'PAYHERE' ? 'PENDING' : pharmacyPaymentMethod === 'BANK_RECEIPT' ? 'VERIFYING' : 'PENDING_CASH',
+        paymentMethod: pharmacyPaymentMethod === 'PAYHERE' ? 'PayHere Sandbox' : pharmacyPaymentMethod === 'BANK_RECEIPT' ? 'Bank Transfer' : 'Counter Cash',
+      };
+    } catch (e) {
+      const orderId = `PHARM-${Date.now().toString().slice(-6)}`;
+      newInvoice = {
+        id: Date.now(),
+        invoiceId: Date.now(),
+        invoiceNumber: `INV-${orderId}`,
+        patientId: patientSession.id,
+        patientName: patientSession.fullName || `${patientSession.firstName} ${patientSession.lastName}`,
+        patientNic: patientSession.nicPassportNo,
+        doctorFee: 0,
+        pharmacyFee: totalCartPrice,
+        labFee: 0,
+        pharmacyTotal: totalCartPrice,
+        totalAmount: totalCartPrice,
+        discountAmount: 0,
+        netAmount: totalCartPrice,
+        status: pharmacyPaymentMethod === 'PAYHERE' ? 'PENDING' : pharmacyPaymentMethod === 'BANK_RECEIPT' ? 'VERIFYING' : 'PENDING_CASH',
+        paymentStatus: pharmacyPaymentMethod === 'PAYHERE' ? 'PENDING' : 'PENDING',
+        paymentMethod: pharmacyPaymentMethod === 'PAYHERE' ? 'PayHere Sandbox' : pharmacyPaymentMethod === 'BANK_RECEIPT' ? 'Bank Transfer' : 'Counter Cash',
+        billingDate: new Date().toISOString().split('T')[0],
+        createdAt: new Date().toISOString(),
+      };
+    }
 
     setInvoices((prev) => {
       const updated = [newInvoice, ...prev];

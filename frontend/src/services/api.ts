@@ -148,9 +148,11 @@ export const billingApi = {
           patientId?: number;
           totalAmount?: number;
           amount?: number;
+          doctorFee?: number;
           pharmacyFee?: number;
           labFee?: number;
           discountAmount?: number;
+          description?: string;
           paymentStatus?: string;
         }
   ) => {
