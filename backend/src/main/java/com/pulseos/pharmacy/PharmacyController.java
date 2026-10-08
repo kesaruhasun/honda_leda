@@ -33,6 +33,19 @@ public class PharmacyController {
         return ResponseEntity.status(HttpStatus.CREATED).body(pharmacyService.addDrug(request));
     }
 
+    @PutMapping("/drugs/{id}")
+    @PreAuthorize("hasAnyRole('PHARMACIST', 'SYSTEM_ADMIN', 'ADMIN', 'MANAGER')")
+    public ResponseEntity<DrugResponse> updateDrug(@PathVariable Long id, @RequestBody DrugRequest request) {
+        return ResponseEntity.ok(pharmacyService.updateDrug(id, request));
+    }
+
+    @DeleteMapping("/drugs/{id}")
+    @PreAuthorize("hasAnyRole('PHARMACIST', 'SYSTEM_ADMIN', 'ADMIN', 'MANAGER')")
+    public ResponseEntity<Void> deleteDrug(@PathVariable Long id) {
+        pharmacyService.deleteDrug(id);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/prescriptions")
     @PreAuthorize("hasAnyRole('PHARMACIST', 'DOCTOR', 'SYSTEM_ADMIN', 'ADMIN', 'MANAGER', 'PATIENT', 'RECEPTIONIST', 'CASHIER_ADMIN')")
     public ResponseEntity<List<PrescriptionResponse>> getAllPrescriptions() {

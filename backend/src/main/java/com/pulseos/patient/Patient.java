@@ -39,9 +39,6 @@ public class Patient extends Person {
     @Column(name = "allergies", columnDefinition = "TEXT")
     private String allergies;
 
-    @Column(name = "email", length = 100)
-    private String email;
-
     @Column(name = "medical_notes", columnDefinition = "TEXT")
     private String medicalNotes;
 

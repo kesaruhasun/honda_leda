@@ -244,46 +244,68 @@ public class DataSeeder implements CommandLineRunner {
         Patient p2 = createPatient("197265408923", "Sunethra", "Jayawardena", "42 Hill Street", "Kandy", "20000",
                 LocalDate.of(1972, 7, 24), Gender.FEMALE, BloodGroup.B_POSITIVE, TriagePriority.URGENT, "Penicillin, Aspirin",
                 "+94712345678", "Sarath Jayawardena", "Spouse", "+94718765432");
+        p2.setEmail("sunethra.jayawardena@gmail.com");
+        p2.setPassword(BCRYPT_PASSWORD_123);
 
         Patient p3 = createPatient("199423107845", "Kasun", "Wickramasinghe", "88 Beach Road", "Galle", "80000",
                 LocalDate.of(1994, 11, 5), Gender.MALE, BloodGroup.A_POSITIVE, TriagePriority.EMERGENCY, "Sulfa drugs",
                 "+94783456789", "Anura Wickramasinghe", "Father", "+94787654321");
+        p3.setEmail("kasun.wickramasinghe@gmail.com");
+        p3.setPassword(BCRYPT_PASSWORD_123);
 
         Patient p4 = createPatient("196589201234", "Anula", "Ratnayake", "12 Circular Road", "Kurunegala", "60000",
                 LocalDate.of(1965, 2, 18), Gender.FEMALE, BloodGroup.AB_POSITIVE, TriagePriority.ROUTINE, "Ibuprofen",
                 "+94704567890", "Kamani Ratnayake", "Daughter", "+94701234567");
+        p4.setEmail("anula.ratnayake@gmail.com");
+        p4.setPassword(BCRYPT_PASSWORD_123);
 
         Patient p5 = createPatient("199014506789", "Dilshan", "Fernando", "23 Main Street", "Negombo", "11500",
                 LocalDate.of(1990, 9, 30), Gender.MALE, BloodGroup.O_NEGATIVE, TriagePriority.URGENT, "None",
                 "+94775678901", "Rohan Fernando", "Brother", "+94776543210");
+        p5.setEmail("dilshan.fernando@gmail.com");
+        p5.setPassword(BCRYPT_PASSWORD_123);
 
         Patient p6 = createPatient("200278103456", "Sanduni", "Silva", "55 Kaduwela Road", "Malabe", "10115",
                 LocalDate.of(2002, 4, 14), Gender.FEMALE, BloodGroup.A_NEGATIVE, TriagePriority.ROUTINE, "None",
                 "+94766789012", "Champa Silva", "Mother", "+94761234567");
+        p6.setEmail("sanduni.silva@gmail.com");
+        p6.setPassword(BCRYPT_PASSWORD_123);
 
         Patient p7 = createPatient("198031209876", "Priyantha", "Kumara", "10 Station Road", "Gampaha", "11000",
                 LocalDate.of(1980, 8, 22), Gender.MALE, BloodGroup.B_NEGATIVE, TriagePriority.EMERGENCY, "Latex",
                 "+94717890123", "Nayana Kumara", "Spouse", "+94719876543");
+        p7.setEmail("priyantha.kumara@gmail.com");
+        p7.setPassword(BCRYPT_PASSWORD_123);
 
         Patient p8 = createPatient("199564208765", "Chathurika", "Mendis", "34 Cross Street", "Panadura", "12500",
                 LocalDate.of(1995, 12, 10), Gender.FEMALE, BloodGroup.O_POSITIVE, TriagePriority.ROUTINE, "Amoxicillin",
                 "+94758901234", "Lal Mendis", "Father", "+94751234567");
+        p8.setEmail("chathurika.mendis@gmail.com");
+        p8.setPassword(BCRYPT_PASSWORD_123);
 
         Patient p9 = createPatient("197824105432", "Chaminda", "Bandara", "90 Beach Road", "Matara", "81000",
                 LocalDate.of(1978, 6, 3), Gender.MALE, BloodGroup.AB_NEGATIVE, TriagePriority.URGENT, "Ciprofloxacin",
                 "+94729012345", "Manel Bandara", "Spouse", "+94723456789");
+        p9.setEmail("chaminda.bandara@gmail.com");
+        p9.setPassword(BCRYPT_PASSWORD_123);
 
         Patient p10 = createPatient("198875302198", "Fathima", "Rizwan", "17 Mosque Road", "Colombo", "01000",
                 LocalDate.of(1988, 10, 15), Gender.FEMALE, BloodGroup.B_POSITIVE, TriagePriority.ROUTINE, "None",
                 "+94770123456", "Mohamed Rizwan", "Spouse", "+94771239876");
+        p10.setEmail("fathima.rizwan@gmail.com");
+        p10.setPassword(BCRYPT_PASSWORD_123);
 
         Patient p11 = createPatient("199219804321", "Ravi", "Shanmuganathan", "4 Hospital Road", "Jaffna", "40000",
                 LocalDate.of(1992, 1, 28), Gender.MALE, BloodGroup.A_POSITIVE, TriagePriority.URGENT, "Codeine",
                 "+94711234567", "S. Shanmuganathan", "Father", "+94719871234");
+        p11.setEmail("ravi.shan@gmail.com");
+        p11.setPassword(BCRYPT_PASSWORD_123);
 
         Patient p12 = createPatient("200181206543", "Niluka", "Dissanayake", "72 Passara Road", "Badulla", "90000",
                 LocalDate.of(2001, 5, 19), Gender.FEMALE, BloodGroup.O_POSITIVE, TriagePriority.EMERGENCY, "None",
                 "+94782345678", "Sirisena Dissanayake", "Father", "+94789012345");
+        p12.setEmail("niluka.dissanayake@gmail.com");
+        p12.setPassword(BCRYPT_PASSWORD_123);
 
         // Dedicated Demo Patient (NIC: 199012345678 / password) for instant evaluation login
         Patient pDemo = createPatient("199012345678", "Kasun", "Perera", "No. 45, Temple Road", "Colombo 07", "00700",

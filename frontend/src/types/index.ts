@@ -168,6 +168,11 @@ export interface Prescription {
   items?: PrescriptionItem[];
 }
 
+export interface DispenseResponse {
+  message?: string;
+  prescription?: Prescription;
+}
+
 // M5: Billing & Payments
 export type InvoiceStatus = 'PENDING' | 'PAID' | 'CANCELLED';
 export type PaymentMethod = 'CASH' | 'CARD' | 'PAYHERE';

@@ -65,6 +65,12 @@ const AppointmentStatusBadge: React.FC<{ status: string }> = ({ status }) => {
   );
 };
 
+const formatAptNumber = (raw: any) => {
+  if (!raw) return 'APT-0001';
+  const s = String(raw);
+  return s.startsWith('APT-') ? s : `APT-${s.padStart(4, '0')}`;
+};
+
 export const AppointmentView: React.FC = () => {
   const { showToast } = useToast();
   const { currentRole } = useRole();
@@ -643,7 +649,7 @@ export const AppointmentView: React.FC = () => {
                             <span>{apt.patientName}</span>
                           </div>
                           <div className="text-[11px] font-mono text-slate-400 mt-0.5">
-                            NIC: {apt.patientNic || 'N/A'} • #{apt.appointmentNumber || apt.appointmentId}
+                            NIC: {apt.patientNic || 'N/A'} • {formatAptNumber(apt.appointmentNumber || apt.appointmentId || apt.id)}
                           </div>
                         </div>
                         <AppointmentStatusBadge status={apt.status} />
@@ -779,7 +785,7 @@ export const AppointmentView: React.FC = () => {
                   {displayedAppointments.map((apt) => (
                     <tr key={apt.id} className="hover:bg-slate-50/60 transition-colors">
                       <td className="py-3 px-4 font-mono font-bold text-clinical-teal-700">
-                        {apt.appointmentNumber || apt.appointmentId}
+                        {formatAptNumber(apt.appointmentNumber || apt.appointmentId || apt.id)}
                       </td>
                       <td className="py-3 px-4 font-mono font-semibold text-clinical-ink">
                         <div>{apt.appointmentDate}</div>
@@ -872,7 +878,7 @@ export const AppointmentView: React.FC = () => {
                   <span>{encounterModalApt.patientName}</span>
                 </div>
                 <div className="text-slate-500 font-mono mt-0.5">
-                  NIC: {encounterModalApt.patientNic || 'N/A'} • Consultation #{encounterModalApt.appointmentNumber || encounterModalApt.appointmentId}
+                  NIC: {encounterModalApt.patientNic || 'N/A'} • Consultation #{formatAptNumber(encounterModalApt.appointmentNumber || encounterModalApt.appointmentId || encounterModalApt.id)}
                 </div>
               </div>
 

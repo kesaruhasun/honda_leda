@@ -49,9 +49,6 @@ public class Employee extends Person {
     @Column(name = "employee_role", length = 30, nullable = false)
     private EmployeeRole employeeRole;
 
-    @Column(name = "email", length = 100, nullable = false, unique = true)
-    private String email;
-
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "employee_qualifications", joinColumns = @JoinColumn(name = "employee_id"))
     @Column(name = "qualification", length = 100, nullable = false)

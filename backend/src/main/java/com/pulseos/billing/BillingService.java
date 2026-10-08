@@ -168,6 +168,21 @@ public class BillingService {
                 .build();
     }
 
+    @Transactional
+    public InvoiceResponse cancelInvoice(Long id) {
+        Invoice invoice = invoiceRepository.findById(id)
+                .orElseThrow(() -> PulseException.notFound("Invoice not found with ID: " + id));
+
+        if (invoice.getPaymentStatus() == PaymentStatus.PAID) {
+            throw PulseException.badRequest("Cannot Cancel Paid Invoice", "A settled invoice cannot be cancelled.");
+        }
+
+        invoice.setPaymentStatus(PaymentStatus.CANCELLED);
+        Invoice saved = invoiceRepository.save(invoice);
+        log.info("Cancelled invoice: ID={}, Number={}", saved.getInvoiceId(), saved.getInvoiceNumber());
+        return toResponse(saved);
+    }
+
     @Transactional(readOnly = true)
     public PayHereInitiateResponse initiatePayHere(Long invoiceId) {
         Invoice invoice = invoiceRepository.findById(invoiceId)

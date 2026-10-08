@@ -85,6 +85,65 @@ public class PharmacyService {
     }
 
     @Transactional
+    public DrugResponse updateDrug(Long id, DrugRequest req) {
+        Drug drug = drugRepository.findById(id)
+                .orElseThrow(() -> PulseException.notFound("Drug not found with ID: " + id));
+
+        String name = req.getResolvedName();
+        if (name != null && !name.isBlank()) {
+            drug.setDrugName(name);
+            if (req.getGenericName() == null) {
+                drug.setGenericName(name);
+            }
+        }
+        if (req.getGenericName() != null) {
+            drug.setGenericName(req.getGenericName());
+        }
+        if (req.getCategory() != null) {
+            drug.setCategory(req.getCategory());
+        }
+        if (req.getUnitPrice() != null) {
+            if (req.getUnitPrice().compareTo(BigDecimal.ZERO) < 0) {
+                throw PulseException.badRequest("Invalid Price", "Unit price cannot be negative");
+            }
+            drug.setUnitPrice(req.getUnitPrice());
+        }
+        if (req.getStockQuantity() != null) {
+            if (req.getStockQuantity() < 0) {
+                throw PulseException.badRequest("Invalid Stock", "Stock quantity cannot be negative");
+            }
+            drug.setStockQuantity(req.getStockQuantity());
+        }
+        if (req.getReorderLevel() != null) {
+            drug.setReorderLevel(req.getReorderLevel());
+        }
+        if (req.getStrength() != null) {
+            drug.setStrength(req.getStrength());
+        }
+        if (req.getDosageForm() != null) {
+            drug.setDosageForm(req.getDosageForm());
+        }
+        if (req.getManufacturer() != null) {
+            drug.setManufacturer(req.getManufacturer());
+        }
+        if (req.getExpiryDate() != null && !req.getExpiryDate().isBlank()) {
+            drug.setExpiryDate(LocalDate.parse(req.getExpiryDate()));
+        }
+
+        Drug saved = drugRepository.save(drug);
+        log.info("Updated drug: ID={}, Name={}", saved.getDrugId(), saved.getDrugName());
+        return toDrugResponse(saved);
+    }
+
+    @Transactional
+    public void deleteDrug(Long id) {
+        Drug drug = drugRepository.findById(id)
+                .orElseThrow(() -> PulseException.notFound("Drug not found with ID: " + id));
+        drugRepository.delete(drug);
+        log.info("Deleted drug from catalog: ID={}, Name={}", id, drug.getDrugName());
+    }
+
+    @Transactional
     public PrescriptionResponse createPrescription(PrescriptionRequest req) {
         Doctor doctor = null;
         if (req.getDoctorId() != null) {

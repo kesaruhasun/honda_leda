@@ -170,6 +170,26 @@ public class DoctorService {
         return toScheduleResponse(saved);
     }
 
+    @Transactional
+    public void deleteSchedule(Long doctorId, Long scheduleId) {
+        DoctorSchedule schedule = doctorScheduleRepository.findById(scheduleId)
+                .orElseThrow(() -> PulseException.notFound("Schedule not found with ID: " + scheduleId));
+        if (!schedule.getDoctorId().equals(doctorId)) {
+            throw PulseException.badRequest("Schedule Mismatch", "Schedule does not belong to doctor ID: " + doctorId);
+        }
+        doctorScheduleRepository.delete(schedule);
+        log.info("Deleted schedule ID: {} for Doctor ID: {}", scheduleId, doctorId);
+    }
+
+    @Transactional
+    public void deleteDoctor(Long id) {
+        Doctor doctor = doctorRepository.findById(id)
+                .orElseThrow(() -> PulseException.notFound("Doctor not found with ID: " + id));
+        doctor.setIsAvailable(false);
+        doctorRepository.save(doctor);
+        log.info("Deactivated/soft-deleted doctor ID: {}", id);
+    }
+
     public DoctorResponse toResponse(Doctor d) {
         String phone = (d.getContactNumbers() != null && !d.getContactNumbers().isEmpty())
                 ? d.getContactNumbers().iterator().next() : "0770000000";

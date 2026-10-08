@@ -70,4 +70,20 @@ public class DoctorController {
             @RequestBody DoctorScheduleRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(doctorService.createSchedule(id, request));
     }
+
+    @DeleteMapping("/{id}/schedules/{scheduleId}")
+    @PreAuthorize("hasAnyRole('DOCTOR', 'SYSTEM_ADMIN', 'ADMIN', 'MANAGER')")
+    public ResponseEntity<Void> deleteSchedule(
+            @PathVariable Long id,
+            @PathVariable Long scheduleId) {
+        doctorService.deleteSchedule(id, scheduleId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ADMIN', 'MANAGER')")
+    public ResponseEntity<Void> deleteDoctor(@PathVariable Long id) {
+        doctorService.deleteDoctor(id);
+        return ResponseEntity.noContent().build();
+    }
 }

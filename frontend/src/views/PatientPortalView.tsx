@@ -335,7 +335,7 @@ export const PatientPortalView: React.FC = () => {
     };
 
     loadPatientData();
-  }, [patientSession]);
+  }, [patientSession?.id, patientSession?.nicPassportNo]);
 
   // Handle Avatar Change
   const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -926,7 +926,12 @@ export const PatientPortalView: React.FC = () => {
                     <div className="flex items-start justify-between">
                       <div>
                         <span className="text-[10px] font-mono font-bold text-clinical-teal-700 bg-clinical-teal-50 px-2 py-0.5 rounded border border-clinical-teal-200">
-                          {apt.appointmentNumber || apt.appointmentId || `APT-${apt.id}`}
+                          {(() => {
+                            const rawId = apt.appointmentNumber || apt.appointmentId || apt.id;
+                            if (!rawId) return 'APT-0001';
+                            const str = String(rawId);
+                            return str.startsWith('APT-') ? str : `APT-${str.padStart(4, '0')}`;
+                          })()}
                         </span>
                         <h3 className="font-bold text-sm text-slate-900 mt-1">{apt.doctorName}</h3>
                         <p className="text-xs text-clinical-teal-700 font-medium">{apt.specialization}</p>
@@ -955,7 +960,9 @@ export const PatientPortalView: React.FC = () => {
                       </div>
                       <div>
                         <span className="text-slate-400 block text-[10px]">ROOM</span>
-                        <span className="font-semibold text-slate-700">{apt.roomNumber || 'Clinic Room 101'}</span>
+                        <span className="font-semibold text-slate-700">
+                          {apt.roomNumber ? (String(apt.roomNumber).toLowerCase().startsWith('room') ? apt.roomNumber : `Room ${apt.roomNumber}`) : 'Room 101'}
+                        </span>
                       </div>
                     </div>
 

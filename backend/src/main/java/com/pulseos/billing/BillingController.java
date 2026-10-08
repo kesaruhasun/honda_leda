@@ -48,4 +48,10 @@ public class BillingController {
         }
         return ResponseEntity.ok(billingService.settleInvoice(id, request));
     }
+
+    @DeleteMapping({"/invoices/{id}", "/invoices/{id}/cancel"})
+    @PreAuthorize("hasAnyRole('RECEPTIONIST', 'SYSTEM_ADMIN', 'ADMIN', 'MANAGER', 'CASHIER_ADMIN')")
+    public ResponseEntity<InvoiceResponse> cancelInvoice(@PathVariable Long id) {
+        return ResponseEntity.ok(billingService.cancelInvoice(id));
+    }
 }

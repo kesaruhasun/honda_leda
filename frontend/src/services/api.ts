@@ -6,6 +6,7 @@ import {
   Appointment,
   Drug,
   Prescription,
+  DispenseResponse,
   Invoice,
   LabTest,
   PayHereParams,
@@ -23,11 +24,15 @@ const api = axios.create({
 // Request interceptor to attach JWT token if present
 api.interceptors.request.use((config) => {
   try {
-    const token =
-      (typeof localStorage !== 'undefined' && localStorage.getItem('token')) ||
-      (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('token'));
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    // Skip attaching Authorization header for public endpoints like login
+    const isPublic = config.url?.includes('/auth/login') || (config.url === '/patients' && config.method?.toLowerCase() === 'post');
+    if (!isPublic) {
+      const token =
+        (typeof localStorage !== 'undefined' && localStorage.getItem('token')) ||
+        (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('token'));
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
     }
   } catch {
     // Ignore restricted iframe storage errors
@@ -39,6 +44,15 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error: AxiosError<{ message?: string; error?: string }>) => {
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      const msg = String(error.response?.data?.message || '').toLowerCase();
+      if (msg.includes('expired') || msg.includes('token') || msg.includes('unauthorized')) {
+        try {
+          localStorage.removeItem('token');
+          sessionStorage.removeItem('token');
+        } catch {}
+      }
+    }
     const errorMsg =
       error.response?.data?.message ||
       error.response?.data?.error ||
@@ -77,6 +91,15 @@ export const doctorApi = {
 
   updateFee: (id: number, consultationFee: number) =>
     api.patch<Doctor>(`/doctors/${id}/fee`, { consultationFee }),
+
+  addSchedule: (doctorId: number, schedule: Partial<DoctorSchedule>) =>
+    api.post<DoctorSchedule>(`/doctors/${doctorId}/schedules`, schedule),
+
+  deleteSchedule: (doctorId: number, scheduleId: number) =>
+    api.delete<void>(`/doctors/${doctorId}/schedules/${scheduleId}`),
+
+  deleteDoctor: (id: number) =>
+    api.delete<void>(`/doctors/${id}`),
 };
 
 // M3: Appointments API
@@ -107,8 +130,10 @@ export const pharmacyApi = {
   getPrescriptions: () => api.get<Prescription[]>('/pharmacy/prescriptions'),
   createPrescription: (data: any) => api.post<Prescription>('/pharmacy/prescriptions', data),
   dispensePrescription: (prescriptionId: number) =>
-    api.post<Prescription>(`/pharmacy/prescriptions/${prescriptionId}/dispense`),
+    api.post<DispenseResponse>(`/pharmacy/prescriptions/${prescriptionId}/dispense`),
   addShipment: (drug: Partial<Drug>) => api.post<Drug>('/pharmacy/drugs', drug),
+  updateDrug: (id: number, drug: Partial<Drug>) => api.put<Drug>(`/pharmacy/drugs/${id}`, drug),
+  deleteDrug: (id: number) => api.delete<void>(`/pharmacy/drugs/${id}`),
 };
 
 // M5: Billing & Payments API
@@ -132,6 +157,7 @@ export const billingApi = {
     const body = typeof payload === 'number' ? { appointmentId: payload } : payload;
     return api.post<Invoice>('/billing/invoices/generate', body);
   },
+  cancelInvoice: (id: number) => api.delete<Invoice>(`/billing/invoices/${id}`),
   initiatePayHere: (invoiceId: number) =>
     api.get<PayHereParams>(`/payments/payhere/initiate?invoiceId=${invoiceId}`),
   payInvoice: (id: number, paymentMethod: 'CASH' | 'CARD' = 'CARD', transactionRef?: string) =>

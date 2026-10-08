@@ -60,6 +60,9 @@ public abstract class Person {
     @Column(name = "contact_number", length = 20, nullable = false)
     private Set<String> contactNumbers = new HashSet<>();
 
+    @Column(name = "email", length = 100, unique = true)
+    private String email;
+
     @com.fasterxml.jackson.annotation.JsonIgnore
     @Column(name = "password_hash", length = 255)
     private String passwordHash;

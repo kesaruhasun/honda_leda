@@ -9,6 +9,8 @@ import {
   Boxes,
   Barcode,
   Printer,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
 import { MetricCard } from '../components/common/MetricCard';
 import { Badge } from '../components/common/Badge';
@@ -56,6 +58,87 @@ export const PharmacyView: React.FC = () => {
     expiryDate: '2027-12-31',
     manufacturer: 'State Pharmaceuticals Manufacturing Corporation',
   });
+
+  // Edit & Delete Drug State (Harshika CRUD)
+  const [editingDrug, setEditingDrug] = useState<Drug | null>(null);
+  const [editForm, setEditForm] = useState({
+    drugName: '',
+    genericName: '',
+    strength: '',
+    dosageForm: 'Tablet',
+    unitPrice: 25.0,
+    stockQuantity: 100,
+    reorderLevel: 20,
+    batchNumber: '',
+    expiryDate: '',
+    manufacturer: '',
+  });
+  const [deletingDrug, setDeletingDrug] = useState<Drug | null>(null);
+  const [submittingEdit, setSubmittingEdit] = useState(false);
+  const [submittingDelete, setSubmittingDelete] = useState(false);
+
+  const handleOpenEdit = (drug: Drug) => {
+    setEditingDrug(drug);
+    setEditForm({
+      drugName: drug.drugName || drug.brandName || '',
+      genericName: drug.genericName || '',
+      strength: drug.strength || '500mg',
+      dosageForm: drug.dosageForm || 'Tablet',
+      unitPrice: Number(drug.unitPrice) || 25.0,
+      stockQuantity: getDrugStock(drug),
+      reorderLevel: drug.reorderLevel ?? 20,
+      batchNumber: drug.batchNumber || '',
+      expiryDate: drug.expiryDate ? drug.expiryDate.split('T')[0] : '',
+      manufacturer: drug.manufacturer || '',
+    });
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingDrug) return;
+    if (!editForm.drugName.trim()) {
+      showToast('error', 'Validation Error', 'Drug name cannot be blank');
+      return;
+    }
+    if (editForm.unitPrice < 0) {
+      showToast('error', 'Validation Error', 'Unit price cannot be negative');
+      return;
+    }
+    if (editForm.stockQuantity < 0) {
+      showToast('error', 'Validation Error', 'Stock quantity cannot be negative');
+      return;
+    }
+
+    try {
+      setSubmittingEdit(true);
+      await pharmacyApi.updateDrug(editingDrug.id, {
+        ...editForm,
+        resolvedName: editForm.drugName,
+      } as any);
+      showToast('success', 'Drug Updated', `${editForm.drugName} stock and pricing updated successfully.`);
+      setEditingDrug(null);
+      fetchData();
+    } catch (err: any) {
+      showToast('error', 'Update Failed', err.message || 'Could not update drug catalog');
+    } finally {
+      setSubmittingEdit(false);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingDrug) return;
+    try {
+      setSubmittingDelete(true);
+      await pharmacyApi.deleteDrug(deletingDrug.id);
+      showToast('success', 'Drug Removed', `${deletingDrug.drugName || 'Medication'} removed from formulary catalog.`);
+      setDeletingDrug(null);
+      fetchData();
+    } catch (err: any) {
+      showToast('error', 'Delete Failed', err.message || 'Failed to remove drug from inventory');
+    } finally {
+      setSubmittingDelete(false);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -455,6 +538,7 @@ export const PharmacyView: React.FC = () => {
                   <th className="py-3 px-4 font-mono">Batch Number</th>
                   <th className="py-3 px-4 font-mono">Expiration State</th>
                   <th className="py-3 px-4">Stock Health</th>
+                  <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-mono">
@@ -506,6 +590,26 @@ export const PharmacyView: React.FC = () => {
                         >
                           {isLow ? 'REORDER NEEDED' : 'ADEQUATE'}
                         </span>
+                      </td>
+                      <td className="py-3 px-4 text-right font-sans">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEdit(drug)}
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-teal-700 hover:bg-teal-50 transition-colors"
+                            title="Edit Stock / Pricing"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDeletingDrug(drug)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                            title="Retire Medication"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -830,6 +934,187 @@ export const PharmacyView: React.FC = () => {
               >
                 <Printer className="h-3.5 w-3.5" />
                 <span>Print Bottle Label</span>
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Edit Drug Modal (Harshika CRUD) */}
+      {editingDrug && (
+        <Modal
+          isOpen={true}
+          onClose={() => setEditingDrug(null)}
+          title="Edit Formulary Drug"
+          subtitle={`Updating catalog item ${editingDrug.itemCode || editingDrug.drugCode || editingDrug.drugName}`}
+          maxWidth="md"
+        >
+          <form onSubmit={handleSaveEdit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div>
+                <label className="block font-medium text-slate-700 mb-1">Brand / Drug Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={editForm.drugName}
+                  onChange={(e) => setEditForm({ ...editForm, drugName: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 font-sans"
+                />
+              </div>
+              <div>
+                <label className="block font-medium text-slate-700 mb-1">Generic Name</label>
+                <input
+                  type="text"
+                  value={editForm.genericName}
+                  onChange={(e) => setEditForm({ ...editForm, genericName: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 font-sans"
+                />
+              </div>
+              <div>
+                <label className="block font-medium text-slate-700 mb-1">Strength (e.g. 500mg, 10mg/ml)</label>
+                <input
+                  type="text"
+                  value={editForm.strength}
+                  onChange={(e) => setEditForm({ ...editForm, strength: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 font-sans"
+                />
+              </div>
+              <div>
+                <label className="block font-medium text-slate-700 mb-1">Dosage Form</label>
+                <select
+                  value={editForm.dosageForm}
+                  onChange={(e) => setEditForm({ ...editForm, dosageForm: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 font-sans"
+                >
+                  <option value="Tablet">Tablet</option>
+                  <option value="Capsule">Capsule</option>
+                  <option value="Syrup">Syrup</option>
+                  <option value="Injection">Injection</option>
+                  <option value="Ointment">Ointment</option>
+                  <option value="Inhaler">Inhaler</option>
+                </select>
+              </div>
+              <div>
+                <label className="block font-medium text-slate-700 mb-1">Unit Price (LKR) *</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  required
+                  value={editForm.unitPrice}
+                  onChange={(e) => setEditForm({ ...editForm, unitPrice: parseFloat(e.target.value) || 0 })}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 font-mono"
+                />
+              </div>
+              <div>
+                <label className="block font-medium text-slate-700 mb-1">Current Stock Count *</label>
+                <input
+                  type="number"
+                  min="0"
+                  required
+                  value={editForm.stockQuantity}
+                  onChange={(e) => setEditForm({ ...editForm, stockQuantity: parseInt(e.target.value, 10) || 0 })}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 font-mono"
+                />
+              </div>
+              <div>
+                <label className="block font-medium text-slate-700 mb-1">Reorder Minimum Threshold</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={editForm.reorderLevel}
+                  onChange={(e) => setEditForm({ ...editForm, reorderLevel: parseInt(e.target.value, 10) || 0 })}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 font-mono"
+                />
+              </div>
+              <div>
+                <label className="block font-medium text-slate-700 mb-1">Batch Number</label>
+                <input
+                  type="text"
+                  value={editForm.batchNumber}
+                  onChange={(e) => setEditForm({ ...editForm, batchNumber: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 font-mono"
+                />
+              </div>
+              <div>
+                <label className="block font-medium text-slate-700 mb-1">Expiry Date</label>
+                <input
+                  type="date"
+                  value={editForm.expiryDate}
+                  onChange={(e) => setEditForm({ ...editForm, expiryDate: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 font-mono"
+                />
+              </div>
+              <div>
+                <label className="block font-medium text-slate-700 mb-1">Manufacturer</label>
+                <input
+                  type="text"
+                  value={editForm.manufacturer}
+                  onChange={(e) => setEditForm({ ...editForm, manufacturer: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 font-sans"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4 border-t border-slate-200">
+              <button
+                type="button"
+                onClick={() => setEditingDrug(null)}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={submittingEdit}
+                className="px-4 py-2 text-xs font-semibold text-white bg-teal-600 hover:bg-teal-700 disabled:opacity-50 rounded-lg transition-colors flex items-center gap-1.5 shadow-2xs"
+              >
+                {submittingEdit ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* Delete / Retire Drug Confirmation Modal (Harshika CRUD) */}
+      {deletingDrug && (
+        <Modal
+          isOpen={true}
+          onClose={() => setDeletingDrug(null)}
+          title="Retire Medication from Formulary"
+          subtitle="Are you sure you want to remove this item from active dispensary?"
+          maxWidth="sm"
+        >
+          <div className="space-y-4">
+            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs">
+              <div className="font-bold flex items-center gap-1.5 mb-1 text-rose-900">
+                <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                <span>Confirm Inventory Deletion</span>
+              </div>
+              <p>
+                You are about to delete <strong className="font-semibold text-rose-950">{deletingDrug.drugName || deletingDrug.brandName}</strong> (Code: {deletingDrug.itemCode || deletingDrug.drugCode || deletingDrug.id}).
+              </p>
+              <p className="mt-1 text-[11px] text-rose-700">
+                This action permanently removes the drug from the active hospital formulary.
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setDeletingDrug(null)}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={submittingDelete}
+                onClick={handleConfirmDelete}
+                className="px-4 py-2 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 disabled:opacity-50 rounded-lg transition-colors flex items-center gap-1.5 shadow-2xs"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{submittingDelete ? 'Deleting...' : 'Confirm Retire'}</span>
               </button>
             </div>
           </div>
