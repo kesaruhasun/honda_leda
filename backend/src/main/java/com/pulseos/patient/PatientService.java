@@ -27,6 +27,7 @@ public class PatientService {
     private final PatientRepository patientRepository;
     private final ArchivedPatientRepository archivedPatientRepository;
     private final NotificationService notificationService;
+    private final jakarta.persistence.EntityManager entityManager;
 
     @Transactional(readOnly = true)
     public List<PatientResponse> getAllPatients(String triagePriority, String search) {
@@ -100,7 +101,8 @@ public class PatientService {
         patient.setNicPassportNo(nic);
         patient.setFirstName(fName);
         patient.setLastName(lName);
-        patient.setEmail(req.getEmail() != null ? req.getEmail() : "");
+        String emailVal = (req.getEmail() != null && !req.getEmail().trim().isBlank()) ? req.getEmail().trim() : null;
+        patient.setEmail(emailVal);
         patient.setStreet(req.getAddress() != null ? req.getAddress() : "Colombo");
         patient.setCity("Colombo");
         patient.setPostalCode("10100");
@@ -148,6 +150,16 @@ public class PatientService {
         Patient saved = patientRepository.save(patient);
         log.info("Registered new patient: ID={}, NIC={}", saved.getId(), saved.getNicPassportNo());
 
+        try {
+            entityManager.flush();
+            entityManager.createNativeQuery("UPDATE patients SET email = :email WHERE patient_id = :id")
+                    .setParameter("email", saved.getEmail())
+                    .setParameter("id", saved.getId())
+                    .executeUpdate();
+        } catch (Exception e) {
+            log.warn("Could not mirror email to legacy patients.email column: {}", e.getMessage());
+        }
+
         if (saved.getEmail() != null && !saved.getEmail().isBlank()) {
             EmailNotification welcomeNotif = EmailNotification.builder()
                 .to(saved.getEmail())
@@ -186,7 +198,8 @@ public class PatientService {
             patient.setContactNumbers(new HashSet<>(Collections.singletonList(phone)));
         }
         if (req.getEmail() != null) {
-            patient.setEmail(req.getEmail());
+            String emailVal = !req.getEmail().trim().isBlank() ? req.getEmail().trim() : null;
+            patient.setEmail(emailVal);
         }
         if (req.getGender() != null && !req.getGender().isBlank()) {
             try {
@@ -228,6 +241,17 @@ public class PatientService {
         }
 
         Patient updated = patientRepository.save(patient);
+
+        try {
+            entityManager.flush();
+            entityManager.createNativeQuery("UPDATE patients SET email = :email WHERE patient_id = :id")
+                    .setParameter("email", updated.getEmail())
+                    .setParameter("id", updated.getId())
+                    .executeUpdate();
+        } catch (Exception e) {
+            log.warn("Could not mirror email to legacy patients.email column: {}", e.getMessage());
+        }
+
         return toResponse(updated);
     }
 
@@ -235,6 +259,11 @@ public class PatientService {
     public PatientResponse archivePatient(Long id, String reason, String archivedBy) {
         Patient patient = patientRepository.findById(id)
                 .orElseThrow(() -> PulseException.notFound("Patient not found"));
+
+        if ("manetexts@gmail.com".equalsIgnoreCase(patient.getEmail()) || "198512304561".equals(patient.getNicPassportNo())) {
+            throw PulseException.badRequest("Protected Demo Account", "The primary viva demo patient (Nimal Perera / 198512304561) is protected and cannot be archived or deleted.");
+        }
+
         patient.setIsArchived(true);
         Patient saved = patientRepository.save(patient);
 

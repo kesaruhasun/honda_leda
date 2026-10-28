@@ -4,12 +4,14 @@ import { authApi, patientApi } from '../../services/api';
 import { useToast } from '../../context/ToastContext';
 import { ArrowRight, UserRound, AlertCircle, ChevronLeft, Lock } from 'lucide-react';
 import { useRole } from '../../context/RoleContext';
+import { ForgotPasswordModal } from '../../components/common/ForgotPasswordModal';
 
 export const PatientLoginView: React.FC = () => {
   const [nic, setNic] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
 
   const navigate = useNavigate();
   const { showToast } = useToast();
@@ -118,7 +120,7 @@ export const PatientLoginView: React.FC = () => {
 
               <div>
                 <label htmlFor="nic" className="block text-sm font-semibold text-slate-900 mb-1.5">
-                  NIC or Passport Number
+                  NIC, Passport Number, or Email
                 </label>
                 <div className="mt-1 relative rounded-md shadow-sm">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -132,7 +134,7 @@ export const PatientLoginView: React.FC = () => {
                     value={nic}
                     onChange={(e) => setNic(e.target.value)}
                     className="apple-input block w-full pl-10 sm:text-sm rounded-xl py-3 bg-white border border-slate-300 text-slate-900 placeholder-slate-400 focus:ring-clinical-teal-500 focus:border-clinical-teal-500"
-                    placeholder="e.g. 199012345678"
+                    placeholder="e.g. 198512304561 or manetexts@gmail.com"
                   />
                 </div>
               </div>
@@ -172,9 +174,13 @@ export const PatientLoginView: React.FC = () => {
                 </div>
 
                 <div className="text-sm">
-                  <a href="#" className="font-medium text-clinical-teal-600 hover:text-clinical-teal-500">
+                  <button
+                    type="button"
+                    onClick={() => setIsForgotPasswordOpen(true)}
+                    className="font-medium text-clinical-teal-600 hover:text-clinical-teal-700 hover:underline cursor-pointer"
+                  >
                     Forgot password?
-                  </a>
+                  </button>
                 </div>
               </div>
 
@@ -194,16 +200,26 @@ export const PatientLoginView: React.FC = () => {
             </form>
           <div className="mt-8 pt-6 border-t border-slate-100">
             <p className="text-xs text-center text-slate-400 font-medium uppercase tracking-wider mb-4">Demo Quick Access</p>
-            <div className="flex justify-center">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setNic("manetexts@gmail.com");
+                  setPassword("password123");
+                }}
+                className="apple-btn px-4 py-2 text-xs font-semibold bg-clinical-teal-50 border border-clinical-teal-200 text-clinical-teal-800 rounded-lg hover:bg-clinical-teal-100 transition-colors flex items-center gap-1.5"
+              >
+                <span>Demo Patient (manetexts@gmail.com)</span>
+              </button>
               <button
                 type="button"
                 onClick={() => {
                   setNic("198512304561");
                   setPassword("password123");
                 }}
-                className="apple-btn px-6 py-2 text-xs font-semibold bg-clinical-teal-50 border border-clinical-teal-200 text-clinical-teal-800 rounded-lg hover:bg-clinical-teal-100 transition-colors"
+                className="apple-btn px-3 py-2 text-xs font-semibold bg-slate-50 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-100 transition-colors"
               >
-                Demo Patient (Nimal Perera)
+                <span>NIC: 198512304561</span>
               </button>
             </div>
           </div>
@@ -245,6 +261,12 @@ export const PatientLoginView: React.FC = () => {
           </p>
         </div>
       </div>
+
+      <ForgotPasswordModal
+        isOpen={isForgotPasswordOpen}
+        onClose={() => setIsForgotPasswordOpen(false)}
+        initialEmail={nic.includes('@') ? nic : ''}
+      />
     </div>
   );
 };

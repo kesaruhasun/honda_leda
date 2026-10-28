@@ -49,6 +49,14 @@ public class BillingController {
         return ResponseEntity.ok(billingService.settleInvoice(id, request));
     }
 
+    @PutMapping({"/invoices/{id}", "/invoices/{id}/discount"})
+    @PreAuthorize("hasAnyRole('RECEPTIONIST', 'SYSTEM_ADMIN', 'ADMIN', 'MANAGER', 'CASHIER_ADMIN')")
+    public ResponseEntity<InvoiceResponse> updateInvoice(
+            @PathVariable Long id,
+            @RequestBody InvoiceUpdateRequest request) {
+        return ResponseEntity.ok(billingService.updateInvoice(id, request));
+    }
+
     @DeleteMapping({"/invoices/{id}", "/invoices/{id}/cancel"})
     @PreAuthorize("hasAnyRole('RECEPTIONIST', 'SYSTEM_ADMIN', 'ADMIN', 'MANAGER', 'CASHIER_ADMIN')")
     public ResponseEntity<InvoiceResponse> cancelInvoice(@PathVariable Long id) {

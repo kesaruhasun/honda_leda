@@ -8,6 +8,7 @@ import {
   Microscope,
   AlertTriangle,
   Barcode,
+  Trash2,
 } from 'lucide-react';
 import { BarcodeScannerModal } from '../components/common/BarcodeScannerModal';
 import { StatCard } from '../components/common/StatCard';
@@ -34,6 +35,8 @@ export const LaboratoryView: React.FC = () => {
   const [selectedInspectTest, setSelectedInspectTest] = useState<LabTest | null>(null);
   const [isBarcodeScannerOpen, setIsBarcodeScannerOpen] = useState(false);
   const [barcodeLabelTest, setBarcodeLabelTest] = useState<LabTest | null>(null);
+  const [cancellingTest, setCancellingTest] = useState<LabTest | null>(null);
+  const [submittingCancel, setSubmittingCancel] = useState(false);
 
   // New Order Form State
   const [newOrderForm, setNewOrderForm] = useState({
@@ -134,6 +137,25 @@ export const LaboratoryView: React.FC = () => {
       fetchData();
     } catch (err: any) {
       showToast('error', 'Submission Failed', err.message || 'Could not submit diagnostic results');
+    }
+  };
+
+  const handleConfirmCancel = async () => {
+    if (!cancellingTest) return;
+    try {
+      setSubmittingCancel(true);
+      await labApi.deleteTest(cancellingTest.id);
+      showToast(
+        'success',
+        'Lab Order Voided',
+        `Order #${cancellingTest.requestNumber || cancellingTest.testCode || cancellingTest.id} was successfully cancelled.`
+      );
+      setCancellingTest(null);
+      fetchData();
+    } catch (err: any) {
+      showToast('error', 'Cancellation Failed', err.message || 'Could not cancel lab order');
+    } finally {
+      setSubmittingCancel(false);
     }
   };
 
@@ -299,7 +321,7 @@ export const LaboratoryView: React.FC = () => {
             >
               <Barcode className="h-3.5 w-3.5" />
             </button>
-            {t.status !== 'COMPLETED' && (
+            {t.status !== 'COMPLETED' && t.status !== 'CANCELLED' && (
               <>
                 <button
                   type="button"
@@ -323,6 +345,14 @@ export const LaboratoryView: React.FC = () => {
                 >
                   Enter Results
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setCancellingTest(t)}
+                  className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md border border-slate-200/80 transition-colors"
+                  title="Cancel / Void Lab Order"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
               </>
             )}
             {t.status === 'COMPLETED' && (
@@ -334,6 +364,11 @@ export const LaboratoryView: React.FC = () => {
                 <Printer className="h-3 w-3" />
                 <span>View Report</span>
               </button>
+            )}
+            {t.status === 'CANCELLED' && (
+              <span className="text-[10px] font-mono font-semibold px-2 py-0.5 bg-rose-50 text-rose-700 border border-rose-200 rounded">
+                VOIDED
+              </span>
             )}
           </div>
         )}
@@ -375,6 +410,22 @@ export const LaboratoryView: React.FC = () => {
                 {selectedInspectTest.technicianNotes && (
                   <p className="text-[11px] text-slate-600 italic">Remarks: {selectedInspectTest.technicianNotes}</p>
                 )}
+              </div>
+            )}
+
+            {selectedInspectTest.status !== 'COMPLETED' && selectedInspectTest.status !== 'CANCELLED' && (
+              <div className="pt-3 border-t border-slate-200 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCancellingTest(selectedInspectTest);
+                    setSelectedInspectTest(null);
+                  }}
+                  className="px-3.5 py-2 text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-xl border border-rose-200 flex items-center gap-1.5 transition-colors shadow-2xs"
+                >
+                  <Trash2 className="h-3.5 w-3.5 text-rose-600" />
+                  <span>Cancel / Void Order</span>
+                </button>
               </div>
             )}
           </div>
@@ -673,6 +724,72 @@ export const LaboratoryView: React.FC = () => {
           onClose={() => setViewingReportTest(null)}
           test={viewingReportTest}
         />
+      )}
+
+      {/* Cancel / Void Lab Order Confirmation Modal */}
+      {cancellingTest && (
+        <Modal
+          isOpen={true}
+          onClose={() => !submittingCancel && setCancellingTest(null)}
+          title="Cancel / Void Pathology Investigation"
+          subtitle={cancellingTest ? `Order #${cancellingTest.requestNumber || cancellingTest.testCode || cancellingTest.id} — ${cancellingTest.testName}` : ''}
+          maxWidth="sm"
+        >
+          <div className="space-y-4 text-xs font-sans">
+            <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 flex items-start gap-2.5">
+              <AlertTriangle className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
+              <div className="leading-relaxed">
+                <p className="font-bold text-[13px] text-rose-900">Withdraw this pathology order?</p>
+                <p className="mt-1 text-slate-600">
+                  This will immediately withdraw the specimen request from the analyzer pipeline and mark the investigation as <strong className="text-rose-700">CANCELLED / VOIDED</strong>.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5 text-slate-600">
+              <div className="flex justify-between items-center py-0.5 border-b border-slate-200/60">
+                <span className="text-slate-500">Order ID:</span>
+                <span className="font-mono font-bold text-slate-900">
+                  {cancellingTest.requestNumber || cancellingTest.testCode || `LAB-${cancellingTest.id}`}
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-0.5 border-b border-slate-200/60">
+                <span className="text-slate-500">Patient:</span>
+                <span className="font-bold text-slate-800">
+                  {cancellingTest.patientName || `ID #${cancellingTest.patientId}`}
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-0.5 border-b border-slate-200/60">
+                <span className="text-slate-500">Investigation:</span>
+                <span className="font-semibold text-slate-800">{cancellingTest.testName}</span>
+              </div>
+              <div className="flex justify-between items-center py-0.5">
+                <span className="text-slate-500">Current Pipeline Stage:</span>
+                <StatusBadge status={cancellingTest.status} dot />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
+              <button
+                type="button"
+                disabled={submittingCancel}
+                onClick={() => setCancellingTest(null)}
+                className="px-3.5 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold transition-colors disabled:opacity-50"
+              >
+                Keep Order
+              </button>
+              <button
+                type="button"
+                disabled={submittingCancel}
+                onClick={handleConfirmCancel}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold transition-colors flex items-center gap-1.5 shadow-2xs disabled:opacity-50"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                <span>{submittingCancel ? 'Cancelling...' : 'Cancel / Void Order'}</span>
+              </button>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   );

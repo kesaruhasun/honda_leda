@@ -1,5 +1,5 @@
 server:
-  port: 8080
+  port: ${PORT:8080}
   servlet:
     context-path: /
 
@@ -15,8 +15,8 @@ spring:
   mail:
     host: ${MAIL_HOST:smtp.gmail.com}
     port: ${MAIL_PORT:587}
-    username: lordoracle221b@gmail.com
-    password: "grkv jpsn pbip oawx"
+    username: ${MAIL_USERNAME:}
+    password: "${MAIL_PASSWORD:}"
     properties:
       mail:
         smtp:
@@ -27,16 +27,16 @@ spring:
 pulseos:
   jwt:
     # 256-bit Base64-encoded HMAC-SHA256 key
-    secret: "7J+fvdU7B4rwLPxxbxZpDocaYcCaypaMezPOJI5AlBc="
+    secret: "${JWT_SECRET:7J+fvdU7B4rwLPxxbxZpDocaYcCaypaMezPOJI5AlBc=}"
     # Token validity: 86400000 ms = 24 hours (1 day)
     expiration-ms: 86400000
   payhere:
-    merchant-id: "${PAYHERE_MERCHANT_ID:1235909}"
-    merchant-secret: "${PAYHERE_MERCHANT_SECRET:MTk5MjI2ODQzOTMxNTA3MjQ0NjM2ODc1Nzk4NzIzNDIxMjUyMDgy}"
+    merchant-id: "${PAYHERE_MERCHANT_ID:1234567}"
+    merchant-secret: "${PAYHERE_MERCHANT_SECRET:sandbox_secret_placeholder}"
     checkout-url: "https://sandbox.payhere.lk/pay/checkout"
-    notify-url: "${PAYHERE_NOTIFY_URL:https://pulseos.tekkeys.com/api/v1/payments/payhere/notify}"
-    return-url: "${PAYHERE_RETURN_URL:https://pulseos.tekkeys.com/billing}"
-    cancel-url: "${PAYHERE_CANCEL_URL:https://pulseos.tekkeys.com/billing}"
+    notify-url: "${PAYHERE_NOTIFY_URL:/api/v1/payments/payhere/notify}"
+    return-url: "${PAYHERE_RETURN_URL:/dashboard/billing}"
+    cancel-url: "${PAYHERE_CANCEL_URL:/dashboard/billing}"
     currency: "LKR"
     sandbox: true
   notification:

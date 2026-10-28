@@ -13,7 +13,7 @@ import {
 } from '../types';
 
 const api = axios.create({
-  baseURL: '/api/v1',
+  baseURL: (import.meta.env.VITE_API_BASE_URL || '') + '/api/v1',
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
@@ -172,6 +172,16 @@ export const billingApi = {
       paymentMethod,
       transactionRef: transactionRef || `COUNTER-${Date.now()}`,
     }),
+  updateInvoice: (
+    id: number,
+    payload: {
+      discountAmount?: number;
+      discountPercentage?: number;
+      discountReason?: string;
+      paymentStatus?: string;
+      description?: string;
+    }
+  ) => api.put<Invoice>(`/billing/invoices/${id}`, payload),
 };
 
 // M6: Laboratory API
@@ -226,6 +236,10 @@ export const authApi = {
       department?: string;
       roleTitle?: string;
     }>('/auth/me'),
+  changePassword: (data: { currentPassword: string; newPassword: string; confirmPassword?: string }) =>
+    api.post<{ success: boolean; message: string }>('/auth/change-password', data),
+  forgotPassword: (email: string) =>
+    api.post<{ success: boolean; message: string }>('/auth/forgot-password', { email }),
 };
 
 // Dynamic Landing Page API

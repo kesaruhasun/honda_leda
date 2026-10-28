@@ -34,6 +34,19 @@ public class BillingDTOs {
     @NoArgsConstructor
     @AllArgsConstructor
     @Builder
+    public static class InvoiceUpdateRequest {
+        private BigDecimal discountAmount;
+        private BigDecimal discountPercentage;
+        private String discountReason;
+        private String paymentStatus;
+        private String description;
+    }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public static class InvoiceItemResponse {
         private String type;

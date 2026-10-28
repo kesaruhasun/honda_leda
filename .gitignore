@@ -15,3 +15,7 @@ dist/
 *.log
 rewrite_all.py
 *.tsbuildinfo
+raw/
+out/
+*.mov
+.agents/skills/

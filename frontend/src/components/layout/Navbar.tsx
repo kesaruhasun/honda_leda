@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from "react-router-dom";
-import { Clock, ShieldCheck, Globe, LogOut, Menu, X } from 'lucide-react';
+import { Clock, ShieldCheck, Globe, LogOut, Menu, X, KeyRound } from 'lucide-react';
 import { useRole } from '../../context/RoleContext';
+import { ChangePasswordModal } from '../common/ChangePasswordModal';
 
 interface NavbarProps {
   onToggleMobileMenu?: () => void;
@@ -12,6 +13,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleMobileMenu, isMobileMenu
   const navigate = useNavigate();
   const { currentUser, logoutStaff } = useRole();
   const [currentTime, setCurrentTime] = useState<string>('');
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
   useEffect(() => {
     const updateTime = () => {
@@ -113,14 +115,29 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleMobileMenu, isMobileMenu
           </div>
 
           <button
+            onClick={() => setIsChangePasswordOpen(true)}
+            className="apple-btn p-1.5 rounded-lg text-slate-400 hover:text-teal-600 hover:bg-teal-50 transition-colors ml-1"
+            title="Change Account Password"
+          >
+            <KeyRound className="h-4 w-4" />
+          </button>
+
+          <button
             onClick={() => { logoutStaff(); navigate("/", { replace: true }); }}
-            className="apple-btn p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors ml-1"
+            className="apple-btn p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
             title="Sign Out to Public Portal"
           >
             <LogOut className="h-4 w-4" />
           </button>
         </div>
       </div>
+
+      <ChangePasswordModal
+        isOpen={isChangePasswordOpen}
+        onClose={() => setIsChangePasswordOpen(false)}
+        userName={currentUser?.name}
+        userEmail={currentUser?.roleTitle}
+      />
     </header>
   );
 };

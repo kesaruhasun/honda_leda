@@ -2,6 +2,11 @@ package com.pulseos.pharmacy;
 
 import com.pulseos.appointment.Appointment;
 import com.pulseos.appointment.AppointmentRepository;
+import com.pulseos.billing.Invoice;
+import com.pulseos.billing.InvoiceDrugItem;
+import com.pulseos.billing.InvoiceDrugItemId;
+import com.pulseos.billing.InvoiceDrugItemRepository;
+import com.pulseos.billing.PaymentStatus;
 import com.pulseos.common.PulseException;
 import com.pulseos.doctor.Doctor;
 import com.pulseos.doctor.DoctorRepository;
@@ -15,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -26,6 +32,7 @@ public class PharmacyService {
     private final DrugRepository drugRepository;
     private final PrescriptionRepository prescriptionRepository;
     private final com.pulseos.billing.InvoiceRepository invoiceRepository;
+    private final InvoiceDrugItemRepository invoiceDrugItemRepository;
     private final PrescriptionItemRepository prescriptionItemRepository;
     private final DrugDispensationRepository drugDispensationRepository;
     private final DoctorRepository doctorRepository;
@@ -196,6 +203,96 @@ public class PharmacyService {
                 item.setInstructions(ir.getInstructions() != null ? ir.getInstructions() : "Take with water");
                 prescriptionItemRepository.save(item);
             }
+        } else {
+            // Auto-resolve drug from doctor instructions / notes if provided as string
+            String notes = req.getResolvedNotes();
+            if (notes != null && !notes.isBlank()) {
+                List<Drug> allDrugs = drugRepository.findAll();
+                for (Drug d : allDrugs) {
+                    if ((d.getDrugName() != null && notes.toLowerCase().contains(d.getDrugName().toLowerCase())) ||
+                        (d.getGenericName() != null && notes.toLowerCase().contains(d.getGenericName().toLowerCase()))) {
+                        PrescriptionItemId itemId = new PrescriptionItemId(saved.getPrescriptionId(), d.getDrugId());
+                        PrescriptionItem item = new PrescriptionItem(
+                                itemId,
+                                saved,
+                                d,
+                                d.getStrength() != null ? d.getStrength() : "1 tablet",
+                                "BD",
+                                5,
+                                10,
+                                false
+                        );
+                        item.setInstructions("Take as directed by consultant physician.");
+                        prescriptionItemRepository.save(item);
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Calculate pharmacy prescription fee
+        List<PrescriptionItem> savedItems = prescriptionItemRepository.findByPrescriptionPrescriptionId(saved.getPrescriptionId());
+        BigDecimal pharmacyTotal = BigDecimal.ZERO;
+        for (PrescriptionItem pi : savedItems) {
+            if (pi.getDrug() != null && pi.getDrug().getUnitPrice() != null && pi.getQuantity() != null) {
+                pharmacyTotal = pharmacyTotal.add(pi.getDrug().getUnitPrice().multiply(BigDecimal.valueOf(pi.getQuantity())));
+            }
+        }
+        if (pharmacyTotal.compareTo(BigDecimal.ZERO) <= 0) {
+            pharmacyTotal = new BigDecimal("1500.00");
+        }
+
+        // Automatically generate official hospital billing invoice for this prescription
+        Invoice targetInvoice = null;
+        if (appointment != null) {
+            List<Invoice> existingInvs = invoiceRepository.findByAppointmentAppointmentId(appointment.getAppointmentId());
+            targetInvoice = existingInvs.stream()
+                    .filter(i -> i.getPaymentStatus() == PaymentStatus.PENDING)
+                    .findFirst()
+                    .orElse(null);
+            if (targetInvoice != null) {
+                BigDecimal currentPharm = targetInvoice.getPharmacyFee() != null ? targetInvoice.getPharmacyFee() : BigDecimal.ZERO;
+                targetInvoice.setPharmacyFee(currentPharm.add(pharmacyTotal));
+                BigDecimal currentTot = targetInvoice.getTotalAmount() != null ? targetInvoice.getTotalAmount() : BigDecimal.ZERO;
+                targetInvoice.setTotalAmount(currentTot.add(pharmacyTotal));
+                targetInvoice.setNetAmount(targetInvoice.getTotalAmount().subtract(
+                        targetInvoice.getDiscountAmount() != null ? targetInvoice.getDiscountAmount() : BigDecimal.ZERO));
+            }
+        }
+
+        if (targetInvoice == null) {
+            targetInvoice = new Invoice();
+            targetInvoice.setPatient(patient);
+            targetInvoice.setAppointment(appointment);
+            targetInvoice.setBillingDate(LocalDateTime.now());
+            targetInvoice.setInvoiceDate(LocalDate.now());
+            targetInvoice.setInvoiceNumber("INV-RX-" + saved.getPrescriptionId() + "-" + (System.currentTimeMillis() % 100000));
+            targetInvoice.setDoctorFee(BigDecimal.ZERO);
+            targetInvoice.setPharmacyFee(pharmacyTotal);
+            targetInvoice.setLabFee(BigDecimal.ZERO);
+            targetInvoice.setTaxAmount(BigDecimal.ZERO);
+            targetInvoice.setDiscountAmount(BigDecimal.ZERO);
+            targetInvoice.setTotalAmount(pharmacyTotal);
+            targetInvoice.setNetAmount(pharmacyTotal);
+            targetInvoice.setPaymentStatus(PaymentStatus.PENDING);
+        }
+
+        Invoice savedInvoice = invoiceRepository.save(targetInvoice);
+        log.info("Auto-generated billing invoice for Prescription ID={}: Invoice ID={}, Number={}, Amount={}",
+                saved.getPrescriptionId(), savedInvoice.getInvoiceId(), savedInvoice.getInvoiceNumber(), savedInvoice.getTotalAmount());
+
+        // Attach drug line items to the invoice
+        if (invoiceDrugItemRepository != null && !savedItems.isEmpty()) {
+            for (PrescriptionItem pi : savedItems) {
+                if (pi.getDrug() != null) {
+                    InvoiceDrugItemId idiId = new InvoiceDrugItemId(savedInvoice.getInvoiceId(), pi.getDrug().getDrugId());
+                    BigDecimal sub = (pi.getDrug().getUnitPrice() != null && pi.getQuantity() != null)
+                            ? pi.getDrug().getUnitPrice().multiply(BigDecimal.valueOf(pi.getQuantity()))
+                            : pharmacyTotal;
+                    InvoiceDrugItem idi = new InvoiceDrugItem(idiId, savedInvoice, pi.getDrug(), pi.getQuantity() != null ? pi.getQuantity() : 1, sub);
+                    invoiceDrugItemRepository.save(idi);
+                }
+            }
         }
 
         Prescription reloaded = prescriptionRepository.findById(saved.getPrescriptionId()).orElse(saved);
@@ -284,6 +381,29 @@ public class PharmacyService {
                         .build()
         ).collect(Collectors.toList());
 
+        Long invId = null;
+        String invNum = null;
+        BigDecimal invTotal = null;
+        String payStatus = "PENDING";
+        Boolean isPaid = false;
+
+        if (rx.getPatient() != null) {
+            List<Invoice> patientInvs = invoiceRepository.findByPatientId(rx.getPatient().getId());
+            Invoice matched = patientInvs.stream()
+                    .filter(i -> (i.getInvoiceNumber() != null && i.getInvoiceNumber().contains("RX-" + rx.getPrescriptionId())) ||
+                                 (rx.getAppointment() != null && i.getAppointment() != null &&
+                                  i.getAppointment().getAppointmentId().equals(rx.getAppointment().getAppointmentId())))
+                    .findFirst()
+                    .orElse(null);
+            if (matched != null) {
+                invId = matched.getInvoiceId();
+                invNum = matched.getInvoiceNumber();
+                invTotal = matched.getTotalAmount();
+                payStatus = matched.getPaymentStatus() != null ? matched.getPaymentStatus().name() : "PENDING";
+                isPaid = matched.getPaymentStatus() == PaymentStatus.PAID;
+            }
+        }
+
         return PrescriptionResponse.builder()
                 .id(rx.getPrescriptionId())
                 .prescriptionNumber(rx.getPrescriptionNumber())
@@ -296,6 +416,11 @@ public class PharmacyService {
                 .status(rx.getStatus())
                 .doctorInstructions(rx.getDoctorInstructions())
                 .items(items)
+                .invoiceId(invId)
+                .invoiceNumber(invNum)
+                .totalAmount(invTotal)
+                .paymentStatus(payStatus)
+                .isPaid(isPaid)
                 .build();
     }
 }

@@ -2,15 +2,19 @@ package com.pulseos.security;
 
 import com.pulseos.common.Employee;
 import com.pulseos.common.EmployeeRepository;
+import com.pulseos.common.PulseException;
+import com.pulseos.notification.NotificationService;
 import com.pulseos.patient.Patient;
 import com.pulseos.patient.PatientRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -27,6 +31,8 @@ public class AuthService {
     private final PatientRepository patientRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
+    private final JdbcTemplate jdbcTemplate;
+    private final NotificationService notificationService;
 
     @Transactional(readOnly = true)
     public AuthResponse login(LoginRequest request) {
@@ -153,6 +159,130 @@ public class AuthService {
                 .role(role)
                 .userType(userType)
                 .build();
+    }
+
+    @Transactional
+    public Map<String, Object> changePassword(String authHeader, ChangePasswordRequest request) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            throw new BadCredentialsException("Missing or invalid Authorization header");
+        }
+
+        String token = authHeader.substring(7).trim();
+        if (!jwtTokenProvider.validateToken(token)) {
+            throw new BadCredentialsException("Invalid or expired session. Please log in again.");
+        }
+
+        if (request.getNewPassword() == null || request.getNewPassword().trim().length() < 6) {
+            throw PulseException.badRequest("Weak Password", "New password must be at least 6 characters long.");
+        }
+
+        if (request.getConfirmPassword() != null && !request.getConfirmPassword().isBlank()
+                && !request.getNewPassword().trim().equals(request.getConfirmPassword().trim())) {
+            throw PulseException.badRequest("Mismatch", "New password and confirmation password do not match.");
+        }
+
+        Long userId = jwtTokenProvider.getUserIdFromToken(token);
+        String userType = jwtTokenProvider.getUserTypeFromToken(token);
+        String rawCurrent = request.getCurrentPassword();
+        String rawNew = request.getNewPassword().trim();
+        String newHash = passwordEncoder.encode(rawNew);
+
+        if ("STAFF".equalsIgnoreCase(userType)) {
+            Employee employee = employeeRepository.findById(userId)
+                    .orElseThrow(() -> PulseException.notFound("Staff user account not found"));
+
+            if (!verifyPassword(rawCurrent, employee.getPasswordHash())) {
+                throw PulseException.badRequest("Authentication Failed", "Current password is incorrect.");
+            }
+
+            employee.setPasswordHash(newHash);
+            employeeRepository.save(employee);
+            try {
+                jdbcTemplate.update("UPDATE persons SET password_hash = ? WHERE person_id = ?", newHash, employee.getId());
+            } catch (Exception e) {
+                log.warn("Could not sync password_hash to persons: {}", e.getMessage());
+            }
+
+            try {
+                notificationService.sendPasswordChangedAlert(employee.getEmail(), employee.getFullName());
+            } catch (Exception e) {
+                log.warn("Could not dispatch password change alert email: {}", e.getMessage());
+            }
+
+            log.info("Password changed successfully for staff member id={}", userId);
+            return Map.of("success", true, "message", "Your password has been changed successfully.");
+        } else {
+            Patient patient = patientRepository.findById(userId)
+                    .orElseThrow(() -> PulseException.notFound("Patient account not found"));
+
+            if (!verifyPassword(rawCurrent, patient.getPassword())) {
+                throw PulseException.badRequest("Authentication Failed", "Current password is incorrect.");
+            }
+
+            patient.setPassword(newHash);
+            patientRepository.save(patient);
+
+            try {
+                notificationService.sendPasswordChangedAlert(patient.getEmail(), patient.getFullName());
+            } catch (Exception e) {
+                log.warn("Could not dispatch password change alert email: {}", e.getMessage());
+            }
+
+            log.info("Password changed successfully for patient id={}", userId);
+            return Map.of("success", true, "message", "Your password has been changed successfully.");
+        }
+    }
+
+    @Transactional
+    public Map<String, Object> forgotPassword(ForgotPasswordRequest request) {
+        String email = request.getEmail().trim().toLowerCase();
+
+        // 1. Check Employee / Staff / Doctor
+        Optional<Employee> empOpt = employeeRepository.findByEmail(email);
+        if (empOpt.isPresent()) {
+            Employee emp = empOpt.get();
+            int code = 1000 + (int)(Math.random() * 9000);
+            String tempPassword = "Pulse#" + code;
+            String newHash = passwordEncoder.encode(tempPassword);
+
+            emp.setPasswordHash(newHash);
+            employeeRepository.save(emp);
+            try {
+                jdbcTemplate.update("UPDATE persons SET password_hash = ? WHERE person_id = ?", newHash, emp.getId());
+            } catch (Exception e) {
+                log.warn("Could not sync reset password to persons: {}", e.getMessage());
+            }
+
+            try {
+                notificationService.sendPasswordResetEmail(emp.getEmail(), emp.getFullName(), tempPassword);
+            } catch (Exception e) {
+                log.error("Failed to send reset email: {}", e.getMessage());
+            }
+
+            return Map.of("success", true, "message", "A new temporary password has been dispatched to your email address (" + email + ").");
+        }
+
+        // 2. Check Patient
+        Optional<Patient> patientOpt = patientRepository.findByEmail(email);
+        if (patientOpt.isPresent()) {
+            Patient patient = patientOpt.get();
+            int code = 1000 + (int)(Math.random() * 9000);
+            String tempPassword = "Pulse#" + code;
+            String newHash = passwordEncoder.encode(tempPassword);
+
+            patient.setPassword(newHash);
+            patientRepository.save(patient);
+
+            try {
+                notificationService.sendPasswordResetEmail(patient.getEmail(), patient.getFullName(), tempPassword);
+            } catch (Exception e) {
+                log.error("Failed to send reset email: {}", e.getMessage());
+            }
+
+            return Map.of("success", true, "message", "A new temporary password has been dispatched to your email address (" + email + ").");
+        }
+
+        throw PulseException.notFound("No active account found registered with email: " + email);
     }
 
     private boolean verifyPassword(String rawPassword, String storedHash) {

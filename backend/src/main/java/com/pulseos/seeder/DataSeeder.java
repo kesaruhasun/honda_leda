@@ -238,7 +238,7 @@ public class DataSeeder implements CommandLineRunner {
         Patient p1 = createPatient("198512304561", "Nimal", "Perera", "No. 15, Flower Road", "Colombo", "00700",
                 LocalDate.of(1985, 3, 12), Gender.MALE, BloodGroup.O_POSITIVE, TriagePriority.ROUTINE, "None",
                 "+94771234567", "Sunil Perera", "Brother", "+94779876543");
-        p1.setEmail("patient.sunil@gmail.com");
+        p1.setEmail("manetexts@gmail.com");
         p1.setPassword(BCRYPT_PASSWORD_123);
 
         Patient p2 = createPatient("197265408923", "Sunethra", "Jayawardena", "42 Hill Street", "Kandy", "20000",

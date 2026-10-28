@@ -166,6 +166,11 @@ export interface Prescription {
   quantity?: number;
   instructions?: string;
   items?: PrescriptionItem[];
+  invoiceId?: number;
+  invoiceNumber?: string;
+  totalAmount?: number;
+  paymentStatus?: string;
+  isPaid?: boolean;
 }
 
 export interface DispenseResponse {

@@ -139,14 +139,19 @@ export const DoctorDashboardView: React.FC = () => {
     e.preventDefault();
     if (!selectedAppointment) return;
     try {
-      await pharmacyApi.createPrescription({
+      const rxRes = await pharmacyApi.createPrescription({
         patientId: selectedAppointment.patientId,
         doctorId: selectedAppointment.doctorId || 1,
         appointmentId: selectedAppointment.id,
         notes: rxNotes ? `${rxDrugName} | ${rxDosage} — Notes: ${rxNotes}` : `${rxDrugName} | ${rxDosage}`,
         status: 'PENDING',
       });
-      showToast('success', 'Prescription Dispatched', `${rxDrugName} transmitted to Central Dispensary.`);
+      const invNum = rxRes.data?.invoiceNumber;
+      showToast(
+        'success',
+        'Prescription Dispatched',
+        `${rxDrugName} transmitted to Central Dispensary.${invNum ? ` Billing Invoice #${invNum} generated.` : ''}`
+      );
       setIsRxModalOpen(false);
       setRxNotes('');
     } catch (err: any) {

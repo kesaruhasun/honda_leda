@@ -191,6 +191,12 @@ public class PharmacyDTOs {
 
         private List<PrescriptionItemResponse> items;
 
+        private Long invoiceId;
+        private String invoiceNumber;
+        private BigDecimal totalAmount;
+        private String paymentStatus;
+        private Boolean isPaid;
+
         // Zero duplicate fields in Java: JSON getters for contract compatibility
         @JsonProperty("prescriptionId")
         public Long getPrescriptionId() { return id; }

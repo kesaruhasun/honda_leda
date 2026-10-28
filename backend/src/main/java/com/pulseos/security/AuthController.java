@@ -31,4 +31,18 @@ public class AuthController {
         UserProfileResponse profile = authService.getCurrentUserProfile(authHeader);
         return ResponseEntity.ok(profile);
     }
+
+    @PostMapping("/change-password")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<java.util.Map<String, Object>> changePassword(
+            @RequestHeader("Authorization") String authHeader,
+            @Valid @RequestBody ChangePasswordRequest request) {
+        return ResponseEntity.ok(authService.changePassword(authHeader, request));
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<java.util.Map<String, Object>> forgotPassword(
+            @Valid @RequestBody ForgotPasswordRequest request) {
+        return ResponseEntity.ok(authService.forgotPassword(request));
+    }
 }

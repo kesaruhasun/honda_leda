@@ -48,10 +48,79 @@ public class BillingService {
                 .collect(Collectors.toList());
     }
 
+    private Invoice resolveInvoiceOrPrescription(Long invoiceId) {
+        if (invoiceId == null) return null;
+        Invoice inv = invoiceRepository.findById(invoiceId).orElse(null);
+        if (inv == null) {
+            inv = invoiceRepository.findByInvoiceNumber("INV-" + invoiceId).orElse(null);
+        }
+        if (inv == null) {
+            // Resilient check: Was this ID a Prescription ID?
+            Prescription rx = prescriptionRepository.findById(invoiceId).orElse(null);
+            if (rx != null) {
+                log.info("Resolving invoice for Prescription ID {}", invoiceId);
+                if (rx.getAppointment() != null) {
+                    List<Invoice> apptInvs = invoiceRepository.findByAppointmentAppointmentId(rx.getAppointment().getAppointmentId());
+                    inv = apptInvs.stream().filter(i -> i.getPaymentStatus() == PaymentStatus.PENDING).findFirst().orElse(null);
+                }
+                if (inv == null && rx.getPatient() != null) {
+                    List<Invoice> patInvs = invoiceRepository.findByPatientId(rx.getPatient().getId());
+                    inv = patInvs.stream()
+                            .filter(i -> (i.getInvoiceNumber() != null && i.getInvoiceNumber().contains("RX-" + rx.getPrescriptionId())) ||
+                                         (rx.getAppointment() != null && i.getAppointment() != null &&
+                                          i.getAppointment().getAppointmentId().equals(rx.getAppointment().getAppointmentId())))
+                            .findFirst()
+                            .orElse(null);
+                }
+                if (inv == null) {
+                    // Auto-synthesize invoice for prescription
+                    BigDecimal fee = BigDecimal.valueOf(1500.00);
+                    inv = new Invoice();
+                    inv.setInvoiceNumber("INV-RX-" + rx.getPrescriptionId() + "-" + (System.currentTimeMillis() % 100000));
+                    inv.setPatient(rx.getPatient());
+                    inv.setAppointment(rx.getAppointment());
+                    inv.setBillingDate(LocalDateTime.now());
+                    inv.setInvoiceDate(LocalDate.now());
+                    inv.setDoctorFee(BigDecimal.ZERO);
+                    inv.setPharmacyFee(fee);
+                    inv.setLabFee(BigDecimal.ZERO);
+                    inv.setTaxAmount(BigDecimal.ZERO);
+                    inv.setDiscountAmount(BigDecimal.ZERO);
+                    inv.setTotalAmount(fee);
+                    inv.setNetAmount(fee);
+                    inv.setPaymentStatus(PaymentStatus.PENDING);
+                    inv = invoiceRepository.save(inv);
+                    log.info("Auto-synthesized invoice for Prescription ID {}: Invoice ID {}", rx.getPrescriptionId(), inv.getInvoiceId());
+                }
+            }
+        }
+        if (inv == null && invoiceId > 1_000_000_000L) {
+            log.info("Client requested ephemeral invoice ID {}. Synthesizing persistent invoice.", invoiceId);
+            Patient defaultPatient = patientRepository.findAll().stream().findFirst().orElse(null);
+            inv = new Invoice();
+            inv.setInvoiceNumber("INV-" + invoiceId);
+            inv.setPatient(defaultPatient);
+            inv.setBillingDate(LocalDateTime.now());
+            inv.setInvoiceDate(LocalDate.now());
+            inv.setDoctorFee(BigDecimal.ZERO);
+            inv.setPharmacyFee(BigDecimal.ZERO);
+            inv.setLabFee(BigDecimal.ZERO);
+            inv.setTaxAmount(BigDecimal.ZERO);
+            inv.setDiscountAmount(BigDecimal.ZERO);
+            inv.setTotalAmount(BigDecimal.valueOf(1500.00));
+            inv.setNetAmount(BigDecimal.valueOf(1500.00));
+            inv.setPaymentStatus(PaymentStatus.PENDING);
+            inv = invoiceRepository.save(inv);
+        }
+        return inv;
+    }
+
     @Transactional(readOnly = true)
     public InvoiceResponse getInvoiceById(Long id) {
-        Invoice inv = invoiceRepository.findById(id)
-                .orElseThrow(() -> PulseException.notFound("Invoice with ID " + id + " not found"));
+        Invoice inv = resolveInvoiceOrPrescription(id);
+        if (inv == null) {
+            throw PulseException.notFound("Invoice with ID " + id + " not found");
+        }
         return toResponse(inv);
     }
 
@@ -111,12 +180,24 @@ public class BillingService {
             } catch (Exception ignored) {}
         }
 
-        Invoice invoice = new Invoice();
-        invoice.setPatient(patient);
-        invoice.setAppointment(appointment);
-        invoice.setBillingDate(LocalDateTime.now());
-        invoice.setInvoiceDate(LocalDate.now());
-        invoice.setInvoiceNumber("INV-" + System.currentTimeMillis());
+        Invoice invoice = null;
+        if (appointment != null) {
+            List<Invoice> existingInvs = invoiceRepository.findByAppointmentAppointmentId(appointment.getAppointmentId());
+            invoice = existingInvs.stream()
+                    .filter(i -> i.getPaymentStatus() == PaymentStatus.PENDING)
+                    .findFirst()
+                    .orElse(null);
+        }
+
+        if (invoice == null) {
+            invoice = new Invoice();
+            invoice.setInvoiceNumber("INV-" + System.currentTimeMillis());
+            invoice.setBillingDate(LocalDateTime.now());
+            invoice.setInvoiceDate(LocalDate.now());
+            invoice.setPatient(patient);
+            invoice.setAppointment(appointment);
+        }
+
         invoice.setDoctorFee(doctorFee);
         invoice.setPharmacyFee(pharmacyFee);
         invoice.setLabFee(labFee);
@@ -127,38 +208,13 @@ public class BillingService {
         invoice.setPaymentStatus(status);
 
         Invoice saved = invoiceRepository.save(invoice);
-        log.info("Generated invoice: ID={}, Total={}", saved.getInvoiceId(), saved.getTotalAmount());
+        log.info("Generated/Updated invoice: ID={}, Total={}", saved.getInvoiceId(), saved.getTotalAmount());
         return toResponse(saved);
     }
 
     @Transactional
     public SettlementResponse settleInvoice(Long invoiceId, SettlementRequest req) {
-        Invoice invoice = invoiceRepository.findById(invoiceId).orElse(null);
-
-        // Fallback lookup: match by invoiceNumber
-        if (invoice == null) {
-            invoice = invoiceRepository.findByInvoiceNumber("INV-" + invoiceId).orElse(null);
-        }
-
-        // Resilient fallback: synthesize invoice if client passed a timestamp ID (e.g. staged in local state)
-        if (invoice == null && invoiceId != null && invoiceId > 1_000_000_000L) {
-            log.info("Client submitted settlement for staged/ephemeral invoice ID: {}. Synthesizing persistent record.", invoiceId);
-            Patient defaultPatient = patientRepository.findAll().stream().findFirst().orElse(null);
-            invoice = new Invoice();
-            invoice.setInvoiceNumber("INV-" + invoiceId);
-            invoice.setPatient(defaultPatient);
-            invoice.setBillingDate(LocalDateTime.now());
-            invoice.setInvoiceDate(LocalDate.now());
-            invoice.setDoctorFee(BigDecimal.ZERO);
-            invoice.setPharmacyFee(BigDecimal.ZERO);
-            invoice.setLabFee(BigDecimal.ZERO);
-            invoice.setTaxAmount(BigDecimal.ZERO);
-            invoice.setDiscountAmount(BigDecimal.ZERO);
-            invoice.setTotalAmount(BigDecimal.valueOf(1500.00));
-            invoice.setNetAmount(BigDecimal.valueOf(1500.00));
-            invoice.setPaymentStatus(PaymentStatus.PENDING);
-            invoice = invoiceRepository.save(invoice);
-        }
+        Invoice invoice = resolveInvoiceOrPrescription(invoiceId);
 
         if (invoice == null) {
             throw PulseException.notFound("Invoice not found with ID: " + invoiceId);
@@ -202,6 +258,46 @@ public class BillingService {
     }
 
     @Transactional
+    public InvoiceResponse updateInvoice(Long id, InvoiceUpdateRequest req) {
+        Invoice invoice = invoiceRepository.findById(id).orElse(null);
+        if (invoice == null) {
+            invoice = invoiceRepository.findByInvoiceNumber("INV-" + id)
+                    .orElseThrow(() -> PulseException.notFound("Invoice not found with ID: " + id));
+        }
+
+        if (invoice.getPaymentStatus() == PaymentStatus.PAID) {
+            throw PulseException.badRequest("Cannot Modify Paid Invoice", "A settled invoice cannot be modified.");
+        }
+
+        BigDecimal total = invoice.getTotalAmount() != null ? invoice.getTotalAmount() : BigDecimal.ZERO;
+
+        if (req.getDiscountPercentage() != null && req.getDiscountPercentage().compareTo(BigDecimal.ZERO) > 0) {
+            BigDecimal percentage = req.getDiscountPercentage().divide(BigDecimal.valueOf(100), 4, java.math.RoundingMode.HALF_UP);
+            BigDecimal calcDiscount = total.multiply(percentage).setScale(2, java.math.RoundingMode.HALF_UP);
+            invoice.setDiscountAmount(calcDiscount);
+        } else if (req.getDiscountAmount() != null) {
+            invoice.setDiscountAmount(req.getDiscountAmount().setScale(2, java.math.RoundingMode.HALF_UP));
+        }
+
+        BigDecimal discount = invoice.getDiscountAmount() != null ? invoice.getDiscountAmount() : BigDecimal.ZERO;
+        BigDecimal net = total.subtract(discount);
+        if (net.compareTo(BigDecimal.ZERO) < 0) {
+            net = BigDecimal.ZERO;
+        }
+        invoice.setNetAmount(net);
+
+        if (req.getPaymentStatus() != null && !req.getPaymentStatus().isBlank()) {
+            try {
+                invoice.setPaymentStatus(PaymentStatus.valueOf(req.getPaymentStatus().toUpperCase()));
+            } catch (Exception ignored) {}
+        }
+
+        Invoice saved = invoiceRepository.save(invoice);
+        log.info("Updated invoice: ID={}, Discount={}, Net={}", saved.getInvoiceId(), saved.getDiscountAmount(), saved.getNetAmount());
+        return toResponse(saved);
+    }
+
+    @Transactional
     public InvoiceResponse cancelInvoice(Long id) {
         Invoice invoice = invoiceRepository.findById(id)
                 .orElseThrow(() -> PulseException.notFound("Invoice not found with ID: " + id));
@@ -218,30 +314,7 @@ public class BillingService {
 
     @Transactional
     public PayHereInitiateResponse initiatePayHere(Long invoiceId) {
-        Invoice invoice = invoiceRepository.findById(invoiceId).orElse(null);
-
-        if (invoice == null) {
-            invoice = invoiceRepository.findByInvoiceNumber("INV-" + invoiceId).orElse(null);
-        }
-
-        if (invoice == null && invoiceId != null && invoiceId > 1_000_000_000L) {
-            log.info("Client requested PayHere for ephemeral invoice ID {}. Synthesizing persistent invoice.", invoiceId);
-            Patient defaultPatient = patientRepository.findAll().stream().findFirst().orElse(null);
-            invoice = new Invoice();
-            invoice.setInvoiceNumber("INV-" + invoiceId);
-            invoice.setPatient(defaultPatient);
-            invoice.setBillingDate(LocalDateTime.now());
-            invoice.setInvoiceDate(LocalDate.now());
-            invoice.setDoctorFee(BigDecimal.ZERO);
-            invoice.setPharmacyFee(BigDecimal.ZERO);
-            invoice.setLabFee(BigDecimal.ZERO);
-            invoice.setTaxAmount(BigDecimal.ZERO);
-            invoice.setDiscountAmount(BigDecimal.ZERO);
-            invoice.setTotalAmount(BigDecimal.valueOf(1500.00));
-            invoice.setNetAmount(BigDecimal.valueOf(1500.00));
-            invoice.setPaymentStatus(PaymentStatus.PENDING);
-            invoice = invoiceRepository.save(invoice);
-        }
+        Invoice invoice = resolveInvoiceOrPrescription(invoiceId);
 
         if (invoice == null) {
             throw PulseException.notFound("Invoice not found with ID: " + invoiceId);

@@ -9,6 +9,7 @@ import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -236,6 +237,148 @@ public class NotificationService {
                 .subject(subject)
                 .body(body)
                 .templateType("PATIENT_WELCOME")
+                .build());
+
+        return record;
+    }
+
+    /**
+     * Convenience: send doctor onboarding credentials and welcome email.
+     */
+    public NotificationRecord sendDoctorWelcomeEmail(String toEmail, String doctorName, String tempPassword,
+                                                     String licenseNo, String specialization, String roomNumber, BigDecimal fee) {
+        String subject = "PulseOS — Medical Staff Credentialing & Portal Access";
+        String body = String.format("""
+                Dear Dr. %s,
+
+                Welcome to the PulseOS Clinical Healthcare Network. Your physician profile and clinical credentials have been registered.
+
+                == CLINICAL CREDENTIALS & ONBOARDING ==
+                Physician Name: Dr. %s
+                Medical License No: %s
+                Specialization: %s
+                Consultation Room: %s
+                Consultation Tariff: LKR %s
+
+                == PORTAL ACCESS CREDENTIALS ==
+                PulseOS Portal URL: /patient/login
+                Login Username / Email: %s
+                Temporary Password: %s
+
+                SECURITY ADVISORY:
+                For hospital security compliance, please log in and change your temporary password immediately from your account profile settings.
+
+                If you require IT assistance or roster scheduling adjustments, please contact the Clinical Administration Office.
+
+                Warm regards,
+                PulseOS Hospital Administration & Clinical Directorate
+                """, doctorName, doctorName, licenseNo, specialization, roomNumber, fee != null ? fee.toString() : "2000.00", toEmail, tempPassword);
+
+        NotificationRecord record = NotificationRecord.builder()
+                .eventType("DOCTOR_CREDENTIALS")
+                .recipientEmail(toEmail)
+                .recipientName("Dr. " + doctorName)
+                .referenceId(licenseNo)
+                .subject(subject)
+                .body(body)
+                .status("SENT")
+                .timestamp(LocalDateTime.now())
+                .build();
+
+        record = notificationRepository.save(record);
+        notificationLog.add(record);
+
+        send(EmailNotification.builder()
+                .to(toEmail)
+                .subject(subject)
+                .body(body)
+                .templateType("DOCTOR_CREDENTIALS")
+                .build());
+
+        return record;
+    }
+
+    /**
+     * Convenience: send password reset email with temporary password.
+     */
+    public NotificationRecord sendPasswordResetEmail(String toEmail, String recipientName, String tempPassword) {
+        String subject = "PulseOS — Account Password Reset";
+        String body = String.format("""
+                Dear %s,
+
+                We received a request to reset your PulseOS account password.
+
+                Your temporary password has been reset:
+                Temporary Password: %s
+
+                Please log in to the portal and change your password immediately in your account settings.
+
+                If you did not request this password reset, please notify hospital security immediately.
+
+                Regards,
+                PulseOS Security Operations Center
+                """, recipientName, tempPassword);
+
+        NotificationRecord record = NotificationRecord.builder()
+                .eventType("PASSWORD_RESET")
+                .recipientEmail(toEmail)
+                .recipientName(recipientName)
+                .referenceId("PWD-RESET")
+                .subject(subject)
+                .body(body)
+                .status("SENT")
+                .timestamp(LocalDateTime.now())
+                .build();
+
+        record = notificationRepository.save(record);
+        notificationLog.add(record);
+
+        send(EmailNotification.builder()
+                .to(toEmail)
+                .subject(subject)
+                .body(body)
+                .templateType("PASSWORD_RESET")
+                .build());
+
+        return record;
+    }
+
+    /**
+     * Convenience: send password changed security alert.
+     */
+    public NotificationRecord sendPasswordChangedAlert(String toEmail, String recipientName) {
+        String subject = "PulseOS — Security Alert: Password Updated";
+        String body = String.format("""
+                Dear %s,
+
+                This is a confirmation that your PulseOS account password was successfully updated.
+
+                If you made this change, no further action is required.
+                If you did not make this change, please contact Hospital IT Administration immediately.
+
+                Regards,
+                PulseOS Security Operations Center
+                """, recipientName);
+
+        NotificationRecord record = NotificationRecord.builder()
+                .eventType("PASSWORD_CHANGED")
+                .recipientEmail(toEmail)
+                .recipientName(recipientName)
+                .referenceId("PWD-CHANGED")
+                .subject(subject)
+                .body(body)
+                .status("SENT")
+                .timestamp(LocalDateTime.now())
+                .build();
+
+        record = notificationRepository.save(record);
+        notificationLog.add(record);
+
+        send(EmailNotification.builder()
+                .to(toEmail)
+                .subject(subject)
+                .body(body)
+                .templateType("PASSWORD_CHANGED")
                 .build());
 
         return record;

@@ -215,6 +215,10 @@ export const PatientView: React.FC = () => {
   };
 
   const handleArchivePatient = async (patient: Patient) => {
+    if (patient.email === 'manetexts@gmail.com' || patient.nicPassportNo === '198512304561') {
+      showToast('warning', 'Protected Demo Patient', 'The primary viva demo patient (Nimal Perera) cannot be archived. You can create other test patients and archive those freely.');
+      return;
+    }
     const reason = window.prompt(`Reason for archiving record of ${patient.fullName || patient.firstName}:`, "Clinical file completed / patient inactive");
     if (reason === null) return;
     try {

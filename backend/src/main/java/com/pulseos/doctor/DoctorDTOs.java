@@ -34,6 +34,7 @@ public class DoctorDTOs {
         private Boolean isAvailable;
         private Long departmentId;
         private String departmentName;
+        private String password;
 
         public String getResolvedLicense() { return doctorLicenseNo; }
     }

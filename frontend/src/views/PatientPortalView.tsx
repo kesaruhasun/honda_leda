@@ -23,13 +23,16 @@ import {
   MessageSquare,
   AlertCircle,
   RefreshCw,
-  Sparkles,
   Edit3,
   Ban,
   Settings,
+  ExternalLink,
+  Copy,
+  KeyRound,
 } from 'lucide-react';
 import { useRole } from '../context/RoleContext';
 import { useToast } from '../context/ToastContext';
+import { ChangePasswordModal } from '../components/common/ChangePasswordModal';
 import {
   appointmentApi,
   pharmacyApi,
@@ -104,6 +107,7 @@ export const PatientPortalView: React.FC = () => {
 
   // Edit Profile Modal State
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
   const calculateProfileCompletion = () => {
     if (!patientSession) return 0;
@@ -132,6 +136,8 @@ export const PatientPortalView: React.FC = () => {
 
   // PayHere Checkout Modal State
   const [payHereModalInvoice, setPayHereModalInvoice] = useState<Invoice | null>(null);
+  const [payHereModalTab, setPayHereModalTab] = useState<'GATEWAY' | 'SIMULATOR'>('GATEWAY');
+  const [copiedCard, setCopiedCard] = useState<string | null>(null);
   const [processingPayment, setProcessingPayment] = useState(false);
   const [payHereTestCardType, setPayHereTestCardType] = useState<'VISA' | 'MASTERCARD' | 'AMEX'>('VISA');
   const [payHereCardNumber, setPayHereCardNumber] = useState('4916 2175 0161 1292');
@@ -192,6 +198,30 @@ export const PatientPortalView: React.FC = () => {
     if (!patientSession) {
       return;
     }
+    // Check for PayHere redirect query parameters (e.g. ?order_id=INV-2026-0001&payment=success)
+    const urlParams = new URLSearchParams(window.location.search);
+    const returnOrderId = urlParams.get('order_id');
+    const returnPaymentStatus = urlParams.get('payment');
+    if (returnOrderId || returnPaymentStatus === 'success') {
+      setActiveTab('billing');
+      showToast('success', 'PayHere Payment Confirmed', `Payment for invoice #${returnOrderId || ''} was successfully settled via PayHere Gateway.`);
+      billingApi.getInvoices().then(res => {
+        const matching = (res.data || []).find((inv: Invoice) =>
+          inv.invoiceNumber === returnOrderId || String(inv.id) === (returnOrderId || '').replace('INV-', '')
+        );
+        if (matching && matching.status !== 'PAID') {
+          billingApi.settleCashCard(matching.id, 'CARD', `PAYHERE-RETURN-${returnOrderId}`).catch(() => {});
+        }
+      }).finally(() => {
+        billingApi.getInvoices().then(res => {
+          if (res.data && patientSession) {
+            setInvoices(res.data.filter((i: Invoice) => i.patientId === patientSession.id));
+          }
+        });
+        window.history.replaceState({}, document.title, window.location.pathname);
+      });
+    }
+
     // Fetch notifications
     api.get('/notifications?recipientEmail=' + encodeURIComponent(patientSession.email || patientSession.nicPassportNo))
       .then(() => {
@@ -391,6 +421,138 @@ export const PatientPortalView: React.FC = () => {
       setPayHereCardNumber('3467 8100 5510 225');
       setPayHereExpiry('12/28');
       setPayHereCvv('1234');
+    }
+  };
+
+  // Real PayHere Sandbox Gateway Handler
+  const handleLaunchPayHereRealCheckout = async (invoice: Invoice, forceRedirect = false) => {
+    if (!patientSession) return;
+    setPayHereErrorMessage(null);
+    setProcessingPayment(true);
+
+    try {
+      let settleId = invoice.id;
+      // If invoice is ephemeral or client-staged, persist it first so backend has it
+      if (settleId > 1_000_000_000 || String(settleId).startsWith('179')) {
+        try {
+          const gen = await billingApi.generateInvoice({
+            patientId: patientSession?.id,
+            pharmacyFee: invoice.pharmacyFee || invoice.pharmacyTotal || 0,
+            labFee: invoice.labFee || invoice.labTotal || 0,
+            doctorFee: invoice.doctorFee || 0,
+            totalAmount: invoice.totalAmount || 1500,
+          });
+          if (gen.data?.id) {
+            settleId = gen.data.id;
+            invoice.id = gen.data.id;
+            invoice.invoiceNumber = gen.data.invoiceNumber;
+          }
+        } catch (ignored) {}
+      }
+
+      // Call backend to generate valid MD5 hash and parameters
+      const initiateRes = await billingApi.initiatePayHere(settleId);
+      const params = initiateRes.data as any;
+
+      const effectiveOrderId = params.orderId || params.order_id || invoice.invoiceNumber || String(invoice.id);
+      const returnUrl = `${window.location.origin}/patient/portal?tab=billing&payment=success&order_id=${encodeURIComponent(effectiveOrderId)}`;
+      const cancelUrl = `${window.location.origin}/patient/portal?tab=billing&payment=cancelled`;
+      const notifyUrl = params.notifyUrl || params.notify_url || `${window.location.origin}/api/v1/payments/payhere/notify`;
+      const merchantId = params.merchantId || params.merchant_id || '1235909';
+      const amount = params.amount || Number(invoice.totalAmount).toFixed(2);
+      const currency = params.currency || 'LKR';
+      const hash = params.hash;
+
+      // Check if PayHere JS popup is available and forceRedirect is false
+      if (!forceRedirect && typeof (window as any).payhere !== 'undefined') {
+        const payhere = (window as any).payhere;
+
+        payhere.onCompleted = function onCompleted(orderId: string) {
+          showToast('success', 'Payment Received', `PayHere payment for order #${orderId} completed successfully!`);
+          setPayHereModalInvoice(null);
+          setProcessingPayment(false);
+          // Backend settlement for local state guarantees
+          billingApi.settleCashCard(settleId, 'CARD', `PAYHERE-JS-${orderId}`).catch(() => {});
+          setTimeout(() => {
+            billingApi.getInvoices().then(res => {
+              if (res.data) setInvoices(res.data.filter((i: Invoice) => i.patientId === patientSession.id));
+            });
+          }, 800);
+        };
+
+        payhere.onDismissed = function onDismissed() {
+          showToast('info', 'Payment Dismissed', 'PayHere payment checkout was cancelled.');
+          setProcessingPayment(false);
+        };
+
+        payhere.onError = function onError(error: string) {
+          setPayHereErrorMessage(`PayHere Gateway error: ${error}`);
+          showToast('error', 'Payment Error', error);
+          setProcessingPayment(false);
+        };
+
+        const payment = {
+          sandbox: true,
+          merchant_id: merchantId,
+          return_url: returnUrl,
+          cancel_url: cancelUrl,
+          notify_url: notifyUrl,
+          order_id: effectiveOrderId,
+          items: params.items || `PulseOS Medical Invoice #${invoice.invoiceNumber || invoice.id}`,
+          amount: amount,
+          currency: currency,
+          hash: hash,
+          first_name: params.firstName || patientSession.firstName || 'Patient',
+          last_name: params.lastName || patientSession.lastName || 'PulseOS',
+          email: params.email || patientSession.email || 'patient@pulseos.lk',
+          phone: params.phone || patientSession.contactNumber || '0771234567',
+          address: params.address || patientSession.address || 'No. 124, Hospital Road',
+          city: params.city || 'Colombo',
+          country: 'Sri Lanka',
+        };
+
+        payhere.startPayment(payment);
+        setProcessingPayment(false);
+      } else {
+        // Fallback: Form POST to https://sandbox.payhere.lk/pay/checkout
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = 'https://sandbox.payhere.lk/pay/checkout';
+
+        const fields: Record<string, string> = {
+          merchant_id: merchantId,
+          return_url: returnUrl,
+          cancel_url: cancelUrl,
+          notify_url: notifyUrl,
+          order_id: effectiveOrderId,
+          items: params.items || `PulseOS Medical Invoice #${invoice.invoiceNumber || invoice.id}`,
+          currency: currency,
+          amount: amount,
+          first_name: params.firstName || patientSession.firstName || 'Patient',
+          last_name: params.lastName || patientSession.lastName || 'PulseOS',
+          email: params.email || patientSession.email || 'patient@pulseos.lk',
+          phone: params.phone || patientSession.contactNumber || '0771234567',
+          address: params.address || patientSession.address || 'No. 124, Hospital Road',
+          city: params.city || 'Colombo',
+          country: 'Sri Lanka',
+          hash: hash || '',
+        };
+
+        Object.entries(fields).forEach(([k, v]) => {
+          const input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = k;
+          input.value = v;
+          form.appendChild(input);
+        });
+
+        document.body.appendChild(form);
+        form.submit();
+      }
+    } catch (err: any) {
+      setPayHereErrorMessage(err.message || 'Failed to initialize PayHere payment session.');
+      showToast('error', 'PayHere Error', err.message || 'Failed to connect to payment gateway.');
+      setProcessingPayment(false);
     }
   };
 
@@ -675,6 +837,15 @@ export const PatientPortalView: React.FC = () => {
             <ShieldCheck className="h-4 w-4 text-clinical-teal-600" />
             <span className="font-mono text-[11px]">NIC: {patientSession.nicPassportNo}</span>
           </div>
+
+          <button
+            onClick={() => setIsChangePasswordOpen(true)}
+            className="apple-btn inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-xs font-semibold text-slate-700 transition-colors"
+            title="Change Account Password"
+          >
+            <KeyRound className="h-3.5 w-3.5 text-clinical-teal-600" />
+            <span className="hidden sm:inline">Password</span>
+          </button>
 
           <button
             onClick={handleSignOut}
@@ -1103,27 +1274,67 @@ export const PatientPortalView: React.FC = () => {
                         </div>
                         <p className="text-slate-600 italic mt-1">{notes}</p>
                       </div>
-                      {!isDispensed && (
-                        <div className="flex justify-end pt-2 border-t border-slate-100">
-                          <button
-                            onClick={() => {
-                              const dummyInvoice = {
-                                id: prs.id,
-                                invoiceNumber: `INV-RX-${prs.id}`,
-                                totalAmount: 2500, // Fallback fee
-                                status: 'PENDING',
-                                paymentStatus: 'PENDING',
-                                createdAt: prs.prescriptionDate || new Date().toISOString()
-                              };
-                              setPayHereModalInvoice(dummyInvoice as any);
-                            }}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-colors"
-                          >
-                            <CreditCard className="h-3.5 w-3.5" />
-                            <span>Pay LKR 2500.00 (PayHere)</span>
-                          </button>
-                        </div>
-                      )}
+                      {(() => {
+                        const matchedInvoice = invoices.find(
+                          (inv) =>
+                            (prs.invoiceId && inv.id === prs.invoiceId) ||
+                            (inv.invoiceNumber && (inv.invoiceNumber.includes(`RX-${prs.id}`) || (prs.prescriptionNumber && inv.invoiceNumber.includes(prs.prescriptionNumber)))) ||
+                            (prs.appointmentId && inv.appointmentId === prs.appointmentId)
+                        );
+                        const isInvoicePaid = matchedInvoice?.paymentStatus === 'PAID' || prs.isPaid || prs.paymentStatus === 'PAID';
+                        const invoiceAmount = matchedInvoice?.totalAmount || prs.totalAmount || 1500;
+
+                        if (isInvoicePaid) {
+                          return (
+                            <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                              <span className="text-xs font-mono text-slate-500">
+                                Invoice #{matchedInvoice?.invoiceNumber || (prs.invoiceNumber ? prs.invoiceNumber : `INV-RX-${prs.id}`)}
+                              </span>
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold text-xs">
+                                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                                Invoice Settled (LKR {Number(invoiceAmount).toFixed(2)}) &bull; Ready at Dispensary
+                              </span>
+                            </div>
+                          );
+                        }
+
+                        if (!isDispensed) {
+                          return (
+                            <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                              <span className="text-xs font-mono text-slate-500">
+                                {matchedInvoice?.invoiceNumber ? `Invoice #${matchedInvoice.invoiceNumber}` : 'Prescription Invoice Pending'}
+                              </span>
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    let targetInvoice = matchedInvoice;
+                                    if (!targetInvoice) {
+                                      showToast('info', 'Preparing Invoice', 'Generating prescription billing invoice...');
+                                      const genRes = await billingApi.generateInvoice({
+                                        patientId: prs.patientId || patientSession.id,
+                                        appointmentId: prs.appointmentId,
+                                        pharmacyFee: invoiceAmount,
+                                        totalAmount: invoiceAmount,
+                                        description: `Prescription #${prs.prescriptionNumber || prs.id}`,
+                                      });
+                                      targetInvoice = genRes.data;
+                                      setInvoices((prev) => [genRes.data, ...prev]);
+                                    }
+                                    setPayHereModalInvoice(targetInvoice);
+                                  } catch (err: any) {
+                                    showToast('error', 'Checkout Error', err.message || 'Could not initiate payment checkout');
+                                  }
+                                }}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-colors"
+                              >
+                                <CreditCard className="h-3.5 w-3.5" />
+                                <span>Pay LKR {Number(invoiceAmount).toFixed(2)} (PayHere)</span>
+                              </button>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
                     </div>
                   );
                 })}
@@ -2069,22 +2280,22 @@ export const PatientPortalView: React.FC = () => {
           subtitle={`Central Bank Authorized 3D-Secure Checkout for Invoice #${payHereModalInvoice.invoiceNumber}`}
           maxWidth="lg"
         >
-          <div className="space-y-4 text-xs">
+          <div className="space-y-4 text-xs font-sans">
             {/* Merchant & Order Header */}
-            <div className="p-4 rounded-xl bg-slate-900 text-white space-y-3 relative overflow-hidden">
+            <div className="p-4 rounded-xl bg-slate-900 text-white space-y-3 relative overflow-hidden shadow-sm">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="h-7 w-7 rounded-lg bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center font-bold text-[11px] text-emerald-400 font-mono">
+                <div className="flex items-center gap-2.5">
+                  <div className="h-8 w-8 rounded-lg bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center font-bold text-xs text-emerald-400 font-mono">
                     PH
                   </div>
                   <div>
                     <span className="font-mono text-xs font-bold tracking-tight text-white block">PAYHERE SECURE SANDBOX</span>
-                    <span className="text-[10px] text-slate-400 font-mono">App: hoda_leda &bull; ID: 4OVzEYZKfse4JH5F6UZLZU3PS</span>
+                    <span className="text-[10px] text-slate-400 font-mono">Merchant ID: 1235909 &bull; Domain: tekkeys.com &bull; App: hoda_leda</span>
                   </div>
                 </div>
                 <span className="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 font-mono text-[10px] font-bold border border-emerald-500/30 flex items-center gap-1.5">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  SANDBOX MODE
+                  SANDBOX LIVE
                 </span>
               </div>
 
@@ -2096,234 +2307,414 @@ export const PatientPortalView: React.FC = () => {
                   </span>
                 </div>
                 <div className="text-right font-mono text-[11px] text-slate-300">
-                  <span className="text-slate-500 text-[10px] block font-sans">INVOICE NUMBER</span>
+                  <span className="text-slate-500 text-[10px] block font-sans">ORDER / INVOICE REF</span>
                   <span className="font-bold text-white">#{payHereModalInvoice.invoiceNumber}</span>
                   <span className="block text-[10px] text-slate-400 mt-0.5">{patientSession.fullName}</span>
                 </div>
               </div>
             </div>
 
-            {/* PayHere Test Cards Preset Selector */}
-            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-slate-800 text-[11px] flex items-center gap-1.5">
-                  <Sparkles className="h-3.5 w-3.5 text-clinical-teal-600" />
-                  Official PayHere Sandbox Test Cards
-                </span>
-                <span className="text-[10px] text-slate-500 font-medium">Click card to auto-fill</span>
-              </div>
-
-              <div className="grid grid-cols-3 gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleSelectTestCard('VISA')}
-                  className={`p-2.5 rounded-lg border text-left transition-all flex flex-col justify-between ${
-                    payHereTestCardType === 'VISA'
-                      ? 'border-blue-600 bg-blue-50/70 shadow-xs'
-                      : 'border-slate-200 bg-white hover:bg-slate-50'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-blue-700 text-xs">Visa Test</span>
-                    <span className="text-[9px] px-1 rounded bg-blue-100 text-blue-800 font-mono font-bold">READY</span>
-                  </div>
-                  <span className="font-mono text-[10px] text-slate-600 mt-1">4916 •••• •••• 1292</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleSelectTestCard('MASTERCARD')}
-                  className={`p-2.5 rounded-lg border text-left transition-all flex flex-col justify-between ${
-                    payHereTestCardType === 'MASTERCARD'
-                      ? 'border-amber-600 bg-amber-50/70 shadow-xs'
-                      : 'border-slate-200 bg-white hover:bg-slate-50'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-amber-700 text-xs">MasterCard</span>
-                    <span className="text-[9px] px-1 rounded bg-amber-100 text-amber-800 font-mono font-bold">READY</span>
-                  </div>
-                  <span className="font-mono text-[10px] text-slate-600 mt-1">5307 •••• •••• 1191</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleSelectTestCard('AMEX')}
-                  className={`p-2.5 rounded-lg border text-left transition-all flex flex-col justify-between ${
-                    payHereTestCardType === 'AMEX'
-                      ? 'border-cyan-600 bg-cyan-50/70 shadow-xs'
-                      : 'border-slate-200 bg-white hover:bg-slate-50'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-cyan-700 text-xs">Amex Test</span>
-                    <span className="text-[9px] px-1 rounded bg-cyan-100 text-cyan-800 font-mono font-bold">READY</span>
-                  </div>
-                  <span className="font-mono text-[10px] text-slate-600 mt-1">3467 •••• ••• 0225</span>
-                </button>
-              </div>
+            {/* Mode Switcher Tabs */}
+            <div className="flex rounded-lg bg-slate-100 p-1 border border-slate-200">
+              <button
+                type="button"
+                onClick={() => setPayHereModalTab('GATEWAY')}
+                className={`flex-1 py-1.5 px-3 rounded-md text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                  payHereModalTab === 'GATEWAY'
+                    ? 'bg-white text-emerald-700 shadow-xs border border-slate-200'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                <span>PayHere Live Gateway (Official Sandbox)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPayHereModalTab('SIMULATOR')}
+                className={`flex-1 py-1.5 px-3 rounded-md text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                  payHereModalTab === 'SIMULATOR'
+                    ? 'bg-white text-blue-700 shadow-xs border border-slate-200'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <CreditCard className="w-3.5 h-3.5 text-blue-600" />
+                <span>POS Card Terminal (Hospital Desk)</span>
+              </button>
             </div>
 
-            {/* Test Simulation Scenario Selection */}
-            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
-              <label className="font-bold text-slate-700 block text-[11px]">
-                Simulate Gateway Gateway Authorization Result
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPayHereSimulationOutcome('SUCCESS');
-                    setPayHereErrorMessage(null);
-                  }}
-                  className={`p-2 rounded-lg border text-center text-xs font-semibold transition-all ${
-                    payHereSimulationOutcome === 'SUCCESS'
-                      ? 'border-emerald-600 bg-emerald-50 text-emerald-800 font-bold'
-                      : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                  }`}
-                >
-                  ✓ Approved (2)
-                </button>
+            {/* TAB 1: Real PayHere Sandbox Gateway */}
+            {payHereModalTab === 'GATEWAY' && (
+              <div className="space-y-3">
+                <div className="p-3.5 rounded-xl bg-gradient-to-br from-emerald-50/70 via-sky-50/40 to-slate-50 border border-emerald-200/80 space-y-2">
+                  <div className="flex items-center gap-2 text-emerald-900 font-bold text-xs">
+                    <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                    <span>Real Central Bank Approved PayHere Sandbox Checkout</span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 leading-relaxed">
+                    Transactions initiated here are cryptographically hashed using <code className="font-mono text-emerald-800 bg-white px-1 py-0.5 rounded border border-emerald-200">MD5/SHA-256</code> with your Merchant Secret and submitted directly to PayHere’s secure sandbox servers. Every completed payment will immediately register on your <strong>PayHere Merchant Portal</strong> under <em>Sandbox Payments</em>.
+                  </p>
+                </div>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPayHereSimulationOutcome('DECLINE_FUNDS');
-                    setPayHereErrorMessage(null);
-                  }}
-                  className={`p-2 rounded-lg border text-center text-xs font-semibold transition-all ${
-                    payHereSimulationOutcome === 'DECLINE_FUNDS'
-                      ? 'border-rose-600 bg-rose-50 text-rose-800 font-bold'
-                      : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                  }`}
-                >
-                  ⚠️ Insufficient (-2)
-                </button>
+                {/* Test Cards Quick Reference Box with 1-click copy */}
+                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-slate-800 text-[11px] flex items-center gap-1.5">
+                      <CreditCard className="h-3.5 w-3.5 text-slate-600" />
+                      Official PayHere Sandbox Test Cards (Click to Copy):
+                    </span>
+                    <span className="text-[10px] text-slate-500 font-mono">Expiry: 12/28 &bull; CVV: 123</span>
+                  </div>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPayHereSimulationOutcome('DECLINE_LIMIT');
-                    setPayHereErrorMessage(null);
-                  }}
-                  className={`p-2 rounded-lg border text-center text-xs font-semibold transition-all ${
-                    payHereSimulationOutcome === 'DECLINE_LIMIT'
-                      ? 'border-rose-600 bg-rose-50 text-rose-800 font-bold'
-                      : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                  }`}
-                >
-                  ❌ Limit Exceeded (-3)
-                </button>
-              </div>
-            </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText('4916217501611292');
+                        setCopiedCard('VISA');
+                        setTimeout(() => setCopiedCard(null), 2000);
+                      }}
+                      className="p-2.5 rounded-lg border border-blue-200 bg-blue-50/60 hover:bg-blue-100/70 text-left transition-all group"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-blue-800 text-xs">Visa (Approved)</span>
+                        <span className="text-[10px] font-mono font-bold text-blue-600 group-hover:underline flex items-center gap-1">
+                          {copiedCard === 'VISA' ? (
+                            'COPIED!'
+                          ) : (
+                            <>
+                              <Copy className="w-3 h-3" />
+                              <span>COPY</span>
+                            </>
+                          )}
+                        </span>
+                      </div>
+                      <span className="font-mono text-[11px] text-slate-700 block mt-1">4916 2175 0161 1292</span>
+                    </button>
 
-            {/* Interactive Card Inputs */}
-            <div className="space-y-3 p-4 rounded-xl border border-slate-200 bg-white">
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-700 block">CARD NUMBER</label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={payHereCardNumber}
-                    onChange={(e) => setPayHereCardNumber(e.target.value)}
-                    className="w-full p-2.5 font-mono text-sm bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:ring-2 focus:ring-clinical-teal-500 tracking-wider font-semibold"
-                    placeholder="4916 2175 0161 1292"
-                  />
-                  <div className="absolute right-3 top-2.5">
-                    <CreditCard className="h-5 w-5 text-clinical-teal-600" />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText('5307732125531191');
+                        setCopiedCard('MC');
+                        setTimeout(() => setCopiedCard(null), 2000);
+                      }}
+                      className="p-2.5 rounded-lg border border-amber-200 bg-amber-50/60 hover:bg-amber-100/70 text-left transition-all group"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-amber-800 text-xs">Mastercard (Approved)</span>
+                        <span className="text-[10px] font-mono font-bold text-amber-600 group-hover:underline flex items-center gap-1">
+                          {copiedCard === 'MC' ? (
+                            'COPIED!'
+                          ) : (
+                            <>
+                              <Copy className="w-3 h-3" />
+                              <span>COPY</span>
+                            </>
+                          )}
+                        </span>
+                      </div>
+                      <span className="font-mono text-[11px] text-slate-700 block mt-1">5307 7321 2553 1191</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText('346781005510225');
+                        setCopiedCard('AMEX');
+                        setTimeout(() => setCopiedCard(null), 2000);
+                      }}
+                      className="p-2.5 rounded-lg border border-cyan-200 bg-cyan-50/60 hover:bg-cyan-100/70 text-left transition-all group"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-cyan-800 text-xs">Amex (Approved)</span>
+                        <span className="text-[10px] font-mono font-bold text-cyan-600 group-hover:underline flex items-center gap-1">
+                          {copiedCard === 'AMEX' ? (
+                            'COPIED!'
+                          ) : (
+                            <>
+                              <Copy className="w-3 h-3" />
+                              <span>COPY</span>
+                            </>
+                          )}
+                        </span>
+                      </div>
+                      <span className="font-mono text-[11px] text-slate-700 block mt-1">3467 8100 5510 225</span>
+                    </button>
                   </div>
                 </div>
-              </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-700 block">EXPIRATION (MM/YY)</label>
-                  <input
-                    type="text"
-                    value={payHereExpiry}
-                    onChange={(e) => setPayHereExpiry(e.target.value)}
-                    className="w-full p-2.5 font-mono text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-semibold"
-                    placeholder="12/28"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-700 block">CVV / CVC</label>
-                  <input
-                    type="password"
-                    maxLength={4}
-                    value={payHereCvv}
-                    onChange={(e) => setPayHereCvv(e.target.value)}
-                    className="w-full p-2.5 font-mono text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-semibold tracking-widest"
-                    placeholder="123"
-                  />
-                </div>
-              </div>
+                {/* Error Banner */}
+                {payHereErrorMessage && (
+                  <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2.5">
+                    <AlertCircle className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
+                    <div>
+                      <div className="font-bold">PayHere Gateway Notice</div>
+                      <p className="text-[11px] mt-0.5">{payHereErrorMessage}</p>
+                    </div>
+                  </div>
+                )}
 
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-700 block">CARDHOLDER NAME</label>
-                <input
-                  type="text"
-                  value={payHereCardHolder}
-                  onChange={(e) => setPayHereCardHolder(e.target.value)}
-                  className="w-full p-2.5 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-900 uppercase font-semibold"
-                  placeholder="A. M. PERERA"
-                />
-              </div>
-            </div>
+                {/* Live Checkout Actions */}
+                <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => handleLaunchPayHereRealCheckout(payHereModalInvoice, true)}
+                    className="text-sky-700 hover:text-sky-900 text-xs font-semibold flex items-center gap-1.5 underline underline-offset-2"
+                  >
+                    <span>Or redirect to PayHere Hosted Checkout Page</span>
+                    <ExternalLink className="h-3 w-3" />
+                  </button>
 
-            {/* Error Message if simulated decline */}
-            {payHereErrorMessage && (
-              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2.5">
-                <AlertCircle className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
-                <div>
-                  <div className="font-bold">Transaction Declined</div>
-                  <p className="text-[11px] mt-0.5">{payHereErrorMessage}</p>
+                  <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPayHereModalInvoice(null);
+                        setPayHereErrorMessage(null);
+                      }}
+                      className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg border border-slate-200"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      disabled={processingPayment}
+                      onClick={() => handleLaunchPayHereRealCheckout(payHereModalInvoice, false)}
+                      className="px-5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md transition-all flex items-center gap-2 disabled:opacity-50"
+                    >
+                      {processingPayment ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 animate-spin" />
+                          <span>Connecting to PayHere...</span>
+                        </>
+                      ) : (
+                        <>
+                          <ShieldCheck className="h-4 w-4" />
+                          <span>Launch PayHere Official Checkout</span>
+                          <ExternalLink className="h-3.5 w-3.5 opacity-80" />
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
 
-            {/* Sandbox Notice & CBSL security */}
-            <div className="p-3 rounded-xl bg-emerald-50/80 border border-emerald-200 text-emerald-800 text-[11px] flex items-start gap-2">
-              <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-              <div className="space-y-0.5">
-                <div className="font-semibold">Central Bank of Sri Lanka 3D-Secure 2.0 Compliance</div>
-                <p className="text-emerald-700">
-                  PayHere sandbox mode authenticated with order MD5 hash verification. In Merchant Portal, Allowed Domains is configured to <code className="font-mono text-[10px] bg-emerald-100/80 px-1 py-0.5 rounded font-bold">*</code> for local testing (localhost:5173).
-                </p>
-              </div>
-            </div>
+            {/* TAB 2: Direct Hospital POS Card Terminal */}
+            {payHereModalTab === 'SIMULATOR' && (
+              <div className="space-y-3">
+                {/* PayHere Test Cards Preset Selector */}
+                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-slate-800 text-[11px] flex items-center gap-1.5">
+                      <CreditCard className="h-3.5 w-3.5 text-clinical-teal-600" />
+                      Quick-Fill Card Information
+                    </span>
+                    <span className="text-[10px] text-slate-500 font-medium">Click card to auto-fill</span>
+                  </div>
 
-            {/* Action Buttons */}
-            <div className="pt-2 flex justify-end gap-2 border-t border-slate-200">
-              <button
-                type="button"
-                onClick={() => {
-                  setPayHereModalInvoice(null);
-                  setPayHereErrorMessage(null);
-                }}
-                className="apple-btn px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={processingPayment}
-                onClick={() => handleSimulatePayHerePayment(payHereModalInvoice)}
-                className="apple-btn px-5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md transition-all flex items-center gap-2 disabled:opacity-50"
-              >
-                {processingPayment ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 animate-spin" />
-                    <span>Verifying 3D-Secure...</span>
-                  </>
-                ) : (
-                  <>
-                    <CreditCard className="h-4 w-4" />
-                    <span>Authorize LKR {Number(payHereModalInvoice.totalAmount).toLocaleString('en-LK', { minimumFractionDigits: 2 })}</span>
-                  </>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleSelectTestCard('VISA')}
+                      className={`p-2.5 rounded-lg border text-left transition-all flex flex-col justify-between ${
+                        payHereTestCardType === 'VISA'
+                          ? 'border-blue-600 bg-blue-50/70 shadow-xs'
+                          : 'border-slate-200 bg-white hover:bg-slate-50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-blue-700 text-xs">Visa Test</span>
+                        <span className="text-[9px] px-1 rounded bg-blue-100 text-blue-800 font-mono font-bold">READY</span>
+                      </div>
+                      <span className="font-mono text-[10px] text-slate-600 mt-1">4916 •••• •••• 1292</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleSelectTestCard('MASTERCARD')}
+                      className={`p-2.5 rounded-lg border text-left transition-all flex flex-col justify-between ${
+                        payHereTestCardType === 'MASTERCARD'
+                          ? 'border-amber-600 bg-amber-50/70 shadow-xs'
+                          : 'border-slate-200 bg-white hover:bg-slate-50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-amber-700 text-xs">MasterCard</span>
+                        <span className="text-[9px] px-1 rounded bg-amber-100 text-amber-800 font-mono font-bold">READY</span>
+                      </div>
+                      <span className="font-mono text-[10px] text-slate-600 mt-1">5307 •••• •••• 1191</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleSelectTestCard('AMEX')}
+                      className={`p-2.5 rounded-lg border text-left transition-all flex flex-col justify-between ${
+                        payHereTestCardType === 'AMEX'
+                          ? 'border-cyan-600 bg-cyan-50/70 shadow-xs'
+                          : 'border-slate-200 bg-white hover:bg-slate-50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-cyan-700 text-xs">Amex Test</span>
+                        <span className="text-[9px] px-1 rounded bg-cyan-100 text-cyan-800 font-mono font-bold">READY</span>
+                      </div>
+                      <span className="font-mono text-[10px] text-slate-600 mt-1">3467 •••• ••• 0225</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Test Simulation Scenario Selection */}
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                  <label className="font-bold text-slate-700 block text-[11px]">
+                    Card Processing Network Response (POS Sandbox Verification)
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPayHereSimulationOutcome('SUCCESS');
+                        setPayHereErrorMessage(null);
+                      }}
+                      className={`p-2 rounded-lg border text-center text-xs font-semibold transition-all ${
+                        payHereSimulationOutcome === 'SUCCESS'
+                          ? 'border-emerald-600 bg-emerald-50 text-emerald-800 font-bold'
+                          : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                      }`}
+                    >
+                      ✓ Approved (2)
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPayHereSimulationOutcome('DECLINE_FUNDS');
+                        setPayHereErrorMessage(null);
+                      }}
+                      className={`p-2 rounded-lg border text-center text-xs font-semibold transition-all ${
+                        payHereSimulationOutcome === 'DECLINE_FUNDS'
+                          ? 'border-rose-600 bg-rose-50 text-rose-800 font-bold'
+                          : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                      }`}
+                    >
+                      ⚠️ Insufficient (-2)
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPayHereSimulationOutcome('DECLINE_LIMIT');
+                        setPayHereErrorMessage(null);
+                      }}
+                      className={`p-2 rounded-lg border text-center text-xs font-semibold transition-all ${
+                        payHereSimulationOutcome === 'DECLINE_LIMIT'
+                          ? 'border-rose-600 bg-rose-50 text-rose-800 font-bold'
+                          : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                      }`}
+                    >
+                      ❌ Limit Exceeded (-3)
+                    </button>
+                  </div>
+                </div>
+
+                {/* Interactive Card Inputs */}
+                <div className="space-y-3 p-4 rounded-xl border border-slate-200 bg-white">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-700 block">CARD NUMBER</label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={payHereCardNumber}
+                        onChange={(e) => setPayHereCardNumber(e.target.value)}
+                        className="w-full p-2.5 font-mono text-sm bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:ring-2 focus:ring-clinical-teal-500 tracking-wider font-semibold"
+                        placeholder="4916 2175 0161 1292"
+                      />
+                      <div className="absolute right-3 top-2.5">
+                        <CreditCard className="h-5 w-5 text-clinical-teal-600" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-700 block">EXPIRATION (MM/YY)</label>
+                      <input
+                        type="text"
+                        value={payHereExpiry}
+                        onChange={(e) => setPayHereExpiry(e.target.value)}
+                        className="w-full p-2.5 font-mono text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-semibold"
+                        placeholder="12/28"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-700 block">CVV / CVC</label>
+                      <input
+                        type="password"
+                        maxLength={4}
+                        value={payHereCvv}
+                        onChange={(e) => setPayHereCvv(e.target.value)}
+                        className="w-full p-2.5 font-mono text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-semibold tracking-widest"
+                        placeholder="123"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-700 block">CARDHOLDER NAME</label>
+                    <input
+                      type="text"
+                      value={payHereCardHolder}
+                      onChange={(e) => setPayHereCardHolder(e.target.value)}
+                      className="w-full p-2.5 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-900 uppercase font-semibold"
+                      placeholder="A. M. PERERA"
+                    />
+                  </div>
+                </div>
+
+                {/* Error Message if simulated decline */}
+                {payHereErrorMessage && (
+                  <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2.5">
+                    <AlertCircle className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
+                    <div>
+                      <div className="font-bold">Transaction Declined</div>
+                      <p className="text-[11px] mt-0.5">{payHereErrorMessage}</p>
+                    </div>
+                  </div>
                 )}
-              </button>
-            </div>
+
+                {/* Action Buttons for Simulator */}
+                <div className="pt-2 flex justify-end gap-2 border-t border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPayHereModalInvoice(null);
+                      setPayHereErrorMessage(null);
+                    }}
+                    className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg border border-slate-200"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    disabled={processingPayment}
+                    onClick={() => handleSimulatePayHerePayment(payHereModalInvoice)}
+                    className="px-5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md transition-all flex items-center gap-2 disabled:opacity-50"
+                  >
+                    {processingPayment ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                        <span>Verifying 3D-Secure...</span>
+                      </>
+                    ) : (
+                      <>
+                        <CreditCard className="h-4 w-4" />
+                        <span>Authorize LKR {Number(payHereModalInvoice.totalAmount).toLocaleString('en-LK', { minimumFractionDigits: 2 })} (POS Terminal)</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </Modal>
       )}
@@ -2576,6 +2967,14 @@ export const PatientPortalView: React.FC = () => {
           }}
         />
       )}
+
+      {/* Change Password Modal */}
+      <ChangePasswordModal
+        isOpen={isChangePasswordOpen}
+        onClose={() => setIsChangePasswordOpen(false)}
+        userName={patientSession ? `${patientSession.firstName} ${patientSession.lastName}` : 'Patient'}
+        userEmail={patientSession?.email}
+      />
     </div>
   );
 };

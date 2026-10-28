@@ -66,8 +66,8 @@ public class SecurityConfig {
 
             // 6. Request Authorization Rules
             .authorizeHttpRequests(auth -> auth
-                // Public authentication endpoint (only login; /me requires authentication)
-                .requestMatchers("/api/v1/auth/login").permitAll()
+                // Public authentication endpoint (login and forgot-password; /me & /change-password require authentication)
+                .requestMatchers("/api/v1/auth/login", "/api/v1/auth/forgot-password").permitAll()
                 // Public patient self-registration & pre-registration uniqueness checks
                 .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/v1/patients").permitAll()
                 .requestMatchers("/api/v1/patients/search", "/api/v1/patients/nic/**").permitAll()
@@ -84,6 +84,28 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/payments/payhere/notify").permitAll()
                 // Embedded H2 database web console (demo profile)
                 .requestMatchers("/h2-console/**", "/db-console/**").permitAll()
+                // Static web assets & SPA client routes for single-container showcase deployment
+                .requestMatchers(
+                    "/",
+                    "/index.html",
+                    "/assets/**",
+                    "/favicon.ico",
+                    "/vite.svg",
+                    "/*.ico",
+                    "/*.png",
+                    "/*.svg",
+                    "/*.json",
+                    "/*.css",
+                    "/*.js",
+                    "/physicians",
+                    "/services",
+                    "/patient/**",
+                    "/admin",
+                    "/staff",
+                    "/staff/**",
+                    "/dashboard",
+                    "/dashboard/**"
+                ).permitAll()
                 // Operational health check probes and error dispatcher
                 .requestMatchers("/api/v1/health", "/health", "/error").permitAll()
                 // All other endpoints strictly require authenticated JWT
@@ -110,6 +132,8 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOriginPatterns(Arrays.asList(
+            "https://*.onrender.com",
+            "http://*.onrender.com",
             "https://*.tekkeys.com",
             "http://*.tekkeys.com",
             "https://tekkeys.com",

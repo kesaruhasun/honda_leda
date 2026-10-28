@@ -5,12 +5,14 @@ import { useToast } from '../../context/ToastContext';
 import { useRole } from '../../context/RoleContext';
 import { Lock, UserRound, ChevronLeft, AlertCircle } from 'lucide-react';
 import { UserRole } from '../../types';
+import { ForgotPasswordModal } from '../../components/common/ForgotPasswordModal';
 
 export const StaffLoginView: React.FC = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
   
   const navigate = useNavigate();
   const { showToast } = useToast();
@@ -154,9 +156,13 @@ export const StaffLoginView: React.FC = () => {
               </div>
 
               <div className="text-sm">
-                <a href="#" className="font-medium text-clinical-teal-600 hover:text-clinical-teal-500">
+                <button
+                  type="button"
+                  onClick={() => setIsForgotPasswordOpen(true)}
+                  className="font-medium text-clinical-teal-600 hover:text-clinical-teal-700 hover:underline cursor-pointer"
+                >
                   Forgot password?
-                </a>
+                </button>
               </div>
             </div>
 
@@ -193,6 +199,12 @@ export const StaffLoginView: React.FC = () => {
           </div>
         </div>
       </div>
+
+      <ForgotPasswordModal
+        isOpen={isForgotPasswordOpen}
+        onClose={() => setIsForgotPasswordOpen(false)}
+        initialEmail={username.includes('@') ? username : ''}
+      />
     </div>
   );
 };

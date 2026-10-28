@@ -29,6 +29,8 @@ export const DoctorView: React.FC = () => {
   const [newDoctor, setNewDoctor] = useState({
     firstName: '',
     lastName: '',
+    email: '',
+    phoneNumber: '',
     specialization: 'Cardiology',
     licenseNo: '',
     roomNumber: 'Suite 101',
@@ -138,13 +140,28 @@ export const DoctorView: React.FC = () => {
       return;
     }
     try {
+      const license = newDoctor.licenseNo.trim() || `SLMC-${Math.floor(10000 + Math.random() * 90000)}`;
       await doctorApi.create({
         ...newDoctor,
+        email: newDoctor.email ? newDoctor.email.trim() : undefined,
+        licenseNo: license,
+        doctorLicenseNo: license,
         employeeId: 'DOC-' + Math.floor(100 + Math.random() * 900),
         isAvailable: true,
       } as any);
       showToast('success', 'Physician Registered', `Dr. ${newDoctor.firstName} ${newDoctor.lastName} added to roster.`);
       setIsAddModalOpen(false);
+      setNewDoctor({
+        firstName: '',
+        lastName: '',
+        email: '',
+        phoneNumber: '',
+        specialization: 'Cardiology',
+        licenseNo: '',
+        roomNumber: 'Suite 101',
+        consultationFee: 2500,
+        weeklySchedule: 'Mon-Fri 08:00-14:00',
+      });
       fetchDoctors();
     } catch (err: any) {
       showToast('error', 'Registration Error', err.message || 'Could not add physician');
@@ -196,6 +213,9 @@ export const DoctorView: React.FC = () => {
       render: (d) => (
         <div>
           <div className="font-bold text-slate-900 truncate">Dr. {d.fullName || `${d.firstName} ${d.lastName}`}</div>
+          {d.email && (
+            <div className="text-[10px] text-teal-600 font-medium truncate">{d.email}</div>
+          )}
           <div className="text-[10px] font-mono text-slate-500">{d.employeeId || `EMP-${d.id}`} &bull; Room {d.roomNumber || '101'}</div>
         </div>
       ),
@@ -379,17 +399,27 @@ export const DoctorView: React.FC = () => {
       >
         {selectedDoctor && (
           <div className="space-y-4 text-xs font-sans">
-            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex justify-between items-center">
-              <div>
-                <span className="text-[10px] text-slate-400 block font-mono">DUTY STATUS</span>
-                <StatusBadge status={selectedDoctor.isAvailable !== false ? 'ACTIVE' : 'OFF'} dot>
-                  {selectedDoctor.isAvailable !== false ? 'Currently On Duty' : 'Off Duty'}
-                </StatusBadge>
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
+              <div className="flex justify-between items-center">
+                <div>
+                  <span className="text-[10px] text-slate-400 block font-mono">DUTY STATUS</span>
+                  <StatusBadge status={selectedDoctor.isAvailable !== false ? 'ACTIVE' : 'OFF'} dot>
+                    {selectedDoctor.isAvailable !== false ? 'Currently On Duty' : 'Off Duty'}
+                  </StatusBadge>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 block font-mono">CONSULTATION TARIFF</span>
+                  <span className="font-bold font-mono text-sm text-slate-900">
+                    LKR {Number(selectedDoctor.consultationFee || 2500).toFixed(2)}
+                  </span>
+                </div>
               </div>
-              <div>
-                <span className="text-[10px] text-slate-400 block font-mono">CONSULTATION TARIFF</span>
-                <span className="font-bold font-mono text-sm text-slate-900">
-                  LKR {Number(selectedDoctor.consultationFee || 2500).toFixed(2)}
+              <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between text-slate-600">
+                <span className="font-mono text-[11px] text-teal-700 font-semibold truncate max-w-[200px]">
+                  {selectedDoctor.email || 'No email registered'}
+                </span>
+                <span className="text-[10px] text-slate-500 font-mono">
+                  {selectedDoctor.contactNumber || '0770000000'}
                 </span>
               </div>
             </div>
@@ -510,7 +540,7 @@ export const DoctorView: React.FC = () => {
                   value={newDoctor.firstName}
                   onChange={(e) => setNewDoctor({ ...newDoctor, firstName: e.target.value })}
                   placeholder="E.g. Ayesha"
-                  className="w-full text-xs p-2.5 rounded-lg border border-slate-200"
+                  className="w-full text-xs p-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500"
                 />
               </div>
               <div>
@@ -521,7 +551,31 @@ export const DoctorView: React.FC = () => {
                   value={newDoctor.lastName}
                   onChange={(e) => setNewDoctor({ ...newDoctor, lastName: e.target.value })}
                   placeholder="E.g. Fernando"
-                  className="w-full text-xs p-2.5 rounded-lg border border-slate-200"
+                  className="w-full text-xs p-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Email Address *</label>
+                <input
+                  type="email"
+                  required
+                  value={newDoctor.email}
+                  onChange={(e) => setNewDoctor({ ...newDoctor, email: e.target.value })}
+                  placeholder="e.g. dr.ayesha@pulseos.lk"
+                  className="w-full text-xs p-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                />
+              </div>
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Phone / Mobile No</label>
+                <input
+                  type="tel"
+                  value={newDoctor.phoneNumber}
+                  onChange={(e) => setNewDoctor({ ...newDoctor, phoneNumber: e.target.value })}
+                  placeholder="0771234567"
+                  className="w-full text-xs p-2.5 rounded-lg border border-slate-200 font-mono focus:outline-none focus:ring-2 focus:ring-teal-500"
                 />
               </div>
             </div>
@@ -535,7 +589,7 @@ export const DoctorView: React.FC = () => {
                   value={newDoctor.specialization}
                   onChange={(e) => setNewDoctor({ ...newDoctor, specialization: e.target.value })}
                   placeholder="Cardiology, Neurology, Pediatrics..."
-                  className="w-full text-xs p-2.5 rounded-lg border border-slate-200"
+                  className="w-full text-xs p-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500"
                 />
               </div>
               <div>
@@ -545,7 +599,7 @@ export const DoctorView: React.FC = () => {
                   value={newDoctor.roomNumber}
                   onChange={(e) => setNewDoctor({ ...newDoctor, roomNumber: e.target.value })}
                   placeholder="Suite 204"
-                  className="w-full text-xs p-2.5 rounded-lg border border-slate-200"
+                  className="w-full text-xs p-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500"
                 />
               </div>
             </div>

@@ -3,11 +3,15 @@ package com.pulseos.doctor;
 import com.pulseos.common.EmployeeRole;
 import com.pulseos.common.EmploymentType;
 import com.pulseos.common.Gender;
+import com.pulseos.common.PersonRepository;
 import com.pulseos.common.PulseException;
 import com.pulseos.doctor.DoctorDTOs.*;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import com.pulseos.notification.NotificationService;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
@@ -26,6 +30,10 @@ public class DoctorService {
     private final DoctorRepository doctorRepository;
     private final DoctorScheduleRepository doctorScheduleRepository;
     private final DepartmentRepository departmentRepository;
+    private final PersonRepository personRepository;
+    private final JdbcTemplate jdbcTemplate;
+    private final NotificationService notificationService;
+    private final PasswordEncoder passwordEncoder;
 
     @Transactional(readOnly = true)
     public List<DoctorResponse> getAllDoctors(String specialization) {
@@ -70,7 +78,20 @@ public class DoctorService {
         doc.setNicPassportNo("DOC-" + System.currentTimeMillis());
         doc.setFirstName(req.getFirstName().trim());
         doc.setLastName(req.getLastName() != null ? req.getLastName().trim() : "Doctor");
-        doc.setEmail(req.getEmail() != null ? req.getEmail() : "doc." + System.currentTimeMillis() + "@pulseos.lk");
+
+        String email = req.getEmail();
+        if (email != null && !email.isBlank()) {
+            email = email.trim().toLowerCase();
+            if (personRepository.existsByEmail(email)) {
+                throw PulseException.conflict("Duplicate Email", "An account with email '" + email + "' is already registered in the system.");
+            }
+            doc.setEmail(email);
+        } else {
+            String sanitizedFirst = req.getFirstName().trim().toLowerCase().replaceAll("[^a-z0-9]", "");
+            String sanitizedLast = (req.getLastName() != null ? req.getLastName().trim().toLowerCase().replaceAll("[^a-z0-9]", "") : "doc");
+            doc.setEmail("dr." + sanitizedFirst + "." + sanitizedLast + "." + (System.currentTimeMillis() % 100000) + "@pulseos.lk");
+        }
+
         doc.setDoctorLicenseNo(license);
         doc.setSpecialization(req.getSpecialization());
         doc.setConsultationFee(req.getConsultationFee() != null ? req.getConsultationFee() : new BigDecimal("2000.00"));
@@ -86,14 +107,46 @@ public class DoctorService {
         doc.setEmploymentType(EmploymentType.FULL_TIME);
         doc.setEmployeeRole(EmployeeRole.DOCTOR);
         doc.setDepartment(dept);
-        doc.setPasswordHash("$2a$10$defaultPulseOSDoctorPasswordHash");
+
+        // Generate temporary password (or use provided password)
+        String tempPassword;
+        if (req.getPassword() != null && !req.getPassword().isBlank()) {
+            tempPassword = req.getPassword().trim();
+        } else {
+            int randomCode = 1000 + (int)(Math.random() * 9000);
+            tempPassword = "PulseDoc#" + randomCode;
+        }
+        doc.setPasswordHash(passwordEncoder.encode(tempPassword));
 
         if (req.getPhoneNumber() != null && !req.getPhoneNumber().isBlank()) {
             doc.setContactNumbers(new HashSet<>(Collections.singletonList(req.getPhoneNumber())));
         }
 
         Doctor saved = doctorRepository.save(doc);
-        log.info("Created doctor: ID={}, License={}", saved.getId(), saved.getDoctorLicenseNo());
+
+        try {
+            jdbcTemplate.update("UPDATE employees SET email = ? WHERE employee_id = ?", saved.getEmail(), saved.getId());
+        } catch (Exception ex) {
+            log.debug("Employee email sync: {}", ex.getMessage());
+        }
+
+        // Dispatch credentials and onboarding email to physician
+        try {
+            notificationService.sendDoctorWelcomeEmail(
+                    saved.getEmail(),
+                    saved.getFullName(),
+                    tempPassword,
+                    saved.getDoctorLicenseNo(),
+                    saved.getSpecialization(),
+                    saved.getRoomNumber(),
+                    saved.getConsultationFee()
+            );
+            log.info("Dispatched physician onboarding credentials email to: {}", saved.getEmail());
+        } catch (Exception ex) {
+            log.warn("Failed to dispatch onboarding email to doctor {}: {}", saved.getEmail(), ex.getMessage());
+        }
+
+        log.info("Created doctor: ID={}, License={}, Email={}", saved.getId(), saved.getDoctorLicenseNo(), saved.getEmail());
         return toResponse(saved);
     }
 
@@ -115,7 +168,18 @@ public class DoctorService {
                 .orElseThrow(() -> PulseException.notFound("Doctor with ID " + id + " not found"));
         if (req.getFirstName() != null) doctor.setFirstName(req.getFirstName());
         if (req.getLastName() != null) doctor.setLastName(req.getLastName());
-        if (req.getEmail() != null) doctor.setEmail(req.getEmail());
+        if (req.getEmail() != null && !req.getEmail().isBlank()) {
+            String newEmail = req.getEmail().trim().toLowerCase();
+            if (!newEmail.equalsIgnoreCase(doctor.getEmail()) && personRepository.existsByEmail(newEmail)) {
+                throw PulseException.conflict("Duplicate Email", "Email '" + newEmail + "' is already registered to another user.");
+            }
+            doctor.setEmail(newEmail);
+            try {
+                jdbcTemplate.update("UPDATE employees SET email = ? WHERE employee_id = ?", newEmail, doctor.getId());
+            } catch (Exception ex) {
+                log.debug("Employee email sync: {}", ex.getMessage());
+            }
+        }
         if (req.getPhoneNumber() != null) doctor.setContactNumbers(new java.util.HashSet<>(java.util.Collections.singletonList(req.getPhoneNumber())));
         if (req.getConsultationFee() != null) doctor.setConsultationFee(req.getConsultationFee());
         if (req.getSpecialization() != null) doctor.setSpecialization(req.getSpecialization());
