@@ -29,10 +29,12 @@ jobs:
 
       - name: Install dependencies
         run: |
-          npm install
-          cd frontend && npm install
+          cd frontend
+          npm install --no-package-lock
+          npm install --no-package-lock --no-save @rollup/rollup-linux-x64-gnu
 
       - name: Build frontend showcase
+        working-directory: frontend
         env:
           VITE_DEMO_MODE: "true"
         run: npm run build
