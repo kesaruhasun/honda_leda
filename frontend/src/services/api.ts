@@ -1,4 +1,4 @@
-import axios, { AxiosError } from 'axios';
+import axios, { AxiosError, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
 import {
   Patient,
   Doctor,
@@ -11,10 +11,42 @@ import {
   LabTest,
   PayHereParams,
 } from '../types';
+import { mockServer } from './mock/mockServer';
+import { mockStore } from './mock/mockStore';
+
+export const isDemoModeActive =
+  import.meta.env.VITE_DEMO_MODE === 'true' ||
+  !import.meta.env.VITE_API_BASE_URL ||
+  (typeof window !== 'undefined' &&
+    (window.location.hostname.includes('github.io') ||
+      window.location.hostname.includes('vercel.app') ||
+      window.location.hostname.includes('netlify.app')));
+
+export const resetDemoDatabase = () => {
+  mockStore.reset();
+};
+
+const defaultAdapter = axios.getAdapter(axios.defaults.adapter || ['xhr', 'http', 'fetch']);
 
 const api = axios.create({
   baseURL: (import.meta.env.VITE_API_BASE_URL || '') + '/api/v1',
   timeout: 30000,
+  adapter: async (config: InternalAxiosRequestConfig): Promise<AxiosResponse> => {
+    // If running in demo mode or hosted on GitHub Pages/Vercel, serve directly from mock engine
+    if (isDemoModeActive) {
+      return mockServer.handle(config);
+    }
+    // Otherwise try real network request
+    try {
+      return await defaultAdapter(config);
+    } catch (err: any) {
+      // If network error (backend unreachable / offline), gracefully fall back to mock server
+      if (!err.response && !err.status) {
+        return mockServer.handle(config);
+      }
+      throw err;
+    }
+  },
   headers: {
     'Content-Type': 'application/json',
     Accept: 'application/json',

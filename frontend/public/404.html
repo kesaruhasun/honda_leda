@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>PulseOS - Digital Clinical Healthcare</title>
+    <script type="text/javascript">
+      // Redirect GitHub Pages 404 to HashRouter route
+      var pathSegmentsToKeep = 1; // 1 segment for repository name (/honda_leda/)
+      var l = window.location;
+      var repoPath = l.pathname.split('/').slice(0, 1 + pathSegmentsToKeep).join('/');
+      var routePath = l.pathname.split('/').slice(1 + pathSegmentsToKeep).join('/');
+      var newUrl = l.protocol + '//' + l.host + repoPath + '/#' + (routePath ? '/' + routePath : '') + (l.search ? l.search : '') + l.hash;
+      window.location.replace(newUrl);
+    </script>
+  </head>
+  <body>
+    <p>Redirecting to PulseOS...</p>
+  </body>
+</html>

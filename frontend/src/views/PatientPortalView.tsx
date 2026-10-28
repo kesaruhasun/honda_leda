@@ -199,7 +199,8 @@ export const PatientPortalView: React.FC = () => {
       return;
     }
     // Check for PayHere redirect query parameters (e.g. ?order_id=INV-2026-0001&payment=success)
-    const urlParams = new URLSearchParams(window.location.search);
+    const search = window.location.search || (window.location.hash.includes('?') ? '?' + window.location.hash.split('?')[1] : '');
+    const urlParams = new URLSearchParams(search);
     const returnOrderId = urlParams.get('order_id');
     const returnPaymentStatus = urlParams.get('payment');
     if (returnOrderId || returnPaymentStatus === 'success') {
@@ -218,7 +219,8 @@ export const PatientPortalView: React.FC = () => {
             setInvoices(res.data.filter((i: Invoice) => i.patientId === patientSession.id));
           }
         });
-        window.history.replaceState({}, document.title, window.location.pathname);
+        const cleanUrl = window.location.href.split('?')[0];
+        window.history.replaceState({}, document.title, cleanUrl);
       });
     }
 

@@ -1,11 +1,28 @@
 # PulseOS — Modern Hospital Management & Clinical EHR System
 
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-pulseos.tekkeys.com-10B981?style=for-the-badge&logo=google-chrome&logoColor=white)](https://pulseos.tekkeys.com)
-[![GitHub Repository](https://img.shields.io/badge/GitHub-kesaruhasun%2Fpulseos-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/kesaruhasun/pulseos)
+[![Live Showcase](https://img.shields.io/badge/Live%20Showcase-kesaruhasun.github.io%2Fhonda__leda-10B981?style=for-the-badge&logo=githubpages&logoColor=white)](https://kesaruhasun.github.io/honda_leda/)
+[![GitHub Repository](https://img.shields.io/badge/GitHub-kesaruhasun%2Fhonda__leda-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/kesaruhasun/honda_leda)
 [![Portfolio](https://img.shields.io/badge/Author-kesaru.me-2563EB?style=for-the-badge&logo=safari&logoColor=white)](https://kesaru.me)
 [![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
 
 **PulseOS** is an enterprise-grade, full-stack Hospital Management System (HMS) and Electronic Health Records (EHR) platform engineered to streamline clinical operations, outpatient consultations, diagnostic pathology laboratory workflows, pharmacy dispensary inventory, automated patient notifications, and billing. Designed with role-based access control (RBAC) across five specialized staff workflows and an intuitive self-service patient portal, PulseOS delivers end-to-end digital continuity from appointment booking and PayHere sandbox payment gateway checkout to electronic prescription dispatch and lab report generation.
+
+> **Live Interactive Showcase**: [https://kesaruhasun.github.io/honda_leda/](https://kesaruhasun.github.io/honda_leda/)  
+> *(No login credentials needed — 1-click demo access is built into all portal screens!)*
+
+---
+
+### 🔑 Demo Showcase Credentials
+When exploring the live showcase, you can use the **1-Click Demo Buttons** or log in with any of the accounts below:
+
+| Role | Username / ID | Password | Access Capabilities |
+| :--- | :--- | :--- | :--- |
+| **System Admin** | `admin` *(or `it25103753`)* | `admin` *(or `password123`)* | Executive Cockpit, Ward Census & Analytics |
+| **Consultant Cardiologist** | `doctor` *(or `it25103999`)* | `password` *(or `password123`)* | OPD Queue, Clinical Consultations & Orders |
+| **Head Pharmacist** | `pharmacist` *(or `it25103821`)* | `password` *(or `password123`)* | Drug Inventory, Stock Levels & Dispensing |
+| **Outpatient Receptionist** | `receptionist` *(or `it25104057`)* | `password` *(or `password123`)* | Master Patient Index, Emergency Triage |
+| **Senior Lab Technologist** | `lab` *(or `it25104293`)* | `password` *(or `password123`)* | Pathology Worklist, Test Results & Verification |
+| **Patient Portal** | `manetexts@gmail.com` *(or `200114509999`)* | `password123` | Personal Health Records, Lab Reports, Billing |
 
 ---
 

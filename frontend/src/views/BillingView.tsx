@@ -84,7 +84,8 @@ export const BillingView: React.FC = () => {
     fetchData();
 
     // Check for PayHere redirect query parameters (e.g. ?order_id=INV-2026-0001)
-    const urlParams = new URLSearchParams(window.location.search);
+    const search = window.location.search || (window.location.hash.includes('?') ? '?' + window.location.hash.split('?')[1] : '');
+    const urlParams = new URLSearchParams(search);
     const orderId = urlParams.get('order_id');
     if (orderId) {
       setPayHereSuccessBanner(orderId);
@@ -99,7 +100,8 @@ export const BillingView: React.FC = () => {
         }
       }).finally(() => {
         fetchData();
-        window.history.replaceState({}, document.title, window.location.pathname);
+        const cleanUrl = window.location.href.split('?')[0];
+        window.history.replaceState({}, document.title, cleanUrl);
       });
     }
   }, []);
