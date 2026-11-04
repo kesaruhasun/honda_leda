@@ -4,6 +4,8 @@ import os
 OUT_DIR = "/Users/admin/Projects/honda_leda/demo_screenshots"
 os.makedirs(OUT_DIR, exist_ok=True)
 
+BASE_URL = os.getenv("DEMO_BASE_URL", "https://kesaruhasun.github.io/honda_leda/#")
+
 def step(title):
     print(f"\n==========================================")
     print(f"STEP: {title}")
@@ -23,7 +25,7 @@ activate_tab(current_tab())
 # 1. LANDING PAGE
 # -----------------------------------------------------------------
 step("Landing Page Hero")
-goto_url("https://pulseos.tekkeys.com/")
+goto_url(f"{BASE_URL}/")
 wait_for_load()
 time.sleep(2)
 snap("01_landing_hero.png")
@@ -37,7 +39,7 @@ snap("02_landing_features.png")
 # 2. PATIENT FLOW
 # -----------------------------------------------------------------
 step("Patient Login Screen")
-goto_url("https://pulseos.tekkeys.com/login/patient")
+goto_url(f"{BASE_URL}/patient/login")
 wait_for_load()
 time.sleep(2)
 snap("03_patient_login.png")
@@ -99,7 +101,7 @@ snap("08_patient_billing.png")
 # 3. STAFF / ADMIN (MANAGER) FLOW
 # -----------------------------------------------------------------
 step("Staff Login Screen")
-goto_url("https://pulseos.tekkeys.com/login/staff")
+goto_url(f"{BASE_URL}/staff")
 wait_for_load()
 time.sleep(2)
 snap("09_staff_login.png")
@@ -130,7 +132,7 @@ snap("11_admin_financial_analytics.png")
 # 4. DOCTOR FLOW
 # -----------------------------------------------------------------
 step("Login as Doctor")
-goto_url("https://pulseos.tekkeys.com/login/staff")
+goto_url(f"{BASE_URL}/staff")
 wait_for_load()
 time.sleep(2)
 
@@ -154,7 +156,7 @@ snap("12_doctor_opd_dashboard.png")
 # 5. PHARMACY INVENTORY FLOW
 # -----------------------------------------------------------------
 step("Login as Pharmacist")
-goto_url("https://pulseos.tekkeys.com/login/staff")
+goto_url(f"{BASE_URL}/staff")
 wait_for_load()
 time.sleep(2)
 
@@ -178,7 +180,7 @@ snap("13_pharmacy_inventory_dashboard.png")
 # 6. LABORATORY DIAGNOSTICS FLOW
 # -----------------------------------------------------------------
 step("Login as Lab Technician")
-goto_url("https://pulseos.tekkeys.com/login/staff")
+goto_url(f"{BASE_URL}/staff")
 wait_for_load()
 time.sleep(2)
 
@@ -202,7 +204,7 @@ snap("14_laboratory_diagnostics_dashboard.png")
 # 7. RECEPTIONIST / PATIENT MANAGEMENT FLOW
 # -----------------------------------------------------------------
 step("Login as Receptionist")
-goto_url("https://pulseos.tekkeys.com/login/staff")
+goto_url(f"{BASE_URL}/staff")
 wait_for_load()
 time.sleep(2)
 

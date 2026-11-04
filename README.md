@@ -145,7 +145,7 @@ Open `http://localhost:5173` to access the application.
 
 ## 🌐 Live Demo & Inquiries
 
-- **Live Demonstration**: [https://pulseos.tekkeys.com](https://pulseos.tekkeys.com)
+- **Live Demonstration**: [https://kesaruhasun.github.io/honda_leda/](https://kesaruhasun.github.io/honda_leda/)
 - **Contact & Inquiries**: Connect with the lead author via [kesaru.me](https://kesaru.me) or [GitHub](https://github.com/kesaruhasun).
 
 ---
